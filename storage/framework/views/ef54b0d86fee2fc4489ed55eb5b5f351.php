@@ -1,12 +1,12 @@
-@extends('layouts.app', ['title' => 'Register | Songkran Festival'])
 
-@section('content')
+
+<?php $__env->startSection('content'); ?>
 <div class="card">
     <h1 class="title">Register Now</h1>
     <p class="subtitle">Join Songkran Festival with your verified account.</p>
 
     <form id="registerForm" class="grid">
-        @csrf
+        <?php echo csrf_field(); ?>
 
         <div>
             <input name="full_name" placeholder="Full Name" required>
@@ -69,4 +69,5 @@
 
     <div id="formMessage" class="muted form-message"></div>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('layouts.app', ['title' => 'Register | Songkran Festival'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\IQBAL\event-system\resources\views/auth/register.blade.php ENDPATH**/ ?>

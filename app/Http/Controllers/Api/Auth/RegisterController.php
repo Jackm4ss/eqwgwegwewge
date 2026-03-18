@@ -15,20 +15,22 @@ class RegisterController extends Controller
         try {
             $user = $service->register($request->validated(), (string) $request->ip());
 
-            session([
-                'registered_email' => $user['email'],
-                'registered_user_id' => $user['user_id'],
-            ]);
-
             return response()->json([
                 'message' => 'Registration successful. Verification email has been sent.',
-                'redirect' => route('register.success'),
+                'redirect' => route('register.success', [
+                    'email' => $user['email'],
+                ]),
             ]);
         } catch (\InvalidArgumentException $exception) {
-            return response()->json(['message' => $exception->getMessage()], 422);
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
         } catch (\Throwable $throwable) {
             Log::error('Registration failed', ['error' => $throwable->getMessage()]);
-            return response()->json(['message' => 'Registration failed, please try again.'], 500);
+
+            return response()->json([
+                'message' => 'Registration failed, please try again.',
+            ], 500);
         }
     }
 }

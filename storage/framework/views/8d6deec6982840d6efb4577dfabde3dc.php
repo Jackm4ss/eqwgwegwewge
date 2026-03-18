@@ -1,13 +1,13 @@
-@extends('layouts.app', ['title' => 'Registration Success | Songkran Festival'])
 
-@section('content')
+
+<?php $__env->startSection('content'); ?>
 <div class="card" style="max-width:560px">
     <div class="success-icon">✓</div>
 
     <h1 class="title">Registration Successful</h1>
 
     <p class="subtitle">
-        We have sent a verification email to <strong>{{ $maskedEmail }}</strong>.
+        We have sent a verification email to <strong><?php echo e($maskedEmail); ?></strong>.
     </p>
 
     <p class="muted">
@@ -22,4 +22,5 @@
 
     <p id="msg" class="muted form-message"></p>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('layouts.app', ['title' => 'Registration Success | Songkran Festival'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\IQBAL\event-system\resources\views/auth/register-success.blade.php ENDPATH**/ ?>
