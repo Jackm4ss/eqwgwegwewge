@@ -1,47 +1,38 @@
 <?php
 
-namespace App\Http\Controllers\Auth;
+namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ResetPasswordMail;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class ForgotPasswordController extends Controller
 {
-    public function sendResetLink(Request $request)
+    public function sendResetLink(Request $request): RedirectResponse
     {
-        $request->validate([
-            'email' => ['required', 'email', 'exists:users,email'],
-        ], [
-            'email.exists' => 'Email not found.',
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
         ]);
 
-        $user = User::where('email', $request->email)->firstOrFail();
+        $email = strtolower(trim($validated['email']));
+        session(['reset_email' => $email]);
 
-        $token = Str::random(64);
-
-        DB::table('password_reset_tokens')->updateOrInsert(
-            ['email' => $request->email],
-            [
-                'token' => $token,
-                'created_at' => now(),
-            ]
-        );
-
-        $resetUrl = url('/reset-password/' . $token . '?email=' . urlencode($request->email));
-
-        Mail::to($user->email)->send(new ResetPasswordMail($user, $resetUrl));
-
-        session(['reset_email' => $request->email]);
+        $user = User::where('email', $email)->first();
+        if ($user) {
+            $this->dispatchResetLink($user, $email);
+        }
 
         return redirect()->route('reset.verify');
     }
 
-    public function resendResetLink(Request $request)
+    public function resendResetLink(Request $request): RedirectResponse|JsonResponse
     {
         $email = session('reset_email');
 
@@ -51,26 +42,34 @@ class ForgotPasswordController extends Controller
         }
 
         $user = User::where('email', $email)->first();
-
-        if (! $user) {
-            return redirect()->route('password.request')
-                ->withErrors(['email' => 'Email not found.']);
+        if ($user) {
+            $this->dispatchResetLink($user, $email);
         }
 
-        $token = Str::random(64);
+        $message = 'If the account exists, a reset link has been sent.';
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+            ]);
+        }
+
+        return back()->with('status', $message);
+    }
+
+    private function dispatchResetLink(User $user, string $email): void
+    {
+        $plainToken = Str::random(64);
 
         DB::table('password_reset_tokens')->updateOrInsert(
             ['email' => $email],
             [
-                'token' => $token,
+                'token' => Hash::make($plainToken),
                 'created_at' => now(),
             ]
         );
 
-        $resetUrl = url('/reset-password/' . $token . '?email=' . urlencode($email));
+        $resetUrl = url('/reset-password/' . urlencode($plainToken) . '?email=' . urlencode($email));
 
         Mail::to($user->email)->send(new ResetPasswordMail($user, $resetUrl));
-
-        return back()->with('status', 'Reset link has been resent.');
     }
 }

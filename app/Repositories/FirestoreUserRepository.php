@@ -28,6 +28,11 @@ class FirestoreUserRepository implements UserRepositoryInterface
             return $data;
         }
 
+        if (! $this->shouldUseFallback()) {
+            Log::error('Firestore unavailable and local fallback is disabled.');
+            throw new \RuntimeException('User storage unavailable.');
+        }
+
         $users = $this->loadFallback();
         $users[$data['user_id']] = $data;
         $this->saveFallback($users);
@@ -50,8 +55,39 @@ class FirestoreUserRepository implements UserRepositoryInterface
             return null;
         }
 
+        if (! $this->shouldUseFallback()) {
+            return null;
+        }
+
         foreach ($this->loadFallback() as $user) {
             if (($user['email'] ?? null) === strtolower($email)) {
+                return $user;
+            }
+        }
+
+        return null;
+    }
+
+    public function findByIdentityNumber(string $identityNumber): ?array
+    {
+        $client = $this->factory->make();
+        if ($client) {
+            $documents = $client->collection(config('firebase.users_collection'))->where('identity_number', '=', $identityNumber)->documents();
+            foreach ($documents as $document) {
+                if ($document->exists()) {
+                    return $document->data();
+                }
+            }
+
+            return null;
+        }
+
+        if (! $this->shouldUseFallback()) {
+            return null;
+        }
+
+        foreach ($this->loadFallback() as $user) {
+            if (($user['identity_number'] ?? null) === $identityNumber) {
                 return $user;
             }
         }
@@ -65,6 +101,10 @@ class FirestoreUserRepository implements UserRepositoryInterface
         if ($client) {
             $snapshot = $client->collection(config('firebase.users_collection'))->document($id)->snapshot();
             return $snapshot->exists() ? $snapshot->data() : null;
+        }
+
+        if (! $this->shouldUseFallback()) {
+            return null;
         }
 
         return $this->loadFallback()[$id] ?? null;
@@ -86,6 +126,11 @@ class FirestoreUserRepository implements UserRepositoryInterface
             return $payload;
         }
 
+        if (! $this->shouldUseFallback()) {
+            Log::error('Firestore unavailable and local fallback is disabled.');
+            throw new \RuntimeException('User storage unavailable.');
+        }
+
         $users = $this->loadFallback();
         $users[$id] = $payload;
         $this->saveFallback($users);
@@ -105,5 +150,10 @@ class FirestoreUserRepository implements UserRepositoryInterface
     private function saveFallback(array $users): void
     {
         file_put_contents($this->fallbackPath, json_encode($users, JSON_PRETTY_PRINT));
+    }
+
+    private function shouldUseFallback(): bool
+    {
+        return (bool) config('firebase.fallback_local', false);
     }
 }

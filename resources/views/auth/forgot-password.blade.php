@@ -5,10 +5,20 @@
     <h1 class="title">Forgot Password</h1>
     <p class="subtitle">Enter your email to receive a password reset link.</p>
 
-    <form id="forgotPasswordForm">
+    @if (session('status'))
+        <p class="muted form-message" style="margin-top:10px;">{{ session('status') }}</p>
+    @endif
+
+    @if ($errors->any())
+        <div class="error" style="margin-top:10px;">
+            {{ $errors->first() }}
+        </div>
+    @endif
+
+    <form id="forgotPasswordForm" action="{{ route('password.email') }}" method="POST">
         @csrf
         <div>
-            <input type="email" name="email" placeholder="Enter your email" required>
+            <input type="email" name="email" placeholder="Enter your email" value="{{ old('email') }}" required>
         </div>
 
         <div style="margin-top: 14px;">

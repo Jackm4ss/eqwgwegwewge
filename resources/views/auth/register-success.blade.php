@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="card" style="max-width:560px">
-    <div class="success-icon">✓</div>
+    <div class="success-icon">OK</div>
 
     <h1 class="title">Registration Successful</h1>
 
@@ -18,7 +18,7 @@
         You can request a new verification link in 60 seconds.
     </p>
 
-    <button id="resendBtn" disabled>Resend Verification Email</button>
+    <button id="resendBtn" data-email="{{ $email }}" disabled>Resend Verification Email</button>
 
     <p id="msg" class="muted form-message"></p>
 </div>

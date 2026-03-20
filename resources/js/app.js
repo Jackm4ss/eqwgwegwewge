@@ -12,7 +12,6 @@ function initPage() {
   initHoverTilt();
   initRipples();
 
-  // Logic Laravel pages
   initRegisterForm();
   initResendVerification();
   initForgotPasswordForm();
@@ -102,7 +101,7 @@ function initPasswordToggle() {
     btn.type = "button";
     btn.className = "toggle-pass";
     btn.setAttribute("aria-label", "Toggle password");
-    btn.innerHTML = "👀";
+    btn.textContent = "Show";
 
     Object.assign(btn.style, {
       position: "absolute",
@@ -112,7 +111,7 @@ function initPasswordToggle() {
       border: "none",
       background: "transparent",
       cursor: "pointer",
-      fontSize: "16px",
+      fontSize: "12px",
       opacity: ".75",
       padding: "0",
       width: "auto",
@@ -123,7 +122,7 @@ function initPasswordToggle() {
     btn.addEventListener("click", () => {
       const isHidden = field.type === "password";
       field.type = isHidden ? "text" : "password";
-      btn.innerHTML = isHidden ? "🙈" : "👀";
+      btn.textContent = isHidden ? "Hide" : "Show";
       btn.style.transform = "translateY(-50%) scale(1.08)";
 
       setTimeout(() => {
@@ -273,8 +272,8 @@ function initRegisterForm() {
 
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.dataset.originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = "Creating...";
+      rememberButtonLabel(submitBtn);
+      setButtonLabel(submitBtn, "Creating...");
       submitBtn.classList.add("loading");
     }
 
@@ -313,7 +312,7 @@ function initRegisterForm() {
       }
 
       if (submitBtn) {
-        submitBtn.innerHTML = "Success ✨";
+        setButtonLabel(submitBtn, "Success");
         bounce(submitBtn);
       }
 
@@ -340,6 +339,7 @@ function initResendVerification() {
   if (!resendBtn || !cooldown) return;
 
   const csrfToken = getCsrfToken();
+  const email = resendBtn.dataset.email;
   let seconds = 60;
   let timer = null;
 
@@ -363,9 +363,16 @@ function initResendVerification() {
   startCooldown();
 
   resendBtn.addEventListener("click", async () => {
+    if (!email) {
+      if (msg) {
+        msg.innerText = "Verification email is missing. Please return to the registration page.";
+      }
+      return;
+    }
+
     resendBtn.disabled = true;
-    resendBtn.innerHTML = "Sending...";
-    msg && (msg.innerText = "");
+    setButtonLabel(resendBtn, "Sending...");
+    if (msg) msg.innerText = "";
 
     try {
       const res = await fetch("/api/email/resend-verification", {
@@ -374,7 +381,8 @@ function initResendVerification() {
           "Content-Type": "application/json",
           "X-CSRF-TOKEN": csrfToken,
           "Accept": "application/json"
-        }
+        },
+        body: JSON.stringify({ email })
       });
 
       const data = await res.json();
@@ -383,7 +391,7 @@ function initResendVerification() {
         msg.innerText = data.message || "Request sent";
       }
 
-      resendBtn.innerHTML = "Resend Verification Email";
+      setButtonLabel(resendBtn, "Resend Verification Email");
       seconds = 60;
 
       if (timer) clearInterval(timer);
@@ -392,7 +400,7 @@ function initResendVerification() {
       if (msg) {
         msg.innerText = "Failed to resend verification email.";
       }
-      resendBtn.innerHTML = "Resend Verification Email";
+      setButtonLabel(resendBtn, "Resend Verification Email");
       resendBtn.disabled = false;
     }
   });
@@ -405,9 +413,7 @@ function initForgotPasswordForm() {
   const form = document.getElementById("forgotPasswordForm");
   if (!form) return;
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
+  form.addEventListener("submit", () => {
     const submitBtn = form.querySelector("button[type='submit'], input[type='submit']");
     const message = document.getElementById("forgotPasswordMessage");
 
@@ -415,26 +421,10 @@ function initForgotPasswordForm() {
 
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.dataset.originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = "Sending...";
+      rememberButtonLabel(submitBtn);
+      setButtonLabel(submitBtn, "Sending...");
       submitBtn.classList.add("loading");
     }
-
-    // sementara dummy flow, nanti tinggal ganti fetch API reset password
-    setTimeout(() => {
-      if (message) {
-        message.innerText = "Reset link sent successfully.";
-      }
-
-      if (submitBtn) {
-        submitBtn.innerHTML = "Sent ✨";
-        bounce(submitBtn);
-      }
-
-      setTimeout(() => {
-        window.location.href = "/reset-verify";
-      }, 700);
-    }, 700);
   });
 }
 
@@ -442,12 +432,10 @@ function initForgotPasswordForm() {
    LOGIN
 ========================= */
 function initLoginForm() {
-  const form = document.getElementById("loginForm");
+  const form = document.getElementById("loginForm") || document.getElementById("formAuthentication");
   if (!form) return;
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
+  form.addEventListener("submit", () => {
     const submitBtn = form.querySelector("button[type='submit'], input[type='submit']");
     const message = document.getElementById("loginMessage");
 
@@ -455,26 +443,10 @@ function initLoginForm() {
 
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.dataset.originalText = submitBtn.innerHTML;
-      submitBtn.innerHTML = "Signing in...";
+      rememberButtonLabel(submitBtn);
+      setButtonLabel(submitBtn, "Submitting...");
       submitBtn.classList.add("loading");
     }
-
-    // sementara dummy flow, nanti tinggal diganti ke endpoint login beneran
-    setTimeout(() => {
-      if (message) {
-        message.innerText = "Login Success (dummy)";
-      }
-
-      if (submitBtn) {
-        submitBtn.innerHTML = "Success ✨";
-        bounce(submitBtn);
-      }
-
-      setTimeout(() => {
-        restoreButton(submitBtn);
-      }, 900);
-    }, 700);
   });
 }
 
@@ -490,8 +462,18 @@ function restoreButton(btn) {
   btn.disabled = false;
   btn.classList.remove("loading");
   if (btn.dataset.originalText) {
-    btn.innerHTML = btn.dataset.originalText;
+    btn.textContent = btn.dataset.originalText;
   }
+}
+
+function rememberButtonLabel(btn) {
+  if (!btn || btn.dataset.originalText) return;
+  btn.dataset.originalText = btn.textContent.trim();
+}
+
+function setButtonLabel(btn, label) {
+  if (!btn) return;
+  btn.textContent = label;
 }
 
 function bounce(el) {

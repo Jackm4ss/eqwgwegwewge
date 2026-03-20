@@ -6,7 +6,7 @@ Full Laravel 11 project for `register.songkremfestival.my` with Firestore-first 
 
 - Register page with premium clean Blade UI.
 - Registration API with Form Request validation + sanitization.
-- Firestore repository abstraction with graceful local JSON fallback.
+- Firestore repository abstraction with local-only JSON fallback for development.
 - Google reCAPTCHA verification service.
 - Email verification via Laravel signed URLs.
 - Register success page (resend only).
@@ -50,6 +50,7 @@ Full Laravel 11 project for `register.songkremfestival.my` with Firestore-first 
 
 ```bash
 composer install
+npm install
 cp .env.example .env
 php artisan key:generate
 php artisan serve
@@ -66,13 +67,17 @@ Configure in `.env`:
 - `RECAPTCHA_ENABLED=true` + keys for production.
 - `FIREBASE_PROJECT_ID` and `FIREBASE_CREDENTIALS` path to service account JSON.
 
-If Firebase credentials are missing, the app runs with fallback file-based storage at:
+If Firebase credentials are missing in a local environment, the app can use fallback file-based storage at:
 
 - `storage/app/local_firestore_users.json`
+
+Do not commit that file. It can contain full registration data and is ignored by default.
 
 ## Production Notes
 
 - Keep `APP_DEBUG=false`.
 - Use HTTPS domain in `APP_URL`.
 - Use queue workers for mail in production.
+- Keep `FIREBASE_FALLBACK_LOCAL=false` outside local development.
 - Encrypt `identity_number` field in next phase using app-level encryption key rotation policy.
+- This repository does not ship database migrations for the shared auth tables used by password reset and login flows, so align schema provisioning outside this package before deployment.

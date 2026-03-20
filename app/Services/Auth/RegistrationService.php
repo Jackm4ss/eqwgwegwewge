@@ -22,8 +22,8 @@ class RegistrationService
             throw new \InvalidArgumentException('Email already registered.');
         }
 
-        if (! $this->recaptcha->verify($data['g-recaptcha-response'], $ip)) {
-            throw new \InvalidArgumentException('CAPTCHA verification failed.');
+        if ($this->users->findByIdentityNumber($data['identity_number'])) {
+            throw new \InvalidArgumentException('NIK / Passport already registered.');
         }
 
         $user = $this->users->create([
@@ -31,10 +31,9 @@ class RegistrationService
             'identity_number' => trim($data['identity_number']),
             'email' => strtolower(trim($data['email'])),
             'phone_number' => trim($data['phone_number']),
-            'gender' => $data['gender'],
             'country' => trim($data['country']),
             'address' => trim($data['address']),
-            'birth_date' => $data['birth_date'],
+            'age' => (int) $data['age'],
             'password_hash' => bcrypt($data['password']),
             'account_status' => 'pending_verification',
             'verification_status' => 'unverified',
