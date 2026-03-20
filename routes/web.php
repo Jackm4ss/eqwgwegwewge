@@ -6,13 +6,22 @@ use App\Http\Controllers\Api\Auth\ForgotPasswordController;
 use App\Http\Controllers\Api\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\RegisterPageController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/register', RegisterPageController::class)->name('register.form');
+Route::get('/login', function () {
+    return view('welcome');
+})->name('login');
+
+Route::get('/register', function () {
+    return view('welcome');
+})->name('register.form');
+
+Route::post('/api/register', \App\Http\Controllers\Api\Auth\RegisterController::class)->name('api.register');
 
 Route::post('/register', function (\App\Http\Requests\Auth\RegisterRequest $request, \App\Services\Auth\RegistrationService $service) {
     try {
@@ -21,7 +30,7 @@ Route::post('/register', function (\App\Http\Requests\Auth\RegisterRequest $requ
     } catch (\InvalidArgumentException $e) {
         return back()->withInput($request->except('password', 'password_confirmation'))->withErrors(['error' => $e->getMessage()]);
     }
-})->name('register.submit');
+})->name('register.submit'); // Renamed to register.submit
 
 Route::get('/register/success', function () {
     $email = request('email');
@@ -41,16 +50,34 @@ Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 've
 Route::get('/email/verified', [EmailVerificationController::class, 'success'])
     ->name('email.verified');
 
-Route::get('/login', function () {
-    return view('login');
-})->name('login');
-
 Route::post('/login', function (Request $request) {
-    return back()
-        ->withErrors([
-            'login' => 'Login is handled in the portal module and is not available in this repository.',
-        ])
-        ->withInput($request->only('email', 'remember'));
+    $credentials = $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required'],
+    ]);
+
+    if (Auth::attempt($credentials, $request->boolean('remember'))) {
+        $request->session()->regenerate();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Login successful.',
+                'redirect' => '/', // or intended
+            ]);
+        }
+
+        return redirect()->intended('/');
+    }
+
+    if ($request->expectsJson()) {
+        return response()->json([
+            'message' => 'The provided credentials do not match our records.',
+        ], 422);
+    }
+
+    return back()->withErrors([
+        'email' => 'The provided credentials do not match our records.',
+    ])->onlyInput('email');
 })->name('login.submit');
 
 /*

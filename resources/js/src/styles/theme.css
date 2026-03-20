@@ -134,7 +134,7 @@
     scroll-behavior: smooth;
   }
 
-  * {
+  .custom-cursor-area, .custom-cursor-area * {
     cursor: none !important;
   }
 
