@@ -36,13 +36,13 @@ export function CustomCursor() {
   return (
     <div className="hidden md:block">
       <motion.div
-        className="fixed pointer-events-none z-[99999] rounded-full border border-[#2FA7D8]"
+        className="fixed pointer-events-none z-[99999] rounded-full border border-[#FFFF00]"
         style={{ x: ringX, y: ringY, translateX: "-50%", translateY: "-50%", top: 0, left: 0 }}
         animate={{ width: hovering ? 56 : 36, height: hovering ? 56 : 36, opacity: hovering ? 0.8 : 0.4 }}
         transition={{ duration: 0.25, ease: "easeOut" }}
       />
       <motion.div
-        className="fixed pointer-events-none z-[99999] rounded-full bg-[#2FA7D8]"
+        className="fixed pointer-events-none z-[99999] rounded-full bg-[#FFFF00]"
         style={{ x: dotX, y: dotY, translateX: "-50%", translateY: "-50%", top: 0, left: 0 }}
         animate={{ width: clicking ? 3 : hovering ? 10 : 5, height: clicking ? 3 : hovering ? 10 : 5 }}
         transition={{ duration: 0.15 }}

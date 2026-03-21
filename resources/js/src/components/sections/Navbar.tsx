@@ -62,7 +62,7 @@ const NavLink = memo(({ l, onClick, isMobile = false }: { l: any, onClick: (id: 
     <button
       onClick={() => onClick(l.id)}
       className="relative group flex items-center gap-2"
-      style={{ ...S, fontSize: "0.8rem", color: "rgba(237,232,220,0.45)", letterSpacing: "0.06em" }}
+      style={{ ...S, fontSize: "0.8rem", color: "rgba(237,232,220,0.85)", letterSpacing: "0.06em" }}
     >
       <l.icon size={14} className="group-hover:text-[#2FA7D8] transition-colors duration-200" />
       <span className="group-hover:text-[#EDE8DC] transition-colors duration-200">{l.label}</span>

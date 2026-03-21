@@ -233,7 +233,7 @@ export function AboutFestival() {
           className="mt-20 md:mt-28 flex items-center gap-6 overflow-hidden"
         >
           <div className="flex items-center gap-3">
-            <span className="text-3xl">🇹🇭</span>
+            <img src="https://flagcdn.com/th.svg" alt="Thailand" className="w-8 md:w-10 h-auto rounded-[2px] shadow-sm" />
             <div>
               <p style={{ ...SYNE, fontSize: "0.7rem", color: "rgba(237,232,220,0.25)", letterSpacing: "0.2em", textTransform: "uppercase" }}>Thailand</p>
               <p style={{ ...SG, fontSize: "0.8rem", color: "rgba(237,232,220,0.5)" }}>Songkran Origin</p>
@@ -251,7 +251,7 @@ export function AboutFestival() {
               <p style={{ ...SYNE, fontSize: "0.7rem", color: "rgba(237,232,220,0.25)", letterSpacing: "0.2em", textTransform: "uppercase" }}>Malaysia</p>
               <p style={{ ...SG, fontSize: "0.8rem", color: "rgba(237,232,220,0.5)" }}>Festival Host</p>
             </div>
-            <span className="text-3xl">🇲🇾</span>
+            <img src="https://flagcdn.com/my.svg" alt="Malaysia" className="w-8 md:w-10 h-auto rounded-[2px] shadow-sm" />
           </div>
         </motion.div>
       </div>

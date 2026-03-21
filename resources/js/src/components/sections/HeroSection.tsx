@@ -4,8 +4,8 @@ import { UnderwaterBackground } from "../ui/UnderwaterBackground";
 
 const BG_VIDEO = "https://video.wixstatic.com/video/c338c6_cbac5475bb7e41d3a5e45bdac6812b3f/720p/mp4/file.mp4";
 
-// Set to past date temporarily to preview HAPPENING NOW state
-const TARGET = new Date("2025-01-01T00:00:00+08:00");
+// Set TARGET to the event start date
+const TARGET = new Date("2026-04-09T12:00:00+08:00");
 function useCountdown() {
   const calc = () => {
     const d = TARGET.getTime() - Date.now();
@@ -99,16 +99,24 @@ export function HeroSection() {
         className="absolute inset-0 flex flex-col justify-center"
         style={{ y: contentY, opacity: fade }}
       >
-        {/* Top badge */}
+        {/* Top badge (pill shape, in flow to prevent overlap) */}
         <motion.div
-          className="absolute top-28 md:top-32 left-6 md:left-12 flex items-center gap-3"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
+          className="px-4 md:px-8 lg:px-14 mb-4 md:mb-6 flex items-center"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.8, type: "spring", stiffness: 100 }}
         >
-          <span style={{ ...SG, fontSize: "0.72rem", letterSpacing: "0.25em", color: "rgba(237,232,220,0.35)", textTransform: "uppercase" }}>
-            🇹🇭 Thailand × Malaysia 🇲🇾
-          </span>
+          <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-[#2FA7D8]/30 bg-[#2FA7D8]/10 backdrop-blur-md shadow-[0_4px_20px_rgba(47,167,216,0.15)] relative overflow-hidden group">
+            {/* Subtle glass reflection */}
+            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
+            <div className="flex items-center gap-2">
+              <img src="https://flagcdn.com/th.svg" alt="Thailand" className="w-4 h-auto rounded-[2px]" />
+              <span style={{ ...SG, fontSize: "0.7rem", letterSpacing: "0.15em", color: "#EDE8DC", textTransform: "uppercase", fontWeight: 600 }}>
+                Thailand × Malaysia
+              </span>
+              <img src="https://flagcdn.com/my.svg" alt="Malaysia" className="w-4 h-auto rounded-[2px]" />
+            </div>
+          </div>
         </motion.div>
 
         {/* SONG */}
@@ -159,7 +167,7 @@ export function HeroSection() {
                   lineHeight: 0.88,
                   letterSpacing: "-0.04em",
                   color: "transparent",
-                  WebkitTextStroke: "1.5px rgba(237,232,220,0.22)",
+                  WebkitTextStroke: "1.5px rgba(237,232,220,0.85)",
                   userSelect: "none",
                 }}
               >
@@ -199,7 +207,7 @@ export function HeroSection() {
                 ...SG,
                 fontSize: "0.75rem",
                 letterSpacing: "0.12em",
-                color: highlight ? "#2FA7D8" : "rgba(237,232,220,0.4)",
+                color: highlight ? "#2FA7D8" : "rgba(237,232,220,0.85)",
                 fontWeight: highlight ? 600 : 400,
               }}
             >
@@ -280,13 +288,13 @@ export function HeroSection() {
                 HAPPENING NOW
               </span>
             </motion.div>
-            <span style={{ ...SG, fontSize: "0.58rem", letterSpacing: "0.2em", color: "rgba(237,232,220,0.35)", textTransform: "uppercase" }}>
+            <span style={{ ...SG, fontSize: "0.58rem", letterSpacing: "0.2em", color: "rgba(237,232,220,0.85)", textTransform: "uppercase" }}>
               APR 9–19 · ONE UTAMA
             </span>
           </motion.div>
         ) : (
           <>
-            <div style={{ ...SG, fontSize: "0.6rem", letterSpacing: "0.3em", color: "rgba(237,232,220,0.25)", textTransform: "uppercase", textAlign: "right", marginBottom: "10px" }}>
+            <div style={{ ...SG, fontSize: "0.6rem", letterSpacing: "0.3em", color: "rgba(237,232,220,0.85)", textTransform: "uppercase", textAlign: "right", marginBottom: "10px" }}>
               UNTIL SONGKRAN
             </div>
             <div className="flex gap-4 md:gap-6">
@@ -300,7 +308,7 @@ export function HeroSection() {
                   <div style={{ ...SYNE, fontWeight: 700, fontSize: "clamp(1.8rem,3.5vw,2.8rem)", color: "#ffffffff", lineHeight: 1 }}>
                     {String(v).padStart(2, "0")}
                   </div>
-                  <div style={{ ...SG, fontSize: "0.55rem", letterSpacing: "0.2em", color: "rgba(237,232,220,0.3)", marginTop: 4 }}>
+                  <div style={{ ...SG, fontSize: "0.55rem", letterSpacing: "0.2em", color: "rgba(237,232,220,0.85)", marginTop: 4 }}>
                     {l}
                   </div>
                 </div>
@@ -322,7 +330,7 @@ export function HeroSection() {
           animate={{ height: [20, 48, 20] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
         />
-        <span style={{ ...SG, fontSize: "0.6rem", letterSpacing: "0.3em", color: "rgba(237,232,220,0.3)", writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+        <span style={{ ...SG, fontSize: "0.6rem", letterSpacing: "0.3em", color: "rgba(237,232,220,0.85)", writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
           SCROLL
         </span>
       </motion.div>
