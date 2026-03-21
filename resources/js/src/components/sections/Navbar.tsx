@@ -1,6 +1,6 @@
 import { useState, useEffect, memo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Menu, X, Info, Music, Sparkles, Calendar, Image as ImageIcon, HelpCircle, ChevronRight } from "lucide-react";
+import { Menu, X, Info, Music, Sparkles, Calendar, Image as ImageIcon, HelpCircle, ChevronRight, ArrowUpRight } from "lucide-react";
 
 const S: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
 
@@ -151,11 +151,12 @@ export function Navbar() {
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => go("#about")}
-                className="hidden lg:block rounded-full px-5 py-2 text-[#050508] transition-all hover:scale-105 active:scale-95"
+                onClick={() => window.location.href = '/register'}
+                className="hidden lg:flex items-center gap-2 rounded-full px-5 py-2 text-[#050508] transition-all hover:scale-105 active:scale-95 group"
                 style={{ ...S, background: "#2FA7D8", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.04em" }}
               >
                 Free Entry
+                <ArrowUpRight size={15} className="transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
               </button>
               <button
                 onClick={() => setOpen(!open)}
@@ -209,7 +210,7 @@ export function Navbar() {
 
               <div className="mt-8">
                 <button
-                  onClick={() => go("#about")}
+                  onClick={() => window.location.href = '/register'}
                   className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-[#050508] font-bold text-lg shadow-lg shadow-[#2FA7D8]/20"
                   style={{ ...S, background: "#2FA7D8" }}
                 >

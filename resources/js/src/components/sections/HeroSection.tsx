@@ -224,6 +224,7 @@ export function HeroSection() {
           className="px-4 md:px-8 lg:px-14 mt-6 md:mt-8 relative z-20"
         >
           <button
+            onClick={() => window.location.href = '/register'}
             className="group relative overflow-hidden rounded-full px-8 py-3.5 md:px-10 md:py-4 transition-all hover:scale-105 active:scale-95"
             style={{ background: "#2FA7D8", boxShadow: "0 0 20px rgba(244,160,51,0.3)" }}
           >
