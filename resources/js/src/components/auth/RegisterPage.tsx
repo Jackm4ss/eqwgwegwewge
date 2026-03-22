@@ -357,7 +357,7 @@ export function RegisterPage() {
           >
             <Droplets className="w-4 h-4 text-sky-300" aria-hidden="true" />
             <span className="text-white text-xs tracking-[0.2em] uppercase font-semibold">
-              Thailand • 9–19 April 2026
+              Malaysia • 9–19 April 2026
             </span>
             <Droplets className="w-4 h-4 text-sky-300" aria-hidden="true" />
           </motion.div>
@@ -438,7 +438,7 @@ export function RegisterPage() {
             {[
               { icon: Music2, text: 'Akses Line up Artis Eksklusif untuk Menyaksikan', iconColor: 'text-sky-300', iconBg: 'bg-sky-500/20' },
               { icon: Waves, text: 'Jadilah Bagian dari Sejarah Perayaan Air Terbesar di Asia Tenggara', iconColor: 'text-cyan-300', iconBg: 'bg-cyan-500/20' },
-              { icon: Star, text: 'Nikmati Pengalaman Budaya Thailand yang Paling Autentik & Spektakuler', iconColor: 'text-yellow-200', iconBg: 'bg-yellow-500/20' },
+              { icon: Star, text: 'Nikmati Pengalaman Budaya Malaysia yang Paling Autentik & Spektakuler', iconColor: 'text-yellow-200', iconBg: 'bg-yellow-500/20' },
               { icon: Droplets, text: 'Mulai Awal Baru yang Berkah dengan Ritual Pembersihan Jiwa Songkran', iconColor: 'text-blue-300', iconBg: 'bg-blue-500/20' },
             ].map((item, i) => (
               <div key={i} style={{ perspective: 1000 }}>
@@ -1050,7 +1050,7 @@ export function RegisterPage() {
           </div>
 
           {/* Login link */}
-          <p className="text-center mt-5 text-sky-200 text-sm">
+          {/* <p className="text-center mt-5 text-sky-200 text-sm">
             Sudah punya akun?{' '}
             <Link
               to="/"
@@ -1058,7 +1058,7 @@ export function RegisterPage() {
             >
               Masuk di sini
             </Link>
-          </p>
+          </p> */}
 
 
         </motion.main>
@@ -1117,11 +1117,11 @@ export function RegisterPage() {
                   Songkran Music Festival 2026
                 </p>
                 <p className="text-sky-300 mx-auto text-sm mb-8 leading-relaxed text-center max-w-sm">
-                  Cek kotak masuk emailmu untuk informasi tiket lengkap. Siapin baju renang dan pistol airmu, sampai ketemu di Bangkok! 💦
+                  Cek kotak masuk emailmu untuk informasi tiket lengkap. Siapin baju renang dan pistol airmu, sampai ketemu di Malaysia! 💦
                 </p>
 
                 <div className="flex flex-wrap gap-2 justify-center mb-8">
-                  {['📅 9–19 April 2026', '📍 Bangkok, Thailand', '🎵 50+ Artis'].map(text => (
+                  {['📅 9–19 April 2026', '📍 Malaysia', '🎵 50+ Artis'].map(text => (
                     <span key={text} className="bg-white/10 border border-white/15 text-sky-100 text-sm px-4 py-2 rounded-full font-medium">
                       {text}
                     </span>
