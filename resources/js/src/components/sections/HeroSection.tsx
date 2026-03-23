@@ -134,7 +134,7 @@ export function HeroSection() {
                 style={{
                   ...SYNE,
                   fontWeight: 800,
-                  fontSize: "clamp(22px, 9vw, 190px)",
+                  fontSize: "clamp(22px, 10vw, 190px)",
                   lineHeight: 0.88,
                   letterSpacing: "-0.04em",
                   color: "#EDE8DC",
@@ -156,7 +156,6 @@ export function HeroSection() {
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.18 }}
           >
             <motion.div
-              className="flex flex-col items-start"
               animate={{ x: [20, -20, 20] }}
               transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             >
@@ -174,9 +173,15 @@ export function HeroSection() {
               >
                 FESTIVAL
               </h1>
-              {/* Floating label below FESTIVAL */}
+            </motion.div>
+
+            {/* Floating label below FESTIVAL - Zig-zag opposite to FESTIVAL */}
+            <motion.div
+              animate={{ x: [-20, 20, -20] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+            >
               <motion.div
-                className="flex flex-col items-start gap-2 self-start pl-2 md:pl-4 mt-3 md:mt-5 lg:mt-8"
+                className="flex flex-col items-start gap-2 self-start pl-2 md:pl-4 mt-1 md:mt-2 lg:mt-3"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1, duration: 0.8 }}
