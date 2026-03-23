@@ -106,21 +106,21 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.8, type: "spring", stiffness: 100 }}
         >
-          <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-[#2FA7D8]/30 bg-[#2FA7D8]/10 backdrop-blur-md shadow-[0_4px_20px_rgba(47,167,216,0.15)] relative overflow-hidden group">
+          <div className="inline-flex items-center gap-2 md:gap-3 px-3 py-1.5 md:px-5 md:py-2.5 rounded-full border border-[#2FA7D8]/30 bg-[#2FA7D8]/10 backdrop-blur-md shadow-[0_4px_20px_rgba(47,167,216,0.15)] relative overflow-hidden group">
             {/* Subtle glass reflection */}
             <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
             <div className="flex items-center gap-2">
-              <img src="https://flagcdn.com/th.svg" alt="Thailand" className="w-4 h-auto rounded-[2px]" />
-              <span style={{ ...SG, fontSize: "0.7rem", letterSpacing: "0.15em", color: "#EDE8DC", textTransform: "uppercase", fontWeight: 600 }}>
+              <img src="https://flagcdn.com/th.svg" alt="Thailand" className="w-3 md:w-4 h-auto rounded-[2px]" />
+              <span className="text-[0.55rem] md:text-[0.7rem]" style={{ ...SG, letterSpacing: "0.15em", color: "#EDE8DC", textTransform: "uppercase", fontWeight: 600 }}>
                 Thailand × Malaysia
               </span>
-              <img src="https://flagcdn.com/my.svg" alt="Malaysia" className="w-4 h-auto rounded-[2px]" />
+              <img src="https://flagcdn.com/my.svg" alt="Malaysia" className="w-3 md:w-4 h-auto rounded-[2px]" />
             </div>
           </div>
         </motion.div>
 
         {/* SONG */}
-        <div className="overflow-hidden px-4 md:px-8 lg:px-14">
+        <div className="overflow-hidden px-4 md:px-8 lg:px-14 mb-3 md:mb-2 lg:mb-0">
           <motion.div
             initial={{ y: "105%" }}
             animate={{ y: 0 }}
@@ -134,14 +134,15 @@ export function HeroSection() {
                 style={{
                   ...SYNE,
                   fontWeight: 800,
-                  fontSize: "clamp(50px, 20vw, 320px)",
+                  fontSize: "clamp(22px, 9vw, 190px)",
                   lineHeight: 0.88,
                   letterSpacing: "-0.04em",
                   color: "#EDE8DC",
                   userSelect: "none",
+                  whiteSpace: "nowrap",
                 }}
               >
-                SONG
+                SONGKRAN
               </h1>
             </motion.div>
           </motion.div>
@@ -155,7 +156,7 @@ export function HeroSection() {
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.18 }}
           >
             <motion.div
-              className="flex items-end gap-4 md:gap-8"
+              className="flex flex-col items-start"
               animate={{ x: [20, -20, 20] }}
               transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             >
@@ -163,7 +164,7 @@ export function HeroSection() {
                 style={{
                   ...SYNE,
                   fontWeight: 800,
-                  fontSize: "clamp(50px, 20vw, 320px)",
+                  fontSize: "clamp(28px, 11vw, 220px)",
                   lineHeight: 0.88,
                   letterSpacing: "-0.04em",
                   color: "transparent",
@@ -171,18 +172,19 @@ export function HeroSection() {
                   userSelect: "none",
                 }}
               >
-                KRAN
+                FESTIVAL
               </h1>
-              {/* Floating label beside KRAN */}
+              {/* Floating label below FESTIVAL */}
               <motion.div
-                className="hidden md:flex flex-col gap-1 pb-2"
+                className="flex flex-col items-start gap-2 self-start pl-2 md:pl-4 mt-3 md:mt-5 lg:mt-8"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1, duration: 0.8 }}
               >
-                <span style={{ ...SYNE, fontWeight: 700, fontSize: "1.6rem", color: "#2FA7D8", lineHeight: 1 }}>FESTIVAL</span>
-                <span style={{ ...SYNE, fontWeight: 800, fontSize: "2.2rem", color: "#2FA7D8", lineHeight: 1 }}>2026</span>
-                <ScribbleUnderline width={120} />
+                <span style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(1.5rem, 5vw, 2.5rem)", color: "#2FA7D8", lineHeight: 1 }}>2026</span>
+                <div style={{ width: "clamp(80px, 12vw, 120px)" }}>
+                  <ScribbleUnderline width={120} />
+                </div>
               </motion.div>
             </motion.div>
           </motion.div>
