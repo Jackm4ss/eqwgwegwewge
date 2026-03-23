@@ -21,7 +21,6 @@ Route::get('/register', function () {
     return view('welcome');
 })->name('register.form');
 
-Route::post('/api/register', \App\Http\Controllers\Api\Auth\RegisterController::class)->name('api.register');
 
 Route::post('/register', function (\App\Http\Requests\Auth\RegisterRequest $request, \App\Services\Auth\RegistrationService $service) {
     try {

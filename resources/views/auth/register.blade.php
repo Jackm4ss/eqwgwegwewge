@@ -124,7 +124,12 @@
               @csrf
               <div class="row g-3">
                 
-                <!-- Row 1 -->
+                <!-- Section: Data Pribadi -->
+                <div class="col-12 mt-4 mb-2">
+                  <h5 class="mb-0">Data Pribadi</h5>
+                  <hr class="my-2" />
+                </div>
+
                 <div class="col-md-6 form-control-validation">
                   <label for="full_name" class="form-label">Nama Lengkap</label>
                   <input type="text" class="form-control" id="full_name" name="full_name" value="{{ old('full_name') }}" placeholder="John Doe" required autofocus />
@@ -134,7 +139,6 @@
                   <input type="email" class="form-control" id="email" required value="{{ old('email') }}" name="email" placeholder="john@example.com" />
                 </div>
 
-                <!-- Row 2 -->
                 <div class="col-md-6 form-control-validation">
                   <label for="phone_number" class="form-label">Nomor HP</label>
                   <input type="text" class="form-control" id="phone_number" required value="{{ old('phone_number') }}" name="phone_number" placeholder="08123456789" />
@@ -144,41 +148,18 @@
                   <input type="text" class="form-control" id="country" required value="{{ old('country') }}" name="country" placeholder="Indonesia" />
                 </div>
 
-                <!-- Row 3 -->
-                <div class="col-md-6 form-control-validation">
+                <div class="col-12 form-control-validation">
                   <label for="identity_number" class="form-label">NIK / Passport</label>
                   <input type="text" class="form-control" id="identity_number" required value="{{ old('identity_number') }}" name="identity_number" placeholder="Input NIK" />
                 </div>
-                <div class="col-md-6 form-control-validation">
-                  <label for="age" class="form-label">Umur (Min 17)</label>
-                  <input type="number" class="form-control" id="age" required value="{{ old('age') }}" min="17" name="age" placeholder="25" />
+
+                <!-- Section: Konfirmasi -->
+                <div class="col-12 mt-4 mb-2">
+                  <h5 class="mb-0">Konfirmasi</h5>
+                  <hr class="my-2" />
                 </div>
 
-                <!-- Row 4 -->
                 <div class="col-12 form-control-validation">
-                  <label for="address" class="form-label">Alamat Lengkap</label>
-                  <input type="text" class="form-control" id="address" required value="{{ old('address') }}" name="address" placeholder="Jl. Sudirman No 1" />
-                </div>
-
-                <!-- Row 5 -->
-                <div class="col-md-6 form-password-toggle form-control-validation">
-                  <label class="form-label" for="password">Password</label>
-                  <div class="input-group input-group-merge">
-                    <input type="password" id="password" class="form-control" name="password" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" required aria-describedby="password" />
-                    <span class="input-group-text cursor-pointer"><i class="icon-base ti tabler-eye-off"></i></span>
-                  </div>
-                </div>
-                
-                <div class="col-md-6 form-password-toggle form-control-validation">
-                  <label class="form-label" for="password_confirmation">Konf. Password</label>
-                  <div class="input-group input-group-merge">
-                    <input type="password" id="password_confirmation" class="form-control" name="password_confirmation" placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;" required aria-describedby="password_confirmation" />
-                    <span class="input-group-text cursor-pointer"><i class="icon-base ti tabler-eye-off"></i></span>
-                  </div>
-                </div>
-
-                <!-- Row 6 -->
-                <div class="col-12 mt-4 form-control-validation">
                   <div class="form-check mb-0 ms-2">
                     <input class="form-check-input" required type="checkbox" id="terms-conditions" name="terms" />
                     <label class="form-check-label" for="terms-conditions">
