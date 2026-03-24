@@ -5,7 +5,7 @@ import { Toaster, toast } from 'sonner';
 import {
   User, Mail, Phone, Globe, MapPin, IdCard,
   Calendar, Music2, ChevronDown, CheckCircle2,
-  AlertCircle, ArrowRight, ArrowLeft, Loader2,
+  AlertCircle, Loader2,
   Droplets, Star, Waves, Sparkles, X, Lock
 } from 'lucide-react';
 import { Link } from 'react-router';
@@ -74,13 +74,8 @@ declare global {
 }
 
 const MONTHS = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-];
-
-const STEPS = [
-  { id: 1, label: 'Data Pribadi', icon: User },
-  { id: 2, label: 'Konfirmasi', icon: CheckCircle2 },
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
 const COUNTRIES = [
@@ -139,12 +134,12 @@ const IDENTITY_TYPES = [
   {
     value: 'national_id',
     label: 'IC / National ID',
-    description: 'MyKad untuk Malaysia, atau identitas nasional / resident ID resmi untuk negara lain.',
+    description: 'Use MyKad for Malaysia, or an official national ID / resident ID for other countries.',
   },
   {
     value: 'passport',
     label: 'Passport',
-    description: 'Gunakan nomor passport yang masih berlaku sesuai dokumen perjalanan Anda.',
+    description: 'Use a valid passport number that matches your travel document.',
   },
 ] as const;
 
@@ -248,7 +243,7 @@ function ensureRecaptcha() {
 
     const script = document.createElement('script');
     script.id = 'google-recaptcha-api';
-    script.src = 'https://www.google.com/recaptcha/api.js?render=explicit&hl=id&onload=__googleRecaptchaOnLoad';
+    script.src = 'https://www.google.com/recaptcha/api.js?render=explicit&hl=en&onload=__googleRecaptchaOnLoad';
     script.async = true;
     script.defer = true;
     script.onerror = () => resolve(null);
@@ -270,18 +265,18 @@ function escapeHtml(value: string) {
 function buildRegistrationReviewHtml(items: Array<{ label: string; value: string }>) {
   return `
     <div class="registration-review-swal__lead">
-      Pastikan seluruh data berikut sudah benar sebelum registrasi dikirim. Data ini akan digunakan untuk verifikasi peserta dan penerbitan tiket.
+      Please make sure all details below are correct before submitting your registration. This information will be used for attendee verification and ticket issuance.
     </div>
     <div class="registration-review-swal__grid">
       ${items.map((item) => `
         <div class="registration-review-swal__item">
           <span class="registration-review-swal__label">${escapeHtml(item.label)}</span>
-          <strong class="registration-review-swal__value">${escapeHtml(item.value || 'Belum diisi')}</strong>
+          <strong class="registration-review-swal__value">${escapeHtml(item.value || 'Not provided')}</strong>
         </div>
       `).join('')}
     </div>
     <p class="registration-review-swal__footnote">
-      Jika ada data yang belum sesuai, pilih "Periksa lagi" untuk kembali ke formulir dan lakukan perbaikan.
+      If anything is incorrect, choose "Review again" to return to the form and make changes.
     </p>
   `;
 }
@@ -507,9 +502,9 @@ function ensureSweetAlert(): Promise<SweetAlertInstance> {
           return;
         }
 
-        reject(new Error('SweetAlert gagal dimuat.'));
+        reject(new Error('Failed to load SweetAlert.'));
       }, { once: true });
-      existingScript.addEventListener('error', () => reject(new Error('SweetAlert gagal dimuat.')), { once: true });
+      existingScript.addEventListener('error', () => reject(new Error('Failed to load SweetAlert.')), { once: true });
       return;
     }
 
@@ -523,9 +518,9 @@ function ensureSweetAlert(): Promise<SweetAlertInstance> {
         return;
       }
 
-      reject(new Error('SweetAlert gagal dimuat.'));
+      reject(new Error('Failed to load SweetAlert.'));
     };
-    script.onerror = () => reject(new Error('SweetAlert gagal dimuat.'));
+    script.onerror = () => reject(new Error('Failed to load SweetAlert.'));
     document.body.appendChild(script);
   }).finally(() => {
     sweetAlertLoader = null;
@@ -591,23 +586,6 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   );
 }
 
-const slideVariants = {
-  enter: (dir: number) => ({
-    x: dir > 0 ? 70 : -70,
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-    transition: { duration: 0.38, ease: [0.25, 0.46, 0.45, 0.94] as const },
-  },
-  exit: (dir: number) => ({
-    x: dir > 0 ? -70 : 70,
-    opacity: 0,
-    transition: { duration: 0.28, ease: [0.55, 0, 1, 0.45] as const },
-  }),
-};
-
 type LegalDialogType = 'terms' | 'privacy';
 
 const LEGAL_DIALOG_CONTENT: Record<LegalDialogType, {
@@ -616,8 +594,8 @@ const LEGAL_DIALOG_CONTENT: Record<LegalDialogType, {
   paragraphs: string[];
 }> = {
   terms: {
-    title: 'Syarat & Ketentuan',
-    description: 'Konten ini masih berupa dummy text untuk kebutuhan review UI dan akan diganti dengan naskah final.',
+    title: 'Terms & Conditions',
+    description: 'This content is still dummy text for UI review purposes and will be replaced with the final copy.',
     paragraphs: [
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Vestibulum id ligula porta felis euismod semper, sed posuere consectetur est at lobortis.',
       'Praesent commodo cursus magna, vel scelerisque nisl consectetur et. Donec id elit non mi porta gravida at eget metus. Cras mattis consectetur purus sit amet fermentum, sed posuere consectetur est at lobortis.',
@@ -625,8 +603,8 @@ const LEGAL_DIALOG_CONTENT: Record<LegalDialogType, {
     ],
   },
   privacy: {
-    title: 'Kebijakan Privasi',
-    description: 'Konten ini masih berupa dummy text untuk kebutuhan review UI dan akan diganti dengan naskah final.',
+    title: 'Privacy Policy',
+    description: 'This content is still dummy text for UI review purposes and will be replaced with the final copy.',
     paragraphs: [
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed posuere consectetur est at lobortis. Maecenas sed diam eget risus varius blandit sit amet non magna, id elit non mi porta gravida at eget metus.',
       'Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue. Integer posuere erat a ante venenatis dapibus posuere velit aliquet, sed posuere consectetur est at lobortis.',
@@ -638,15 +616,11 @@ const LEGAL_DIALOG_CONTENT: Record<LegalDialogType, {
 export function RegisterPage() {
   const recaptchaEnabled = getMetaContent('recaptcha-enabled') === '1';
   const recaptchaSiteKey = getMetaContent('recaptcha-site-key');
-  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [canSubmitConfirmation, setCanSubmitConfirmation] = useState(false);
   const [isRecaptchaReady, setIsRecaptchaReady] = useState(!recaptchaEnabled);
   const [legalDialog, setLegalDialog] = useState<LegalDialogType | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
-  const [timeLeft, setTimeLeft] = useState({ Hari: '00', Jam: '00', Menit: '00', Detik: '00' });
-  const [direction, setDirection] = useState(1);
   const [recaptchaContainerElement, setRecaptchaContainerElement] = useState<HTMLDivElement | null>(null);
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
   const previousCountryRef = useRef('');
@@ -656,8 +630,6 @@ export function RegisterPage() {
     control,
     register,
     handleSubmit,
-    trigger,
-    getValues,
     setValue,
     setError,
     clearErrors,
@@ -726,62 +698,13 @@ export function RegisterPage() {
   }, []);
 
   useEffect(() => {
-    const target = new Date('2026-04-09T00:00:00').getTime();
-    
-    // Initial calculation to prevent 1-second delay
-    const calculateTimeLeft = () => {
-      const now = new Date().getTime();
-      const difference = target - now;
-      if (difference <= 0) return { Hari: '00', Jam: '00', Menit: '00', Detik: '00' };
-
-      const d = Math.floor(difference / (1000 * 60 * 60 * 24));
-      const h = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const m = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      const s = Math.floor((difference % (1000 * 60)) / 1000);
-
-      return {
-        Hari: d.toString().padStart(2, '0'),
-        Jam: h.toString().padStart(2, '0'),
-        Menit: m.toString().padStart(2, '0'),
-        Detik: s.toString().padStart(2, '0'),
-      };
-    };
-
-    setTimeLeft(calculateTimeLeft());
-
-    const interval = setInterval(() => {
-      const remaining = calculateTimeLeft();
-      setTimeLeft(remaining);
-      if (remaining.Hari === '00' && remaining.Jam === '00' && remaining.Menit === '00' && remaining.Detik === '00') {
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (currentStep !== 2) {
-      setCanSubmitConfirmation(false);
-      return;
-    }
-
-    const frame = window.requestAnimationFrame(() => {
-      setCanSubmitConfirmation(true);
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-  }, [currentStep]);
-
-  useEffect(() => {
     if (!recaptchaEnabled) {
       setIsRecaptchaReady(true);
       return;
     }
 
-    if (currentStep !== 2) {
+    if (!recaptchaContainerElement) {
       setIsRecaptchaReady(false);
-      recaptchaWidgetIdRef.current = null;
       return;
     }
 
@@ -821,14 +744,14 @@ export function RegisterPage() {
             resetRecaptchaWidget();
             setError('recaptcha_token', {
               type: 'manual',
-              message: 'Verifikasi reCAPTCHA kedaluwarsa. Silakan centang ulang.',
+              message: 'reCAPTCHA verification expired. Please check it again.',
             });
           },
           'error-callback': () => {
             resetRecaptchaWidget();
             setError('recaptcha_token', {
               type: 'manual',
-              message: 'reCAPTCHA gagal dimuat. Silakan coba lagi.',
+              message: 'Failed to load reCAPTCHA. Please try again.',
             });
           },
         });
@@ -839,7 +762,7 @@ export function RegisterPage() {
         setIsRecaptchaReady(false);
         setError('recaptcha_token', {
           type: 'manual',
-          message: 'reCAPTCHA gagal dirender. Silakan coba lagi.',
+          message: 'Failed to render reCAPTCHA. Please try again.',
         });
       }
     });
@@ -847,7 +770,7 @@ export function RegisterPage() {
     return () => {
       isMounted = false;
     };
-  }, [currentStep, recaptchaContainerElement, recaptchaEnabled, recaptchaSiteKey, resetRecaptchaWidget, setError, syncRecaptchaToken]);
+  }, [recaptchaContainerElement, recaptchaEnabled, recaptchaSiteKey, resetRecaptchaWidget, setError, syncRecaptchaToken]);
 
   const countryVal = watch('country');
   const phoneCountryCodeVal = watch('phone_country_code');
@@ -921,33 +844,7 @@ export function RegisterPage() {
 
     setIsSuccess(false);
     setRegisteredEmail('');
-    setCanSubmitConfirmation(false);
-    setCurrentStep(1);
-    setDirection(-1);
     reset(); // Clear form values
-  };
-
-  const handleNext = async () => {
-    const fieldsMap: Record<number, (keyof FormData)[]> = {
-      1: ['full_name', 'email', 'phone_country_code', 'phone_national_number', 'country', 'identity_type', 'identity_number'],
-    };
-    const isValid = await trigger(fieldsMap[currentStep]);
-    if (isValid) {
-      setCanSubmitConfirmation(false);
-      setDirection(1);
-      setCurrentStep(s => s + 1);
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentStep === 2 && recaptchaEnabled) {
-      resetRecaptchaWidget(true);
-      recaptchaWidgetIdRef.current = null;
-    }
-
-    setCanSubmitConfirmation(false);
-    setDirection(-1);
-    setCurrentStep(s => s - 1);
   };
 
   const onSubmit = async (data: FormData) => {
@@ -960,22 +857,22 @@ export function RegisterPage() {
           : 'National ID / Resident ID'
         : 'Passport';
       const selectedIdentityNumberLabel = data.country !== 'MY'
-        ? 'Nomor Passport'
+        ? 'Passport Number'
         : data.identity_type === 'national_id'
-          ? 'Nomor IC Malaysia (MyKad)'
-          : 'Nomor Passport';
+          ? 'Malaysia IC (MyKad) Number'
+          : 'Passport Number';
       const Swal = await ensureSweetAlert();
       const confirmation = await Swal.fire({
-        title: 'Periksa kembali data Anda',
+        title: 'Review your details',
         buttonsStyling: false,
         showCloseButton: true,
         backdrop: 'rgba(12, 74, 110, 0.55)',
         html: buildRegistrationReviewHtml([
-          { label: 'Nama Lengkap', value: data.full_name },
+          { label: 'Full Name', value: data.full_name },
           { label: 'Email', value: data.email },
-          { label: 'Nomor HP', value: phoneNumber },
-          { label: 'Negara', value: selectedCountry },
-          { label: 'Jenis Dokumen', value: selectedIdentityLabel },
+          { label: 'Phone Number', value: phoneNumber },
+          { label: 'Country', value: selectedCountry },
+          { label: 'Document Type', value: selectedIdentityLabel },
           { label: selectedIdentityNumberLabel, value: data.identity_number },
         ]),
         customClass: {
@@ -988,8 +885,8 @@ export function RegisterPage() {
         },
         showCancelButton: true,
         focusCancel: true,
-        confirmButtonText: 'Ya, data sudah benar',
-        cancelButtonText: 'Periksa lagi',
+        confirmButtonText: 'Yes, everything is correct',
+        cancelButtonText: 'Review again',
       });
 
       if (!confirmation.isConfirmed) {
@@ -1005,7 +902,7 @@ export function RegisterPage() {
         phone_national_number: normalizePhoneNationalNumber(data.phone_national_number),
         phone_number: phoneNumber,
       };
-      
+
       const response = await fetch('/api/register', {
         method: 'POST',
         headers: {
@@ -1021,7 +918,7 @@ export function RegisterPage() {
       if (!response.ok) {
         if (result.errors) {
           Object.entries(result.errors as Record<string, string[]>).forEach(([key, messages]) => {
-            const message = messages[0] ?? 'Input tidak valid';
+            const message = messages[0] ?? 'Invalid input.';
 
             if (isFormField(key)) {
               setError(key, { type: 'server', message });
@@ -1041,9 +938,9 @@ export function RegisterPage() {
 
       setRegisteredEmail(data.email);
       setIsSuccess(true);
-      toast.success(result.message || 'Link verifikasi berhasil dikirim ke email Anda.');
+      toast.success(result.message || 'A verification link has been sent to your email.');
     } catch (error: any) {
-      toast.error(error.message || 'Terjadi kesalahan saat mendaftar. Silakan coba lagi.');
+      toast.error(error.message || 'Something went wrong while registering. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1058,72 +955,58 @@ export function RegisterPage() {
       : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
     }`;
 
-  const phoneSelectClass = `min-h-[50px] rounded-xl border-2 bg-white px-4 text-base font-medium text-slate-800 data-[size=default]:h-[50px] ${
-    errors.phone_country_code
+  const phoneSelectClass = `min-h-[50px] rounded-xl border-2 bg-white px-4 text-base font-medium text-slate-800 data-[size=default]:h-[50px] ${errors.phone_country_code
       ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
       : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
-  }`;
+    }`;
 
-  const phoneNumberInputClass = `${inputBase} min-h-[50px] px-4 text-base ${
-    errors.phone_national_number
+  const phoneNumberInputClass = `${inputBase} min-h-[50px] px-4 text-base ${errors.phone_national_number
       ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
       : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
-  }`;
+    }`;
 
-  const countrySelectClass = `min-h-[50px] rounded-xl border-2 bg-white px-4 text-base font-medium text-slate-800 data-[size=default]:h-[50px] ${
-    errors.country
+  const countrySelectClass = `min-h-[50px] rounded-xl border-2 bg-white px-4 text-base font-medium text-slate-800 data-[size=default]:h-[50px] ${errors.country
       ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
       : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
-  }`;
+    }`;
 
   const selectedCountryOption = SORTED_COUNTRIES.find(c => c.code === countryVal);
-  const countryLabel = selectedCountryOption?.name ?? '';
   const isMalaysianRegistrant = countryVal === 'MY';
   const isForeignRegistrant = countryVal !== '' && countryVal !== 'MY';
   const availableIdentityTypes = isMalaysianRegistrant
     ? IDENTITY_TYPES
     : IDENTITY_TYPES.filter(option => option.value === 'passport');
-  const identityTypeLabel = identityTypeVal === 'national_id'
-    ? isMalaysianRegistrant
-      ? 'IC Malaysia (MyKad)'
-      : 'National ID / Resident ID'
-    : identityTypeVal === 'passport'
-      ? 'Passport'
-      : 'Jenis Dokumen';
   const identityNumberLabel = isForeignRegistrant
-    ? 'Nomor Passport'
+    ? 'Passport Number'
     : identityTypeVal === 'national_id'
-    ? isMalaysianRegistrant
-      ? 'Nomor IC Malaysia (MyKad)'
-      : 'Nomor National ID / Resident ID'
-    : 'Nomor Passport';
+      ? isMalaysianRegistrant
+        ? 'Malaysia IC (MyKad) Number'
+        : 'National ID / Resident ID Number'
+      : 'Passport Number';
   const identityNumberPlaceholder = isForeignRegistrant
-    ? 'Contoh: A1234567'
+    ? 'Example: A1234567'
     : identityTypeVal === 'national_id'
-    ? isMalaysianRegistrant
-      ? 'Contoh: 901231101234'
-      : 'Masukkan nomor identitas resmi Anda'
-    : 'Contoh: A1234567';
+      ? isMalaysianRegistrant
+        ? 'Example: 901231101234'
+        : 'Enter your official ID number'
+      : 'Example: A1234567';
   const identityHelperText = isForeignRegistrant
-    ? 'Untuk pendaftar luar Malaysia, gunakan Passport Only sebagai identitas utama.'
+    ? 'For registrants outside Malaysia, use Passport Only as the primary document.'
     : identityTypeVal === 'national_id'
-    ? isMalaysianRegistrant
-      ? 'Untuk warga negara atau penduduk tetap Malaysia, gunakan nomor IC / MyKad.'
-      : 'Gunakan nomor identitas nasional atau resident ID yang resmi dan masih berlaku.'
-    : identityTypeVal === 'passport'
-      ? 'Gunakan nomor passport yang masih berlaku dan sesuai dokumen perjalanan Anda.'
-      : isMalaysianRegistrant
-        ? 'Untuk Malaysia, Anda bisa pilih IC Malaysia (MyKad) atau Passport.'
-        : 'Pilih jenis dokumen yang akan digunakan untuk registrasi.';
+      ? isMalaysianRegistrant
+        ? 'For Malaysian citizens or permanent residents, use your IC / MyKad number.'
+        : 'Use an official and valid national ID or resident ID number.'
+      : identityTypeVal === 'passport'
+        ? 'Use a valid passport number that matches your travel document.'
+        : isMalaysianRegistrant
+          ? 'For Malaysia, you may choose Malaysia IC (MyKad) or Passport.'
+          : 'Select the document you will use for registration.';
   const phoneCountryOption = PHONE_COUNTRY_CODES.find(option => option.dialCode === phoneCountryCodeVal);
-  const phonePreview = phoneCountryCodeVal && phoneNationalNumberVal
-    ? `${normalizePhoneCountryCode(phoneCountryCodeVal)} ${normalizePhoneNationalNumber(phoneNationalNumberVal)}`
-    : '';
   const activeLegalDialog = legalDialog ? LEGAL_DIALOG_CONTENT[legalDialog] : null;
   const phoneNationalNumberField = register('phone_national_number', {
-    required: 'Nomor HP wajib diisi',
+    required: 'Phone number is required.',
     setValueAs: (value: string) => normalizePhoneNationalNumber(value),
-    pattern: { value: /^\d{4,20}$/, message: 'Nomor HP tidak valid' },
+    pattern: { value: /^\d{4,20}$/, message: 'Invalid phone number.' },
     onChange: (event) => {
       event.target.value = normalizePhoneNationalNumber(event.target.value);
     },
@@ -1135,10 +1018,10 @@ export function RegisterPage() {
       }
 
       if (recaptchaSiteKey === '') {
-        return 'reCAPTCHA belum dikonfigurasi. Hubungi admin.';
+        return 'reCAPTCHA is not configured. Please contact the administrator.';
       }
 
-      return value.trim() !== '' || 'Mohon selesaikan verifikasi reCAPTCHA.';
+      return value.trim() !== '' || 'Please complete the reCAPTCHA verification.';
     },
   });
 
@@ -1152,7 +1035,7 @@ export function RegisterPage() {
         href="#main-form"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-sky-800 focus:rounded-lg focus:shadow-lg focus:font-semibold"
       >
-        Lewati ke formulir pendaftaran
+        Skip to registration form
       </a>
 
       <Toaster position="top-center" richColors />
@@ -1185,13 +1068,13 @@ export function RegisterPage() {
 
       <div className="relative flex flex-col lg:flex-row min-h-screen" style={{ zIndex: 2 }}>
 
-        {/* LEFT PANEL */}
+        {/* LEFT PANEL
         <motion.aside
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94] as const }}
           className="hidden lg:flex lg:w-[44%] flex-col justify-center items-center px-10 py-12 text-white"
-          aria-label="Informasi Festival Songkran"
+          aria-label="Songkran Festival Information"
         >
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -1249,9 +1132,9 @@ export function RegisterPage() {
             className="w-full max-w-sm bg-white/5 backdrop-blur-md border border-white/20 rounded-[2rem] p-5 mb-8 shadow-2xl"
           >
             <p className="text-sky-200 text-xs uppercase tracking-widest mb-3 font-medium text-center">
-              Menghitung Mundur
+              Countdown
             </p>
-            <div className="grid grid-cols-4 gap-2" aria-label="Sisa waktu hingga festival">
+            <div className="grid grid-cols-4 gap-2" aria-label="Time remaining until the festival">
               {Object.entries(timeLeft).map(([lbl, val]) => (
                 <div key={lbl} className="text-center">
                   <motion.div
@@ -1277,13 +1160,13 @@ export function RegisterPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
             className="space-y-3 w-full max-w-sm list-none p-0"
-            aria-label="Keunggulan Festival"
+            aria-label="Festival Highlights"
           >
             {[
-              { icon: Music2, text: 'Akses Line up Artis Eksklusif untuk Menyaksikan', iconColor: 'text-sky-300', iconBg: 'bg-sky-500/20' },
-              { icon: Waves, text: 'Jadilah Bagian dari Sejarah Perayaan Air Terbesar di Asia Tenggara', iconColor: 'text-cyan-300', iconBg: 'bg-cyan-500/20' },
-              { icon: Star, text: 'Nikmati Pengalaman Budaya Malaysia yang Paling Autentik & Spektakuler', iconColor: 'text-yellow-200', iconBg: 'bg-yellow-500/20' },
-              { icon: Droplets, text: 'Mulai Awal Baru yang Berkah dengan Ritual Pembersihan Jiwa Songkran', iconColor: 'text-blue-300', iconBg: 'bg-blue-500/20' },
+              { icon: Music2, text: 'Get exclusive access to the artist lineup', iconColor: 'text-sky-300', iconBg: 'bg-sky-500/20' },
+              { icon: Waves, text: 'Be part of Southeast Asia’s biggest water celebration', iconColor: 'text-cyan-300', iconBg: 'bg-cyan-500/20' },
+              { icon: Star, text: 'Enjoy Malaysia’s most authentic and spectacular cultural experience', iconColor: 'text-yellow-200', iconBg: 'bg-yellow-500/20' },
+              { icon: Droplets, text: 'Begin a blessed new chapter with Songkran’s cleansing water ritual', iconColor: 'text-blue-300', iconBg: 'bg-blue-500/20' },
             ].map((item, i) => (
               <div key={i} style={{ perspective: 1000 }}>
                 <motion.li
@@ -1327,6 +1210,7 @@ export function RegisterPage() {
             ))}
           </motion.ul>
         </motion.aside>
+        */}
 
         {/* RIGHT PANEL – FORM */}
         <motion.main
@@ -1337,7 +1221,7 @@ export function RegisterPage() {
           className="flex-1 flex flex-col items-center justify-center px-4 py-10 lg:px-8"
           tabIndex={-1}
         >
-          {/* Mobile header */}
+          {/* Mobile header
           <div className="lg:hidden text-center mb-6 text-white">
             <div className="w-20 h-20 mx-auto text-sky-200 mb-3">
               <LotusIcon className="w-full h-full" />
@@ -1347,6 +1231,7 @@ export function RegisterPage() {
             </h1>
             <p className="text-sky-200 text-sm tracking-[0.3em] mt-1">MUSIC FESTIVAL 2026</p>
           </div>
+          */}
 
           {/* Form card */}
           <div
@@ -1363,59 +1248,12 @@ export function RegisterPage() {
 
               <div className="relative">
                 <h2 className="text-white text-2xl font-bold" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                  Daftar Sekarang
+                  Register Now
                 </h2>
-                <p className="text-sky-100 text-sm mt-0.5">Bergabunglah bersama ribuan peserta Songkran 2026</p>
-
-                <nav className="flex items-center mt-6" aria-label="Langkah pendaftaran">
-                  <ol className="flex items-center w-full list-none p-0 m-0">
-                    {STEPS.map((step, idx) => (
-                      <li
-                        key={step.id}
-                        className={`flex items-center ${idx < STEPS.length - 1 ? 'flex-1' : ''}`}
-                        aria-current={currentStep === step.id ? 'step' : undefined}
-                      >
-                        <div className="flex flex-col items-center">
-                          <motion.div
-                            animate={{
-                              backgroundColor: currentStep >= step.id ? '#ffffff' : 'rgba(255,255,255,0.2)',
-                              scale: currentStep === step.id ? 1.12 : 1,
-                            }}
-                            transition={{ duration: 0.3 }}
-                            className="w-9 h-9 rounded-full flex items-center justify-center border-2 border-white/40"
-                            aria-label={`${step.label} ${currentStep > step.id ? '(selesai)' : currentStep === step.id ? '(aktif)' : '(belum)'}`}
-                          >
-                            {currentStep > step.id ? (
-                              <CheckCircle2 className="w-5 h-5 text-sky-600" aria-hidden="true" />
-                            ) : (
-                              <step.icon
-                                className={`w-4 h-4 ${currentStep >= step.id ? 'text-sky-600' : 'text-white/60'}`}
-                                aria-hidden="true"
-                              />
-                            )}
-                          </motion.div>
-                          <span
-                            className={`text-[10px] mt-1 font-medium whitespace-nowrap ${currentStep >= step.id ? 'text-white' : 'text-white/45'
-                              }`}
-                          >
-                            {step.label}
-                          </span>
-                        </div>
-                        {idx < STEPS.length - 1 && (
-                          <div className="flex-1 px-2 mb-5" aria-hidden="true">
-                            <div className="relative h-0.5 bg-white/20 rounded-full overflow-hidden">
-                              <motion.div
-                                animate={{ width: currentStep > step.id ? '100%' : '0%' }}
-                                transition={{ duration: 0.45, ease: 'easeOut' }}
-                                className="absolute inset-y-0 left-0 bg-white rounded-full"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
-                </nav>
+                <p className="text-sky-100 text-sm mt-0.5">Join thousands of attendees at Songkran 2026</p>
+                <p className="mt-5 text-xs text-sky-50/90">
+                  Complete all details, accept the terms, and submit your registration.
+                </p>
               </div>
             </div>
 
@@ -1424,25 +1262,18 @@ export function RegisterPage() {
               <form
                 onSubmit={handleSubmit(onSubmit)}
                 noValidate
-                aria-label="Formulir Pendaftaran Songkran Music Festival"
+                aria-label="Songkran Music Festival Registration Form"
               >
                 <div className="px-7 py-6 relative overflow-hidden" style={{ minHeight: 360 }}>
-                  <AnimatePresence mode="wait" custom={direction}>
-
-                    {/* STEP 1: DATA PRIBADI */}
-                    {currentStep === 1 && (
-                      <motion.div
-                        key="step1"
-                        custom={direction}
-                        variants={slideVariants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        className="space-y-5"
-                      >
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="space-y-5"
+                  >
                         <div>
                           <label htmlFor="full_name" className="block text-slate-700 text-sm font-semibold mb-1.5">
-                            Nama Lengkap <span className="text-red-500" aria-hidden="true">*</span>
+                            Full Name <span className="text-red-500" aria-hidden="true">*</span>
                           </label>
                           <div className="relative">
                             <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
@@ -1450,12 +1281,12 @@ export function RegisterPage() {
                               id="full_name"
                               type="text"
                               autoComplete="name"
-                              placeholder="Masukkan nama lengkap Anda"
+                              placeholder="Enter your full name"
                               className={inputClass('full_name')}
                               {...register('full_name', {
-                                required: 'Nama lengkap wajib diisi',
-                                minLength: { value: 2, message: 'Nama minimal 2 karakter' },
-                                pattern: { value: /^[a-zA-Z\s.''-]+$/, message: 'Nama hanya boleh berisi huruf dan spasi' },
+                                required: 'Full name is required.',
+                                minLength: { value: 2, message: 'Name must be at least 2 characters.' },
+                                pattern: { value: /^[a-zA-Z\s.''-]+$/, message: 'Name may only contain letters and spaces.' },
                               })}
                             />
                           </div>
@@ -1477,8 +1308,8 @@ export function RegisterPage() {
                               placeholder="nama@email.com"
                               className={inputClass('email')}
                               {...register('email', {
-                                required: 'Email wajib diisi',
-                                pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Format email tidak valid' },
+                                required: 'Email is required.',
+                                pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email format.' },
                               })}
                             />
                           </div>
@@ -1489,15 +1320,15 @@ export function RegisterPage() {
 
                         <div>
                           <label htmlFor="phone_country_code" className="block text-slate-700 text-sm font-semibold mb-1.5">
-                            Nomor HP <span className="text-red-500" aria-hidden="true">*</span>
+                            Phone Number <span className="text-red-500" aria-hidden="true">*</span>
                           </label>
                           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
                             <Controller
                               control={control}
                               name="phone_country_code"
                               rules={{
-                                required: 'Kode negara wajib dipilih',
-                                validate: (value) => /^\+\d{1,4}$/.test(normalizePhoneCountryCode(value)) || 'Kode negara tidak valid',
+                                required: 'Country code is required.',
+                                validate: (value) => /^\+\d{1,4}$/.test(normalizePhoneCountryCode(value)) || 'Invalid country code.',
                               }}
                               render={({ field }) => (
                                 <Select
@@ -1518,7 +1349,7 @@ export function RegisterPage() {
                                         <span className="truncate text-base font-medium">{phoneCountryOption.dialCode}</span>
                                       </span>
                                     ) : (
-                                      <SelectValue placeholder="Kode" />
+                                      <SelectValue placeholder="Code" />
                                     )}
                                   </SelectTrigger>
                                   <SelectContent className="rounded-xl border-sky-100">
@@ -1551,7 +1382,7 @@ export function RegisterPage() {
                             />
                           </div>
                           <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-                            Pilih kode negara, lalu isi nomor tanpa mengulang kode negara. Contoh: +62 822123450.
+                            Select the code, then enter the number without the country code.
                           </p>
                           <AnimatePresence>
                             <FieldError id="err-phone_country_code" message={errors.phone_country_code?.message} />
@@ -1563,12 +1394,12 @@ export function RegisterPage() {
 
                         <div>
                           <label htmlFor="country" className="block text-slate-700 text-sm font-semibold mb-1.5">
-                            Negara <span className="text-red-500" aria-hidden="true">*</span>
+                            Country <span className="text-red-500" aria-hidden="true">*</span>
                           </label>
                           <Controller
                             control={control}
                             name="country"
-                            rules={{ required: 'Negara wajib dipilih' }}
+                            rules={{ required: 'Country is required.' }}
                             render={({ field }) => (
                               <Select value={field.value} onValueChange={field.onChange}>
                                 <SelectTrigger
@@ -1587,7 +1418,7 @@ export function RegisterPage() {
                                   ) : (
                                     <span className="flex items-center gap-2.5 text-slate-400">
                                       <Globe className="h-4 w-4 text-sky-400" aria-hidden="true" />
-                                      <SelectValue placeholder="Pilih negara Anda" />
+                                      <SelectValue placeholder="Select your country" />
                                     </span>
                                   )}
                                 </SelectTrigger>
@@ -1614,16 +1445,16 @@ export function RegisterPage() {
 
                         <div>
                           <label htmlFor="identity_type" className="block text-slate-700 text-sm font-semibold mb-1.5">
-                            Jenis Dokumen <span className="text-red-500" aria-hidden="true">*</span>
+                            Document Type <span className="text-red-500" aria-hidden="true">*</span>
                           </label>
                           <div className="relative">
                             <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
                             <select
                               id="identity_type"
                               className={`${inputClass('identity_type')} appearance-none cursor-pointer`}
-                              {...register('identity_type', { required: 'Jenis dokumen wajib dipilih' })}
+                              {...register('identity_type', { required: 'Document type is required.' })}
                             >
-                              <option value="">Pilih jenis dokumen</option>
+                              <option value="">Select a document type</option>
                               {availableIdentityTypes.map(option => (
                                 <option key={option.value} value={option.value}>
                                   {option.label}
@@ -1652,52 +1483,14 @@ export function RegisterPage() {
                               placeholder={identityNumberPlaceholder}
                               className={inputClass('identity_number')}
                               {...register('identity_number', {
-                                required: 'Nomor dokumen wajib diisi',
-                                minLength: { value: 6, message: 'Minimal 6 karakter' },
+                                required: 'Document number is required.',
+                                minLength: { value: 6, message: 'Must be at least 6 characters.' },
                               })}
                             />
                           </div>
                           <AnimatePresence>
                             <FieldError id="err-identity_number" message={errors.identity_number?.message} />
                           </AnimatePresence>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {/* STEP 2: KONFIRMASI */}
-                    {currentStep === 2 && (
-                      <motion.div
-                        key="step2"
-                        custom={direction}
-                        variants={slideVariants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        className="space-y-5"
-                      >
-                        <div className="bg-gradient-to-br from-sky-50 to-cyan-50 rounded-2xl p-5 border border-sky-100 shadow-sm">
-                          <h3 className="text-sky-900 text-lg font-bold mb-4 flex items-center gap-2" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                            <CheckCircle2 className="w-5 h-5 text-sky-600" aria-hidden="true" />
-                            Ringkasan Data
-                          </h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                            {[
-                              { label: 'Nama Lengkap', value: getValues('full_name'), icon: User },
-                              { label: 'Email', value: getValues('email'), icon: Mail },
-                              { label: 'Jenis Dokumen', value: identityTypeLabel, icon: IdCard },
-                              { label: identityNumberLabel, value: getValues('identity_number'), icon: IdCard },
-                              { label: 'Nomor HP', value: phonePreview, icon: Phone },
-                              { label: 'Negara', value: countryLabel, icon: Globe },
-                            ].map(d => (
-                              <div key={d.label} className="flex flex-col gap-0.5 border-b border-sky-100/50 pb-2 last:border-0 last:pb-0">
-                                <dt className="text-slate-400 text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                                  <d.icon className="w-3 h-3 text-sky-400" />
-                                  {d.label}
-                                </dt>
-                                <dd className="font-bold text-slate-800 text-sm truncate">{d.value}</dd>
-                              </div>
-                            ))}
-                          </div>
                         </div>
 
                         <div className="flex items-start gap-3">
@@ -1706,26 +1499,26 @@ export function RegisterPage() {
                             type="checkbox"
                             className="mt-0.5 rounded border-2 border-sky-300 text-sky-600 cursor-pointer focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 flex-shrink-0"
                             style={{ width: 18, height: 18 }}
-                            {...register('agreeTerms', { required: 'Anda harus menyetujui syarat dan ketentuan' })}
+                            {...register('agreeTerms', { required: 'You must accept the terms and conditions.' })}
                           />
                           <div className="text-slate-600 text-xs leading-relaxed">
                             <label htmlFor="agreeTerms" className="cursor-pointer">
-                              Saya menyetujui
+                              I agree to the
                             </label>{' '}
                             <button
                               type="button"
                               onClick={() => setLegalDialog('terms')}
                               className="font-semibold text-sky-600 underline underline-offset-2 transition-colors hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-white rounded-sm"
                             >
-                              Syarat &amp; Ketentuan
+                              Terms &amp; Conditions
                             </button>{' '}
-                            serta{' '}
+                            and{' '}
                             <button
                               type="button"
                               onClick={() => setLegalDialog('privacy')}
                               className="font-semibold text-sky-600 underline underline-offset-2 transition-colors hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-white rounded-sm"
                             >
-                              Kebijakan Privasi
+                              Privacy Policy
                             </button>
                             .
                           </div>
@@ -1740,23 +1533,23 @@ export function RegisterPage() {
                             <div className="mb-3 flex items-start gap-2">
                               <Lock className="mt-0.5 h-4 w-4 text-sky-500" aria-hidden="true" />
                               <div>
-                                <p className="text-sm font-semibold text-slate-800">Verifikasi keamanan</p>
+                                <p className="text-sm font-semibold text-slate-800">Security verification</p>
                                 <p className="text-xs leading-relaxed text-slate-500">
-                                  Selesaikan Google reCAPTCHA sebelum mengirim formulir registrasi.
+                                  Complete Google reCAPTCHA before submitting the registration form.
                                 </p>
                               </div>
                             </div>
 
                             {recaptchaSiteKey === '' ? (
                               <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-                                reCAPTCHA belum dikonfigurasi. Hubungi admin untuk melengkapi site key.
+                                reCAPTCHA is not configured. Please contact the administrator to provide the site key.
                               </div>
                             ) : (
                               <div className="space-y-3">
                                 {!isRecaptchaReady && (
                                   <div className="flex items-center gap-2 text-xs text-slate-500">
                                     <Loader2 className="h-4 w-4 animate-spin text-sky-500" aria-hidden="true" />
-                                    Memuat verifikasi keamanan...
+                                    Loading security verification...
                                   </div>
                                 )}
                                 <div
@@ -1770,66 +1563,33 @@ export function RegisterPage() {
                         <AnimatePresence>
                           <FieldError id="err-recaptcha" message={errors.recaptcha_token?.message} />
                         </AnimatePresence>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  </motion.div>
                 </div>
 
                 {/* Navigation footer */}
-                <div className="px-7 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-3">
-                  <span className="text-slate-400 text-xs" aria-live="polite" aria-atomic="true">
-                    Langkah <strong className="text-slate-600">{currentStep}</strong> dari 2
-                  </span>
-                  <div className="flex items-center gap-3">
-                    {currentStep > 1 && (
-                      <motion.button
-                        type="button"
-                        onClick={handlePrev}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.97 }}
-                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border-2 border-sky-200 text-sky-700 text-sm font-semibold hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 transition-colors"
-                      >
-                        <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-                        Kembali
-                      </motion.button>
-                    )}
-                    {currentStep < 2 ? (
-                      <motion.button
-                        type="button"
-                        onClick={handleNext}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.97 }}
-                        className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 transition-all"
-                        style={{ background: 'linear-gradient(135deg, #0284C7, #0EA5E9)', boxShadow: '0 4px 14px rgba(2,132,199,0.35)' }}
-                      >
-                        Selanjutnya
-                        <ArrowRight className="w-4 h-4" aria-hidden="true" />
-                      </motion.button>
+                <div className="px-7 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                  <motion.button
+                    type="submit"
+                    disabled={isSubmitting}
+                    whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                    whileTap={{ scale: isSubmitting ? 1 : 0.97 }}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                    style={{ background: 'linear-gradient(135deg, #0284C7, #0EA5E9)', boxShadow: '0 4px 14px rgba(2,132,199,0.35)' }}
+                    aria-busy={isSubmitting}
+                    aria-disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                        <span>Registering...</span>
+                      </>
                     ) : (
-                      <motion.button
-                        type="submit"
-                        disabled={isSubmitting || !canSubmitConfirmation}
-                        whileHover={{ scale: isSubmitting || !canSubmitConfirmation ? 1 : 1.02 }}
-                        whileTap={{ scale: isSubmitting || !canSubmitConfirmation ? 1 : 0.97 }}
-                        className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-                        style={{ background: 'linear-gradient(135deg, #0284C7, #0EA5E9)', boxShadow: '0 4px 14px rgba(2,132,199,0.35)' }}
-                        aria-busy={isSubmitting}
-                        aria-disabled={isSubmitting || !canSubmitConfirmation}
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                            <span>Mendaftar...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>Daftar Sekarang</span>
-                            <Droplets className="w-4 h-4" aria-hidden="true" />
-                          </>
-                        )}
-                      </motion.button>
+                      <>
+                        <span>Register Now</span>
+                        <Droplets className="w-4 h-4" aria-hidden="true" />
+                      </>
                     )}
-                  </div>
+                  </motion.button>
                 </div>
               </form>
             </div>
@@ -1837,12 +1597,12 @@ export function RegisterPage() {
 
           {/* Login link */}
           {/* <p className="text-center mt-5 text-sky-200 text-sm">
-            Sudah punya akun?{' '}
+            Already have an account?{' '}
             <Link
               to="/"
               className="text-white underline font-semibold hover:text-sky-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-1 focus:ring-offset-transparent rounded"
             >
-              Masuk di sini
+              Sign in here
             </Link>
           </p> */}
 
@@ -1872,10 +1632,10 @@ export function RegisterPage() {
               </div>
             </div>
 
-              <DialogFooter className="border-t border-slate-100 px-6 py-4">
+            <DialogFooter className="border-t border-slate-100 px-6 py-4">
               <DialogClose asChild>
                 <Button type="button" variant="outline">
-                  Tutup
+                  Close
                 </Button>
               </DialogClose>
             </DialogFooter>
@@ -1904,7 +1664,7 @@ export function RegisterPage() {
               <button
                 onClick={handleResetForm}
                 className="absolute top-5 right-5 p-2 text-sky-200 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10"
-                aria-label="Tutup"
+                aria-label="Close"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -1922,25 +1682,25 @@ export function RegisterPage() {
                 <div>
                   <CheckCircle2 className="w-10 h-10 md:w-14 md:h-14 text-emerald-400 mx-auto mb-4" />
                   <h2 id="success-title" className="text-white text-2xl md:text-4xl font-black leading-tight tracking-tight mb-3" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                    Registrasi Berhasil! 🎉 <br className="hidden sm:block" /> Cek Email Verifikasi
+                    Registration Successful! 🎉 <br className="hidden sm:block" /> Check Your Verification Email
                   </h2>
                   <p className="text-sky-200 text-base md:text-lg mb-1">
-                    Kami sudah mengirim link verifikasi ke
+                    We’ve sent a verification link to
                   </p>
                   <p className="text-sky-100 font-bold text-xl md:text-2xl" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                    {registeredEmail || 'email Anda'}
+                    {registeredEmail || 'your email'}
                   </p>
                 </div>
 
                 <p className="text-sky-300 text-xs md:text-sm leading-relaxed max-w-sm mx-auto opacity-90">
-                  Buka email tersebut, klik link verifikasi, lalu akun Anda akan aktif dan QR code tiket akan langsung tersedia.
+                  Open the email, click the verification link, and your account will be activated with the ticket QR code ready right away.
                 </p>
 
                 <div className="flex flex-wrap gap-2 justify-center">
                   {[
                     { text: '📅 9–19 April 2026', color: 'from-sky-500/20 to-sky-400/10' },
                     { text: '📍 Malaysia', color: 'from-cyan-500/20 to-cyan-400/10' },
-                    { text: '🎵 50+ Artis', color: 'from-indigo-500/20 to-indigo-400/10' }
+                    { text: '🎵 50+ Artists', color: 'from-indigo-500/20 to-indigo-400/10' }
                   ].map((item, idx) => (
                     <span key={idx} className={`bg-gradient-to-br ${item.color} border border-white/10 text-sky-100 text-[10px] md:text-xs px-4 py-2 rounded-full font-semibold tracking-wide backdrop-blur-sm`}>
                       {item.text}
@@ -1955,7 +1715,7 @@ export function RegisterPage() {
                   className="w-full py-4 rounded-2xl bg-gradient-to-r from-sky-400 to-cyan-400 text-sky-950 font-black text-sm md:text-base uppercase tracking-widest hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] transition-all shadow-lg"
                   style={{ fontFamily: '"Kanit", sans-serif' }}
                 >
-                  Daftarkan Peserta Lain
+                  Register Another Attendee
                 </motion.button>
               </div>
             </motion.div>
