@@ -21,6 +21,11 @@ class VerificationFlowTest extends TestCase
         parent::setUp();
 
         $this->withoutMiddleware(ThrottleRequests::class);
+        config([
+            'services.recaptcha.enabled' => false,
+            'services.recaptcha.site_key' => null,
+            'services.recaptcha.secret_key' => null,
+        ]);
         $this->repository = new InMemoryUserRepository();
         $this->app->instance(UserRepositoryInterface::class, $this->repository);
     }

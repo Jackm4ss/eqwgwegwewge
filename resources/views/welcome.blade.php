@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Songkran Festival 2026</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="recaptcha-enabled" content="{{ config('services.recaptcha.enabled') ? '1' : '0' }}">
+    <meta name="recaptcha-site-key" content="{{ config('services.recaptcha.site_key') }}">
     @viteReactRefresh
     @vite('resources/js/src/main.tsx')
 </head>

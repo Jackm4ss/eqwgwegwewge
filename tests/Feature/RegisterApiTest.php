@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Contracts\UserRepositoryInterface;
 use App\Mail\VerifyRegistrationMail;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Mail;
 use Tests\Fakes\InMemoryUserRepository;
@@ -18,6 +19,11 @@ class RegisterApiTest extends TestCase
         parent::setUp();
 
         $this->withoutMiddleware(ThrottleRequests::class);
+        config([
+            'services.recaptcha.enabled' => false,
+            'services.recaptcha.site_key' => null,
+            'services.recaptcha.secret_key' => null,
+        ]);
         $this->repository = new InMemoryUserRepository();
         $this->app->instance(UserRepositoryInterface::class, $this->repository);
     }
@@ -209,6 +215,79 @@ class RegisterApiTest extends TestCase
         $this->assertSame('+628123456789', $user['phone_number']);
         $this->assertArrayNotHasKey('phone_country_code', $user);
         $this->assertArrayNotHasKey('phone_national_number', $user);
+    }
+
+    public function test_register_requires_recaptcha_token_when_recaptcha_is_enabled(): void
+    {
+        config([
+            'services.recaptcha.enabled' => true,
+            'services.recaptcha.secret_key' => 'test-secret',
+            'services.recaptcha.verify_url' => 'https://www.google.com/recaptcha/api/siteverify',
+        ]);
+
+        Http::fake();
+
+        $response = $this->postJson('/api/register', $this->validPayload());
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['recaptcha_token']);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_register_rejects_invalid_recaptcha_token_when_enabled(): void
+    {
+        Mail::fake();
+
+        config([
+            'services.recaptcha.enabled' => true,
+            'services.recaptcha.secret_key' => 'test-secret',
+            'services.recaptcha.verify_url' => 'https://www.google.com/recaptcha/api/siteverify',
+        ]);
+
+        Http::fake([
+            'https://www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => false,
+            ], 200),
+        ]);
+
+        $response = $this->postJson('/api/register', array_merge($this->validPayload(), [
+            'recaptcha_token' => 'invalid-token',
+        ]));
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['recaptcha_token']);
+
+        $this->assertCount(0, $this->repository->users);
+    }
+
+    public function test_register_accepts_valid_recaptcha_token_when_enabled(): void
+    {
+        Mail::fake();
+
+        config([
+            'services.recaptcha.enabled' => true,
+            'services.recaptcha.secret_key' => 'test-secret',
+            'services.recaptcha.verify_url' => 'https://www.google.com/recaptcha/api/siteverify',
+        ]);
+
+        Http::fake([
+            'https://www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => true,
+            ], 200),
+        ]);
+
+        $response = $this->postJson('/api/register', array_merge($this->validPayload(), [
+            'recaptcha_token' => 'valid-token',
+        ]));
+
+        $response->assertCreated()
+            ->assertJson([
+                'message' => 'Registration successful. Verification email has been sent.',
+                'status' => 'pending_verification',
+            ]);
+
+        $this->assertCount(1, $this->repository->users);
     }
 
     private function validPayload(): array

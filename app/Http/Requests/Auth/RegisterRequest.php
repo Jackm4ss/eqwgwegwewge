@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Services\Security\RecaptchaService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -24,6 +25,7 @@ class RegisterRequest extends FormRequest
             'phone_national_number' => ['nullable', 'string', 'regex:/^\d{4,20}$/'],
             'phone_number' => ['required', 'string', 'max:30', 'regex:/^\+\d{6,20}$/'],
             'country' => ['required', 'string', 'max:80'],
+            'recaptcha_token' => ['nullable', 'string'],
             'agreeTerms' => ['accepted'],
         ];
     }
@@ -38,6 +40,30 @@ class RegisterRequest extends FormRequest
                 $validator->errors()->add(
                     'identity_type',
                     'Untuk pendaftar luar Malaysia, gunakan Passport sebagai identitas utama.'
+                );
+            }
+
+            if (! config('services.recaptcha.enabled')) {
+                return;
+            }
+
+            $recaptchaToken = trim((string) $this->input('recaptcha_token'));
+
+            if ($recaptchaToken === '') {
+                $validator->errors()->add(
+                    'recaptcha_token',
+                    'Mohon selesaikan verifikasi reCAPTCHA.'
+                );
+
+                return;
+            }
+
+            $isVerified = app(RecaptchaService::class)->verify($recaptchaToken, $this->ip());
+
+            if (! $isVerified) {
+                $validator->errors()->add(
+                    'recaptcha_token',
+                    'Verifikasi reCAPTCHA gagal. Silakan coba lagi.'
                 );
             }
         });
@@ -64,6 +90,7 @@ class RegisterRequest extends FormRequest
             'phone_national_number' => $phoneNationalNumber !== '' ? $phoneNationalNumber : null,
             'phone_number' => $phoneNumber,
             'country' => strtoupper(trim((string) $this->input('country'))),
+            'recaptcha_token' => trim((string) $this->input('recaptcha_token')),
         ]);
     }
 

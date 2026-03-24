@@ -36,7 +36,41 @@ interface FormData {
   country: string;
   identity_type: 'national_id' | 'passport' | '';
   identity_number: string;
+  recaptcha_token: string;
   agreeTerms: boolean;
+}
+
+const FORM_FIELDS: Array<keyof FormData> = [
+  'full_name',
+  'email',
+  'phone_country_code',
+  'phone_national_number',
+  'country',
+  'identity_type',
+  'identity_number',
+  'recaptcha_token',
+  'agreeTerms',
+];
+
+type GrecaptchaRenderParameters = {
+  sitekey: string;
+  callback?: (token: string) => void;
+  'expired-callback'?: () => void;
+  'error-callback'?: () => void;
+  theme?: 'light' | 'dark';
+};
+
+type GrecaptchaInstance = {
+  ready: (callback: () => void) => void;
+  render: (container: HTMLElement, parameters: GrecaptchaRenderParameters) => number;
+  reset: (widgetId?: number) => void;
+};
+
+declare global {
+  interface Window {
+    grecaptcha?: GrecaptchaInstance;
+    __googleRecaptchaOnLoad?: () => void;
+  }
 }
 
 const MONTHS = [
@@ -148,6 +182,81 @@ type SweetAlertInstance = {
 };
 
 let sweetAlertLoader: Promise<SweetAlertInstance> | null = null;
+let recaptchaLoader: Promise<GrecaptchaInstance | null> | null = null;
+
+function isFormField(value: string): value is keyof FormData {
+  return FORM_FIELDS.includes(value as keyof FormData);
+}
+
+function getMetaContent(name: string) {
+  if (typeof document === 'undefined') {
+    return '';
+  }
+
+  return (document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null)?.content?.trim() ?? '';
+}
+
+function ensureRecaptcha() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return Promise.resolve<GrecaptchaInstance | null>(null);
+  }
+
+  if (window.grecaptcha) {
+    return new Promise<GrecaptchaInstance | null>((resolve) => {
+      window.grecaptcha?.ready(() => resolve(window.grecaptcha ?? null));
+    });
+  }
+
+  if (recaptchaLoader) {
+    return recaptchaLoader;
+  }
+
+  recaptchaLoader = new Promise<GrecaptchaInstance | null>((resolve) => {
+    const resolveWhenReady = () => {
+      if (!window.grecaptcha) {
+        return false;
+      }
+
+      window.grecaptcha.ready(() => resolve(window.grecaptcha ?? null));
+
+      return true;
+    };
+
+    window.__googleRecaptchaOnLoad = () => {
+      resolveWhenReady();
+    };
+
+    const existingScript = document.getElementById('google-recaptcha-api');
+    if (existingScript) {
+      if (resolveWhenReady()) {
+        return;
+      }
+
+      const handleLoad = () => {
+        if (!resolveWhenReady()) {
+          resolve(null);
+        }
+      };
+
+      const handleError = () => resolve(null);
+
+      existingScript.addEventListener('load', handleLoad, { once: true });
+      existingScript.addEventListener('error', handleError, { once: true });
+
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'google-recaptcha-api';
+    script.src = 'https://www.google.com/recaptcha/api.js?render=explicit&hl=id&onload=__googleRecaptchaOnLoad';
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => resolve(null);
+    document.head.appendChild(script);
+  });
+
+  return recaptchaLoader;
+}
 
 function escapeHtml(value: string) {
   return value
@@ -527,16 +636,21 @@ const LEGAL_DIALOG_CONTENT: Record<LegalDialogType, {
 };
 
 export function RegisterPage() {
+  const recaptchaEnabled = getMetaContent('recaptcha-enabled') === '1';
+  const recaptchaSiteKey = getMetaContent('recaptcha-site-key');
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [canSubmitConfirmation, setCanSubmitConfirmation] = useState(false);
+  const [isRecaptchaReady, setIsRecaptchaReady] = useState(!recaptchaEnabled);
   const [legalDialog, setLegalDialog] = useState<LegalDialogType | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [timeLeft, setTimeLeft] = useState({ Hari: '00', Jam: '00', Menit: '00', Detik: '00' });
   const [direction, setDirection] = useState(1);
+  const [recaptchaContainerElement, setRecaptchaContainerElement] = useState<HTMLDivElement | null>(null);
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
   const previousCountryRef = useRef('');
+  const recaptchaWidgetIdRef = useRef<number | null>(null);
 
   const {
     control,
@@ -545,6 +659,8 @@ export function RegisterPage() {
     trigger,
     getValues,
     setValue,
+    setError,
+    clearErrors,
     watch,
     reset,
     formState: { errors, dirtyFields },
@@ -558,9 +674,46 @@ export function RegisterPage() {
       country: '',
       identity_type: '',
       identity_number: '',
+      recaptcha_token: '',
       agreeTerms: false,
     },
   });
+
+  const syncRecaptchaToken = useCallback((token: string, shouldValidate = false) => {
+    setValue('recaptcha_token', token, {
+      shouldDirty: token !== '',
+      shouldTouch: token !== '',
+      shouldValidate,
+    });
+
+    if (token !== '') {
+      clearErrors('recaptcha_token');
+    }
+  }, [clearErrors, setValue]);
+
+  const clearRecaptchaToken = useCallback((shouldValidate = false) => {
+    setValue('recaptcha_token', '', {
+      shouldDirty: false,
+      shouldTouch: false,
+      shouldValidate,
+    });
+  }, [setValue]);
+
+  const resetRecaptchaWidget = useCallback((clearError = false) => {
+    if (window.grecaptcha && recaptchaWidgetIdRef.current !== null) {
+      window.grecaptcha.reset(recaptchaWidgetIdRef.current);
+    }
+
+    clearRecaptchaToken(false);
+
+    if (clearError) {
+      clearErrors('recaptcha_token');
+    }
+  }, [clearErrors, clearRecaptchaToken]);
+
+  const handleRecaptchaContainerRef = useCallback((node: HTMLDivElement | null) => {
+    setRecaptchaContainerElement(node);
+  }, []);
 
   const handleCanvasReady = useCallback((fn: (x: number, y: number) => void) => {
     addRippleRef.current = fn;
@@ -619,6 +772,82 @@ export function RegisterPage() {
 
     return () => window.cancelAnimationFrame(frame);
   }, [currentStep]);
+
+  useEffect(() => {
+    if (!recaptchaEnabled) {
+      setIsRecaptchaReady(true);
+      return;
+    }
+
+    if (currentStep !== 2) {
+      setIsRecaptchaReady(false);
+      recaptchaWidgetIdRef.current = null;
+      return;
+    }
+
+    if (recaptchaSiteKey === '') {
+      setIsRecaptchaReady(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsRecaptchaReady(false);
+
+    ensureRecaptcha().then((grecaptcha) => {
+      if (!isMounted) {
+        return;
+      }
+
+      if (!grecaptcha || !recaptchaContainerElement) {
+        setIsRecaptchaReady(false);
+        return;
+      }
+
+      if (recaptchaWidgetIdRef.current !== null) {
+        grecaptcha.reset(recaptchaWidgetIdRef.current);
+        setIsRecaptchaReady(true);
+        return;
+      }
+
+      try {
+        recaptchaContainerElement.innerHTML = '';
+        recaptchaWidgetIdRef.current = grecaptcha.render(recaptchaContainerElement, {
+          sitekey: recaptchaSiteKey,
+          theme: 'light',
+          callback: (token: string) => {
+            syncRecaptchaToken(token, true);
+          },
+          'expired-callback': () => {
+            resetRecaptchaWidget();
+            setError('recaptcha_token', {
+              type: 'manual',
+              message: 'Verifikasi reCAPTCHA kedaluwarsa. Silakan centang ulang.',
+            });
+          },
+          'error-callback': () => {
+            resetRecaptchaWidget();
+            setError('recaptcha_token', {
+              type: 'manual',
+              message: 'reCAPTCHA gagal dimuat. Silakan coba lagi.',
+            });
+          },
+        });
+
+        setIsRecaptchaReady(true);
+      } catch {
+        recaptchaWidgetIdRef.current = null;
+        setIsRecaptchaReady(false);
+        setError('recaptcha_token', {
+          type: 'manual',
+          message: 'reCAPTCHA gagal dirender. Silakan coba lagi.',
+        });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentStep, recaptchaContainerElement, recaptchaEnabled, recaptchaSiteKey, resetRecaptchaWidget, setError, syncRecaptchaToken]);
 
   const countryVal = watch('country');
   const phoneCountryCodeVal = watch('phone_country_code');
@@ -685,6 +914,11 @@ export function RegisterPage() {
   }, [countryVal, identityTypeVal, setValue]);
 
   const handleResetForm = () => {
+    if (recaptchaEnabled) {
+      resetRecaptchaWidget(true);
+      recaptchaWidgetIdRef.current = null;
+    }
+
     setIsSuccess(false);
     setRegisteredEmail('');
     setCanSubmitConfirmation(false);
@@ -706,6 +940,11 @@ export function RegisterPage() {
   };
 
   const handlePrev = () => {
+    if (currentStep === 2 && recaptchaEnabled) {
+      resetRecaptchaWidget(true);
+      recaptchaWidgetIdRef.current = null;
+    }
+
     setCanSubmitConfirmation(false);
     setDirection(-1);
     setCurrentStep(s => s - 1);
@@ -781,9 +1020,19 @@ export function RegisterPage() {
 
       if (!response.ok) {
         if (result.errors) {
-          Object.keys(result.errors).forEach((key) => {
-             toast.error(result.errors[key][0]);
+          Object.entries(result.errors as Record<string, string[]>).forEach(([key, messages]) => {
+            const message = messages[0] ?? 'Input tidak valid';
+
+            if (isFormField(key)) {
+              setError(key, { type: 'server', message });
+            }
+
+            toast.error(message);
           });
+
+          if ((result.errors as Record<string, string[]>).recaptcha_token) {
+            resetRecaptchaWidget();
+          }
         } else {
           throw new Error(result.message || 'Registration failed');
         }
@@ -877,6 +1126,19 @@ export function RegisterPage() {
     pattern: { value: /^\d{4,20}$/, message: 'Nomor HP tidak valid' },
     onChange: (event) => {
       event.target.value = normalizePhoneNationalNumber(event.target.value);
+    },
+  });
+  const recaptchaTokenField = register('recaptcha_token', {
+    validate: (value) => {
+      if (!recaptchaEnabled) {
+        return true;
+      }
+
+      if (recaptchaSiteKey === '') {
+        return 'reCAPTCHA belum dikonfigurasi. Hubungi admin.';
+      }
+
+      return value.trim() !== '' || 'Mohon selesaikan verifikasi reCAPTCHA.';
     },
   });
 
@@ -1470,6 +1732,43 @@ export function RegisterPage() {
                         </div>
                         <AnimatePresence>
                           <FieldError id="err-terms" message={errors.agreeTerms?.message} />
+                        </AnimatePresence>
+
+                        <input type="hidden" {...recaptchaTokenField} />
+                        {recaptchaEnabled && (
+                          <div className="rounded-2xl border border-sky-100 bg-white/90 p-4 shadow-sm">
+                            <div className="mb-3 flex items-start gap-2">
+                              <Lock className="mt-0.5 h-4 w-4 text-sky-500" aria-hidden="true" />
+                              <div>
+                                <p className="text-sm font-semibold text-slate-800">Verifikasi keamanan</p>
+                                <p className="text-xs leading-relaxed text-slate-500">
+                                  Selesaikan Google reCAPTCHA sebelum mengirim formulir registrasi.
+                                </p>
+                              </div>
+                            </div>
+
+                            {recaptchaSiteKey === '' ? (
+                              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+                                reCAPTCHA belum dikonfigurasi. Hubungi admin untuk melengkapi site key.
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {!isRecaptchaReady && (
+                                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                                    <Loader2 className="h-4 w-4 animate-spin text-sky-500" aria-hidden="true" />
+                                    Memuat verifikasi keamanan...
+                                  </div>
+                                )}
+                                <div
+                                  ref={handleRecaptchaContainerRef}
+                                  className={!isRecaptchaReady ? 'min-h-[78px]' : undefined}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <AnimatePresence>
+                          <FieldError id="err-recaptcha" message={errors.recaptcha_token?.message} />
                         </AnimatePresence>
                       </motion.div>
                     )}
