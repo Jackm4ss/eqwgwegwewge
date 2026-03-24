@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Contracts\UserRepositoryInterface;
 use App\Exceptions\RegistrationConflictException;
 use App\Services\Firebase\FirestoreRestApi;
+use App\Services\Firebase\FirestoreTimestampNormalizer;
 use Illuminate\Support\Arr;
 use RuntimeException;
 
@@ -12,7 +13,10 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
 {
     private const MAX_TRANSACTION_ATTEMPTS = 3;
 
-    public function __construct(private readonly FirestoreRestApi $api)
+    public function __construct(
+        private readonly FirestoreRestApi $api,
+        private readonly FirestoreTimestampNormalizer $timestamps,
+    )
     {
     }
 
@@ -29,6 +33,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
             'created_at' => $data['created_at'] ?? $now,
             'updated_at' => $data['updated_at'] ?? $now,
         ]);
+        $storagePayload = $this->timestamps->prepareForStorage($payload);
 
         for ($attempt = 1; $attempt <= self::MAX_TRANSACTION_ATTEMPTS; $attempt++) {
             $transaction = $this->beginTransaction();
@@ -52,16 +57,16 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
                 }
 
                 $this->api()->commit([
-                    $this->api()->makeSetWrite($this->userPath($payload['user_id']), $payload, false),
+                    $this->api()->makeSetWrite($this->userPath($payload['user_id']), $storagePayload, false),
                     $this->api()->makeSetWrite($emailIndexPath, [
                         'user_id' => $payload['user_id'],
                         'normalized_email' => $email,
-                        'created_at' => $payload['created_at'],
+                        'created_at' => $storagePayload['created_at'],
                     ], false),
                     $this->api()->makeSetWrite($identityIndexPath, [
                         'user_id' => $payload['user_id'],
                         'normalized_identity_number' => $identityNumber,
-                        'created_at' => $payload['created_at'],
+                        'created_at' => $storagePayload['created_at'],
                     ], false),
                 ], $transaction);
 
@@ -122,7 +127,9 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
     {
         $document = $this->api()->getDocument($this->userPath($id));
 
-        return $document ? $this->api()->decodeDocument($document) : null;
+        return $document
+            ? $this->timestamps->normalizeFromStorage($this->api()->decodeDocument($document))
+            : null;
     }
 
     public function update(string $id, array $data): array
@@ -142,9 +149,10 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
 
         $payload = array_merge($existing, Arr::except($data, ['user_id', 'created_at']));
         $payload['updated_at'] = now()->toISOString();
+        $storagePayload = $this->timestamps->prepareForStorage($payload);
 
         $this->api()->commit([
-            $this->api()->makeSetWrite($this->userPath($id), $payload, true),
+            $this->api()->makeSetWrite($this->userPath($id), $storagePayload, true),
         ]);
 
         return $payload;
@@ -165,7 +173,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
                     throw new RuntimeException('User not found.');
                 }
 
-                $user = $this->api()->decodeDocument($userDocument);
+                $user = $this->timestamps->normalizeFromStorage($this->api()->decodeDocument($userDocument));
                 $existingTicketId = (string) ($user['ticket_id'] ?? '');
                 $ticketPath = $existingTicketId !== '' ? $this->ticketPath($existingTicketId) : null;
                 $ticketDocument = null;
@@ -175,7 +183,9 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
                     $ticketDocument = $ticketDocuments[$ticketPath] ?? null;
                 }
 
-                $ticket = $ticketDocument ? $this->api()->decodeDocument($ticketDocument) : null;
+                $ticket = $ticketDocument
+                    ? $this->timestamps->normalizeFromStorage($this->api()->decodeDocument($ticketDocument))
+                    : null;
                 $ticketWasCreated = false;
                 $writes = [];
 
@@ -183,7 +193,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
                     $ticket = $this->buildTicketPayload($user, $ticketData, $existingTicketId);
                     $writes[] = $this->api()->makeSetWrite(
                         $this->ticketPath((string) $ticket['ticket_id']),
-                        $ticket,
+                        $this->timestamps->prepareForStorage($ticket),
                         false,
                     );
                     $ticketWasCreated = true;
@@ -204,7 +214,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
 
                 $writes[] = $this->api()->makeSetWrite(
                     $userPath,
-                    array_merge($user, $userUpdate),
+                    $this->timestamps->prepareForStorage(array_merge($user, $userUpdate)),
                     true,
                 );
 
@@ -237,7 +247,9 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
     {
         $document = $this->api()->getDocument($this->ticketPath($ticketId));
 
-        return $document ? $this->api()->decodeDocument($document) : null;
+        return $document
+            ? $this->timestamps->normalizeFromStorage($this->api()->decodeDocument($document))
+            : null;
     }
 
     public function findTicketByUserId(string $userId): ?array

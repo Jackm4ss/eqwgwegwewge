@@ -3,11 +3,32 @@
 namespace Tests\Unit;
 
 use App\Services\Firebase\FirestoreRestApi;
+use DateTimeImmutable;
 use ReflectionMethod;
 use Tests\TestCase;
 
 class FirestoreRestApiTest extends TestCase
 {
+    public function test_encode_fields_uses_native_timestamp_value_for_datetime_objects(): void
+    {
+        $api = new FirestoreRestApi([
+            'project_id' => 'event-songkran-festival',
+            'database' => '(default)',
+        ]);
+
+        $method = new ReflectionMethod($api, 'encodeFields');
+        $method->setAccessible(true);
+
+        $encoded = $method->invoke($api, [
+            'created_at' => new DateTimeImmutable('2026-03-24T02:18:00.258629Z'),
+        ]);
+
+        $this->assertSame(
+            ['timestampValue' => '2026-03-24T02:18:00.258629Z'],
+            $encoded['created_at'],
+        );
+    }
+
     public function test_parse_batch_get_response_supports_json_array_payloads(): void
     {
         $api = new FirestoreRestApi([
@@ -42,5 +63,27 @@ JSON;
             'projects/event-songkran-festival/databases/(default)/documents/users/user-123',
             $results['users/user-123']['name']
         );
+    }
+
+    public function test_decode_document_returns_iso_string_for_native_timestamp_fields(): void
+    {
+        $api = new FirestoreRestApi([
+            'project_id' => 'event-songkran-festival',
+            'database' => '(default)',
+        ]);
+
+        $decoded = $api->decodeDocument([
+            'fields' => [
+                'created_at' => [
+                    'timestampValue' => '2026-03-24T02:18:00.258629Z',
+                ],
+                'email' => [
+                    'stringValue' => 'tester@example.com',
+                ],
+            ],
+        ]);
+
+        $this->assertSame('2026-03-24T02:18:00.258629Z', $decoded['created_at']);
+        $this->assertSame('tester@example.com', $decoded['email']);
     }
 }

@@ -2,6 +2,9 @@
 
 namespace App\Services\Firebase;
 
+use DateTimeImmutable;
+use DateTimeInterface;
+use DateTimeZone;
 use Google\Auth\Credentials\ServiceAccountCredentials;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -274,6 +277,7 @@ class FirestoreRestApi
             is_bool($value) => ['booleanValue' => $value],
             is_int($value) => ['integerValue' => (string) $value],
             is_float($value) => ['doubleValue' => $value],
+            $value instanceof DateTimeInterface => ['timestampValue' => $this->formatTimestampValue($value)],
             is_string($value) => ['stringValue' => $value],
             is_null($value) => ['nullValue' => 'NULL_VALUE'],
             is_array($value) && $this->isAssociativeArray($value) => ['mapValue' => ['fields' => $this->encodeFields($value)]],
@@ -295,6 +299,10 @@ class FirestoreRestApi
 
     private function decodeValue(array $value): mixed
     {
+        if (isset($value['timestampValue'])) {
+            return (string) $value['timestampValue'];
+        }
+
         if (isset($value['stringValue'])) {
             return $value['stringValue'];
         }
@@ -332,6 +340,13 @@ class FirestoreRestApi
     private function isAssociativeArray(array $value): bool
     {
         return $value !== [] && array_keys($value) !== range(0, count($value) - 1);
+    }
+
+    private function formatTimestampValue(DateTimeInterface $value): string
+    {
+        return DateTimeImmutable::createFromInterface($value)
+            ->setTimezone(new DateTimeZone('UTC'))
+            ->format('Y-m-d\TH:i:s.u\Z');
     }
 
     private function documentUrl(string $documentPath): string

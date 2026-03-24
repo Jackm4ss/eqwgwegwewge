@@ -29,6 +29,7 @@ class RegistrationService
                 'verification_status' => 'unverified',
                 'email_verified_at' => null,
                 'ticket_id' => null,
+                'ticket_ready_email_sent_at' => null,
                 'agreed_terms_at' => now()->toISOString(),
                 'registered_ip' => $ip,
             ]);

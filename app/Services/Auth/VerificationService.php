@@ -32,6 +32,19 @@ class VerificationService
             $this->ticketQrCodeService->makeTicketAttributes($id),
         );
 
+        $this->sendTicketEmailIfNeeded($id, $result);
+
+        return $result;
+    }
+
+    private function sendTicketEmailIfNeeded(string $userId, array &$result): void
+    {
+        $ticketReadyEmailSentAt = $result['user']['ticket_ready_email_sent_at'] ?? null;
+
+        if (! empty($ticketReadyEmailSentAt)) {
+            return;
+        }
+
         $ticket = $result['ticket'];
         $ticketUrl = $this->ticketQrCodeService->signedTicketUrl((string) $ticket['ticket_id']);
         $qrPngBinary = $this->ticketQrCodeService->renderPngBinary(
@@ -42,6 +55,8 @@ class VerificationService
             new TicketReadyMail($result['user'], $ticket, $ticketUrl, $qrPngBinary)
         );
 
-        return $result;
+        $result['user'] = $this->users->update($userId, [
+            'ticket_ready_email_sent_at' => now()->toISOString(),
+        ]);
     }
 }

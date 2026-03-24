@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Contracts\UserRepositoryInterface;
 use App\Exceptions\RegistrationConflictException;
 use App\Services\Firebase\FirebaseClientFactory;
+use App\Services\Firebase\FirestoreTimestampNormalizer;
 use Google\Cloud\Firestore\DocumentReference;
 use Google\Cloud\Firestore\FirestoreClient;
 use Google\Cloud\Firestore\Transaction;
@@ -13,7 +14,10 @@ use RuntimeException;
 
 class FirestoreUserRepository implements UserRepositoryInterface
 {
-    public function __construct(private readonly FirebaseClientFactory $factory)
+    public function __construct(
+        private readonly FirebaseClientFactory $factory,
+        private readonly FirestoreTimestampNormalizer $timestamps,
+    )
     {
     }
 
@@ -30,6 +34,7 @@ class FirestoreUserRepository implements UserRepositoryInterface
             'created_at' => $data['created_at'] ?? $now,
             'updated_at' => $data['updated_at'] ?? $now,
         ]);
+        $storagePayload = $this->timestamps->prepareForStorage($payload);
 
         $client = $this->client();
         $userDocument = $this->userDocument($client, $payload['user_id']);
@@ -38,6 +43,7 @@ class FirestoreUserRepository implements UserRepositoryInterface
 
         $client->runTransaction(function (Transaction $transaction) use (
             $payload,
+            $storagePayload,
             $email,
             $identityNumber,
             $userDocument,
@@ -52,16 +58,16 @@ class FirestoreUserRepository implements UserRepositoryInterface
                 throw new RegistrationConflictException('identity_number', 'NIK / Passport already registered.');
             }
 
-            $transaction->create($userDocument, $payload);
+            $transaction->create($userDocument, $storagePayload);
             $transaction->create($emailIndexDocument, [
                 'user_id' => $payload['user_id'],
                 'normalized_email' => $email,
-                'created_at' => $payload['created_at'],
+                'created_at' => $storagePayload['created_at'],
             ]);
             $transaction->create($identityIndexDocument, [
                 'user_id' => $payload['user_id'],
                 'normalized_identity_number' => $identityNumber,
-                'created_at' => $payload['created_at'],
+                'created_at' => $storagePayload['created_at'],
             ]);
         });
 
@@ -100,7 +106,9 @@ class FirestoreUserRepository implements UserRepositoryInterface
     {
         $snapshot = $this->userDocument($this->client(), $id)->snapshot();
 
-        return $snapshot->exists() ? $snapshot->data() : null;
+        return $snapshot->exists()
+            ? $this->timestamps->normalizeFromStorage($snapshot->data())
+            : null;
     }
 
     public function update(string $id, array $data): array
@@ -120,8 +128,9 @@ class FirestoreUserRepository implements UserRepositoryInterface
 
         $payload = array_merge($existing, Arr::except($data, ['user_id', 'created_at']));
         $payload['updated_at'] = now()->toISOString();
+        $storagePayload = $this->timestamps->prepareForStorage($payload);
 
-        $this->userDocument($this->client(), $id)->set($payload, ['merge' => true]);
+        $this->userDocument($this->client(), $id)->set($storagePayload, ['merge' => true]);
 
         return $payload;
     }
@@ -138,7 +147,7 @@ class FirestoreUserRepository implements UserRepositoryInterface
                 throw new RuntimeException('User not found.');
             }
 
-            $user = $userSnapshot->data();
+            $user = $this->timestamps->normalizeFromStorage($userSnapshot->data());
             $existingTicketId = (string) ($user['ticket_id'] ?? '');
             $ticketWasCreated = false;
 
@@ -148,7 +157,10 @@ class FirestoreUserRepository implements UserRepositoryInterface
 
             if (! $ticket) {
                 $ticket = $this->buildTicketPayload($user, $ticketData, $existingTicketId);
-                $transaction->create($this->ticketDocument($client, (string) $ticket['ticket_id']), $ticket);
+                $transaction->create(
+                    $this->ticketDocument($client, (string) $ticket['ticket_id']),
+                    $this->timestamps->prepareForStorage($ticket),
+                );
                 $ticketWasCreated = true;
             }
 
@@ -165,7 +177,11 @@ class FirestoreUserRepository implements UserRepositoryInterface
                 'updated_at' => now()->toISOString(),
             ];
 
-            $transaction->set($userDocument, $userUpdate, ['merge' => true]);
+            $transaction->set(
+                $userDocument,
+                $this->timestamps->prepareForStorage($userUpdate),
+                ['merge' => true]
+            );
 
             return [
                 'user' => array_merge($user, $userUpdate),
@@ -179,7 +195,9 @@ class FirestoreUserRepository implements UserRepositoryInterface
     {
         $snapshot = $this->ticketDocument($this->client(), $ticketId)->snapshot();
 
-        return $snapshot->exists() ? $snapshot->data() : null;
+        return $snapshot->exists()
+            ? $this->timestamps->normalizeFromStorage($snapshot->data())
+            : null;
     }
 
     public function findTicketByUserId(string $userId): ?array
@@ -242,7 +260,9 @@ class FirestoreUserRepository implements UserRepositoryInterface
     ): ?array {
         $ticketSnapshot = $transaction->snapshot($ticketDocument);
 
-        return $ticketSnapshot->exists() ? $ticketSnapshot->data() : null;
+        return $ticketSnapshot->exists()
+            ? $this->timestamps->normalizeFromStorage($ticketSnapshot->data())
+            : null;
     }
 
     private function buildTicketPayload(array $user, array $ticketData, string $existingTicketId): array

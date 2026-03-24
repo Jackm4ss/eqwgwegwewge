@@ -46,6 +46,7 @@ class VerificationFlowTest extends TestCase
         $this->assertSame('active', $verifiedUser['account_status']);
         $this->assertSame('verified', $verifiedUser['verification_status']);
         $this->assertNotNull($verifiedUser['email_verified_at']);
+        $this->assertNotNull($verifiedUser['ticket_ready_email_sent_at']);
         $this->assertNotNull($ticket);
         $this->assertSame('active', $ticket['status']);
         $this->assertCount(1, $this->repository->tickets);
@@ -75,6 +76,7 @@ class VerificationFlowTest extends TestCase
 
         $this->assertSame($firstTicket['ticket_id'], $secondTicket['ticket_id']);
         $this->assertCount(1, $this->repository->tickets);
+        Mail::assertSent(TicketReadyMail::class, 1);
     }
 
     public function test_invalid_or_expired_verification_link_returns_forbidden(): void
