@@ -52,7 +52,7 @@ function HandCircle() {
     <svg viewBox="0 0 100 48" fill="none" style={{ position: "absolute", top: -10, left: -14, width: 128, height: 60, pointerEvents: "none" }}>
       <motion.ellipse
         cx="50" cy="24" rx="46" ry="20"
-        stroke="#67E8F9" strokeWidth="1.5" strokeLinecap="round" fill="none"
+        stroke="#083344" strokeWidth="1.5" strokeLinecap="round" fill="none"
         style={{ strokeDasharray: "none" }}
         initial={{ pathLength: 0, opacity: 0 }}
         whileInView={{ pathLength: 1, opacity: 1 }}
@@ -69,7 +69,7 @@ function ScribbleArrow() {
     <svg viewBox="0 0 60 30" fill="none" style={{ width: 60, height: 30 }}>
       <motion.path
         d="M2 15 Q15 8 30 15 Q42 20 55 12 M48 8 L57 13 L50 20"
-        stroke="#67E8F9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"
+        stroke="#083344" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"
         initial={{ pathLength: 0, opacity: 0 }}
         whileInView={{ pathLength: 1, opacity: 1 }}
         viewport={{ once: true }}
@@ -111,23 +111,23 @@ export function AboutFestival() {
   }, []);
 
   return (
-    <section id="about" ref={sectionRef} style={{ background: 'linear-gradient(145deg, #0C4A6E 0%, #0369A1 30%, #0284C7 60%, #0EA5E9 100%)' }} className="py-28 md:py-40 relative overflow-hidden" onClick={handlePageClick}>
+    <section id="about" ref={sectionRef} style={{ background: '#34D8F7' }} className="py-28 md:py-40 relative overflow-hidden" onClick={handlePageClick}>
 
       <WaterAnimation onCanvasReady={handleCanvasReady} />
 
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true" style={{ zIndex: 1 }}>
-        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #BAE6FD, transparent)' }} />
-        <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #E0F2FE, transparent)' }} />
-        <div className="absolute top-4 right-4 w-64 h-64 text-sky-200 opacity-[0.08]">
+        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #083344, transparent)' }} />
+        <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #083344, transparent)' }} />
+        <div className="absolute top-4 right-4 w-64 h-64 text-cyan-950 opacity-[0.12]">
           <LotusIcon className="w-full h-full" />
         </div>
-        <div className="absolute bottom-4 left-4 w-48 h-48 text-sky-200 opacity-[0.08] rotate-180">
+        <div className="absolute bottom-4 left-4 w-48 h-48 text-cyan-950 opacity-[0.12] rotate-180">
           <LotusIcon className="w-full h-full" />
         </div>
         <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 100" preserveAspectRatio="none">
           <motion.path
             d="M0,50 C360,100 720,0 1080,50 C1260,75 1350,25 1440,50 L1440,100 L0,100 Z"
-            fill="rgba(255,255,255,0.04)"
+            fill="rgba(8, 51, 68, 0.06)"
             animate={{
               d: [
                 'M0,50 C360,100 720,0 1080,50 C1260,75 1350,25 1440,50 L1440,100 L0,100 Z',
@@ -142,7 +142,7 @@ export function AboutFestival() {
 
       {/* Background text watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden" style={{ zIndex: 1 }}>
-        <span style={{ ...SYNE, fontSize: "clamp(80px,18vw,200px)", fontWeight: 800, color: "rgba(255,255,255,0.04)", letterSpacing: "-0.05em", userSelect: "none", whiteSpace: "nowrap" }}>
+        <span style={{ ...SYNE, fontSize: "clamp(80px,18vw,200px)", fontWeight: 800, color: "rgba(0, 0, 0, 0.04)", letterSpacing: "-0.05em", userSelect: "none", whiteSpace: "nowrap" }}>
           FESTIVAL
         </span>
       </div>
@@ -156,8 +156,8 @@ export function AboutFestival() {
           transition={{ duration: 0.7 }}
           className="flex items-center gap-3 mb-16 md:mb-18"
         >
-          <div className="w-8 h-px bg-[#EDE8DC]" />
-          <span style={{ ...SG, fontSize: "0.7rem", letterSpacing: "0.25em", color: "#EDE8DC", textTransform: "uppercase" }}>
+          <div className="w-8 h-px bg-[#083344]" />
+          <span style={{ ...SG, fontSize: "0.7rem", letterSpacing: "0.25em", color: "#083344", textTransform: "uppercase", fontWeight: 700 }}>
             About the Festival
           </span>
         </motion.div>
@@ -170,7 +170,7 @@ export function AboutFestival() {
               {/* Big kinetic headline */}
               <div className="mb-8">
                 <RevealText delay={0}>
-                  <h2 style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(2.4rem,5.5vw,5rem)", lineHeight: 1, color: "#EDE8DC", letterSpacing: "-0.03em" }}>
+                  <h2 style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(2.4rem,5.5vw,5rem)", lineHeight: 1, color: "#083344", letterSpacing: "-0.03em" }}>
                     More Than
                   </h2>
                 </RevealText>
@@ -180,7 +180,7 @@ export function AboutFestival() {
                       initial={{ y: "105%", opacity: 0 }}
                       animate={inView ? { y: 0, opacity: 1 } : {}}
                       transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-                      style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(2.4rem,5.5vw,5rem)", lineHeight: 1, color: "#67d7f9ff", letterSpacing: "-0.03em" }}
+                      style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(2.4rem,5.5vw,5rem)", lineHeight: 1, color: "#FFFFFF", WebkitTextStroke: "2.5px #000000", letterSpacing: "-0.03em" }}
                     >
                       a Festival
                     </motion.h2>
@@ -195,7 +195,7 @@ export function AboutFestival() {
               <div className="mb-10 space-y-1">
                 {lines.map((line, i) => (
                   <RevealText key={i} delay={0.2 + i * 0.08}>
-                    <p style={{ ...SG, fontSize: "clamp(1rem,1.5vw,1.2rem)", color: "rgba(255,255,255,0.9)", lineHeight: 1.6 }}>
+                    <p style={{ ...SG, fontSize: "clamp(1rem,1.5vw,1.2rem)", color: "#083344", lineHeight: 1.6 }}>
                       {line}
                     </p>
                   </RevealText>
@@ -207,13 +207,13 @@ export function AboutFestival() {
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.6, duration: 0.8 }}
-                style={{ ...SG, fontSize: "0.9rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.8, maxWidth: 480 }}
+                style={{ ...SG, fontSize: "0.9rem", color: "#083344", lineHeight: 1.8, maxWidth: 480 }}
               >
-                More than a festival, it is a vibrant cultural celebration where communities come together and every splash tells a story of joy, unity, and new beginnings — organised by <span style={{ color: "#67E8F9", fontWeight: "bold" }}>EQ Solutions</span>.
+                More than a festival, it is a vibrant cultural celebration where communities come together and every splash tells a story of joy, unity, and new beginnings — organised by <span style={{ color: "#083344", fontWeight: "bold" }}>EQ Solutions</span>.
               </motion.p>
 
               {/* Stats row */}
-              <div className="flex gap-8 md:gap-12 mt-12 pt-10 border-t border-white/20">
+              <div className="flex gap-8 md:gap-12 mt-12 pt-10 border-t border-black/10">
                 {stats.map(({ num, label, unit }, i) => (
                   <motion.div
                     key={label}
@@ -224,12 +224,12 @@ export function AboutFestival() {
                   >
                     <div className="relative inline-block">
                       {i === 0 && <HandCircle />}
-                      <span style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(2rem,4vw,3.5rem)", color: "#FFFFFF", lineHeight: 1 }}>
+                      <span style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(2rem,4vw,3.5rem)", color: "#083344", lineHeight: 1 }}>
                         {num}
-                        <span style={{ color: "#67E8F9", fontSize: "0.6em" }}>{unit}</span>
+                        <span style={{ color: "#083344", fontSize: "0.6em" }}>{unit}</span>
                       </span>
                     </div>
-                    <p style={{ ...SG, fontSize: "0.75rem", color: "rgba(255,255,255,0.85)", letterSpacing: "0.06em", marginTop: 6, fontWeight: 500 }}>{label}</p>
+                    <p style={{ ...SG, fontSize: "0.75rem", color: "#083344", letterSpacing: "0.06em", marginTop: 6, fontWeight: 500 }}>{label}</p>
                   </motion.div>
                 ))}
               </div>
@@ -247,14 +247,14 @@ export function AboutFestival() {
             >
               {/* Main image */}
               <div className="relative w-full" style={{ height: "clamp(340px,50vw,520px)" }}>
-                <Stack 
-                  randomRotation={true} 
-                  sensitivity={180} 
-                  sendToBackOnClick={true} 
-                  cardDimensions={{ width: "100%", height: "100%" }} 
-                  cardsData={images} 
-                  autoplay={true} 
-                  autoplayDelay={1400} 
+                <Stack
+                  randomRotation={true}
+                  sensitivity={180}
+                  sendToBackOnClick={true}
+                  cardDimensions={{ width: "100%", height: "100%" }}
+                  cardsData={images}
+                  autoplay={true}
+                  autoplayDelay={1400}
                 />
               </div>
 
@@ -264,11 +264,11 @@ export function AboutFestival() {
                 whileInView={{ scale: 1, opacity: 1, rotate: -6 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.7, duration: 0.6, ease: "backOut" }}
-                className="absolute -bottom-6 -left-8 rounded-2xl px-5 py-4 shadow-[0_8px_32px_rgba(0,0,0,0.3)] bg-white/10 backdrop-blur-xl border-2 border-white/50"
+                className="absolute -bottom-6 -left-8 rounded-2xl px-5 py-4 shadow-[0_8px_32px_rgba(0,0,0,0.15)] bg-white/40 backdrop-blur-xl border-2 border-white/60"
                 style={{ minWidth: 120, transform: "rotate(-6deg)" }}
               >
-                <p style={{ ...SYNE, fontWeight: 800, fontSize: "2rem", color: "#FFFFFF", lineHeight: 1 }}>FREE</p>
-                <p style={{ ...SG, fontSize: "0.75rem", color: "#BAE6FD", fontWeight: 700, letterSpacing: "0.1em" }}>ENTRY</p>
+                <p style={{ ...SYNE, fontWeight: 800, fontSize: "2rem", color: "#083344", lineHeight: 1 }}>FREE</p>
+                <p style={{ ...SG, fontSize: "0.75rem", color: "#083344", fontWeight: 700, letterSpacing: "0.1em" }}>ENTRY</p>
               </motion.div>
 
               {/* Tag top-right */}
@@ -300,21 +300,40 @@ export function AboutFestival() {
           <div className="flex items-center gap-3">
             <img src="https://flagcdn.com/th.svg" alt="Thailand" className="w-8 md:w-10 h-auto rounded-[2px] shadow-sm" />
             <div>
-              <p style={{ ...SYNE, fontSize: "0.7rem", color: "rgba(255,255,255,0.7)", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600 }}>Thailand</p>
-              <p style={{ ...SG, fontSize: "0.8rem", color: "rgba(255,255,255,0.9)" }}>Songkran Origin</p>
+              <p style={{ ...SYNE, fontSize: "0.7rem", color: "#083344", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600 }}>Thailand</p>
+              <p style={{ ...SG, fontSize: "0.8rem", color: "#083344" }}>Songkran Origin</p>
             </div>
           </div>
-          <div className="flex-1 h-px bg-gradient-to-r from-white/10 via-[#67E8F9]/50 to-white/10 relative">
+          <div className="flex-1 h-px bg-[#083344]/15 relative">
+            {/* Soft wide reflection that follows the ball */}
             <motion.div
-              className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#67E8F9]"
+              className="absolute top-1/2 -translate-y-1/2 h-4 w-64 bg-white/30 blur-2xl rounded-full"
+              animate={{ left: ["0%", "100%", "0%"] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+              style={{ x: "-50%" }}
+            />
+            {/* Brighter core reflection on the line */}
+            <motion.div
+              className="absolute top-1/2 -translate-y-1/2 h-[2px] w-32 bg-white/70 blur-sm rounded-full"
+              animate={{ left: ["0%", "100%", "0%"] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+              style={{ x: "-50%" }}
+            />
+            <motion.div
+              className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full z-10"
+              style={{ 
+                background: 'radial-gradient(circle at 30% 30%, #FFFFFF 0%, #BAE6FD 100%)',
+                boxShadow: '0 0 10px 2px rgba(255, 255, 255, 0.8), 0 0 20px 4px rgba(255, 255, 255, 0.4)',
+                x: "-50%"
+              }}
               animate={{ left: ["0%", "100%", "0%"] }}
               transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
             />
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p style={{ ...SYNE, fontSize: "0.7rem", color: "rgba(255,255,255,0.7)", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600 }}>Malaysia</p>
-              <p style={{ ...SG, fontSize: "0.8rem", color: "rgba(255,255,255,0.9)" }}>Festival Host</p>
+              <p style={{ ...SYNE, fontSize: "0.7rem", color: "#083344", letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600 }}>Malaysia</p>
+              <p style={{ ...SG, fontSize: "0.8rem", color: "#083344" }}>Festival Host</p>
             </div>
             <img src="https://flagcdn.com/my.svg" alt="Malaysia" className="w-8 md:w-10 h-auto rounded-[2px] shadow-sm" />
           </div>

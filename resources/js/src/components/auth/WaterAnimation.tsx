@@ -92,15 +92,18 @@ export function WaterAnimation({ onCanvasReady }: WaterAnimationProps) {
         // Outer ring
         ctx.beginPath();
         ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(186, 230, 253, ${r.opacity})`;
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+        ctx.shadowBlur = 8;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${r.opacity * 0.9})`;
         ctx.lineWidth = 1.5;
         ctx.stroke();
+        ctx.shadowBlur = 0; // Reset shadow for other drawings
 
         // Inner ring
         if (r.radius > 25) {
           ctx.beginPath();
           ctx.arc(r.x, r.y, r.radius * 0.6, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(224, 242, 254, ${r.opacity * 0.5})`;
+          ctx.strokeStyle = `rgba(255, 255, 255, ${r.opacity * 0.5})`;
           ctx.lineWidth = 0.8;
           ctx.stroke();
         }
@@ -109,7 +112,7 @@ export function WaterAnimation({ onCanvasReady }: WaterAnimationProps) {
         if (r.radius > 50) {
           ctx.beginPath();
           ctx.arc(r.x, r.y, r.radius * 0.3, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(240, 249, 255, ${r.opacity * 0.3})`;
+          ctx.strokeStyle = `rgba(255, 255, 255, ${r.opacity * 0.3})`;
           ctx.lineWidth = 0.5;
           ctx.stroke();
         }
@@ -133,8 +136,11 @@ export function WaterAnimation({ onCanvasReady }: WaterAnimationProps) {
         // Bubble body
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(224, 242, 254, ${b.opacity})`;
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = `rgba(255, 255, 255, ${b.opacity * 0.7})`;
         ctx.fill();
+        ctx.shadowBlur = 0; // Reset shadow
 
         // Bubble highlight
         ctx.beginPath();
@@ -145,7 +151,7 @@ export function WaterAnimation({ onCanvasReady }: WaterAnimationProps) {
           0,
           Math.PI * 2
         );
-        ctx.fillStyle = `rgba(255, 255, 255, ${b.opacity * 0.9})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${b.opacity})`;
         ctx.fill();
       });
 

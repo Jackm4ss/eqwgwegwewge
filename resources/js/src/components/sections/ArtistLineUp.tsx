@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from "react";
-import { motion, useScroll, useTransform } from "motion/react";
+import { motion, useScroll, useTransform, useMotionValue, useSpring } from "motion/react";
 import { Mic2, Disc3, Music4, ChevronLeft, ChevronRight } from "lucide-react";
 
 import lineup1 from "@/assets/images/lineup_1.png";
@@ -9,7 +9,22 @@ import lineup4 from "@/assets/images/lineup_4.png";
 import lineup5 from "@/assets/images/lineup_5.png";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const SG: React.CSSProperties   = { fontFamily: "'Space Grotesk', sans-serif" };
+const SG: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
+
+import { WaterAnimation } from "../auth/WaterAnimation";
+
+function LotusIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 120 120" className={className} aria-hidden="true" fill="currentColor">
+      <ellipse cx="60" cy="90" rx="8" ry="5" opacity="0.9" />
+      <path d="M60 90 C60 90 38 68 38 46 C38 28 48 16 60 16 C72 16 82 28 82 46 C82 68 60 90 60 90Z" opacity="0.75" />
+      <path d="M60 90 C60 90 22 72 16 50 C12 32 22 18 34 20 C46 22 60 90 60 90Z" opacity="0.6" />
+      <path d="M60 90 C60 90 98 72 104 50 C108 32 98 18 86 20 C74 22 60 90 60 90Z" opacity="0.6" />
+      <path d="M60 90 C60 90 12 55 18 34 C22 18 38 12 48 22 C58 32 60 90 60 90Z" opacity="0.45" />
+      <path d="M60 90 C60 90 108 55 102 34 C98 18 82 12 72 22 C62 32 60 90 60 90Z" opacity="0.45" />
+    </svg>
+  );
+}
 
 type ArtistType = "DJ" | "LIVE" | "SPECIAL";
 
@@ -28,31 +43,18 @@ interface Artist {
 }
 
 const TYPE_CONFIG: Record<ArtistType, { label: string; color: string; Icon: React.ElementType }> = {
-  DJ:      { label: "DJ SET",        color: "#00d4ff", Icon: Disc3  },
-  LIVE:    { label: "LIVE",          color: "#2FA7D8", Icon: Mic2   },
+  DJ: { label: "DJ SET", color: "#00d4ff", Icon: Disc3 },
+  LIVE: { label: "LIVE", color: "#2FA7D8", Icon: Mic2 },
   SPECIAL: { label: "SPECIAL GUEST", color: "#ffd740", Icon: Music4 },
 };
 
 const artists: Artist[] = [
-  { id: 1, name: "DJ Nakorn",  origin: "Bangkok, TH",      type: "DJ",      day: "Apr 9",  image: lineup1, headliner: true,  offsetY: 40,  rotate: -2   },
-  { id: 2, name: "Aria Siam",  origin: "Chiang Mai, TH",   type: "LIVE",    day: "Apr 11", image: lineup2, headliner: true,  offsetY: 0,   rotate:  1.5 },
-  { id: 3, name: "Ray Kasem",  origin: "Kuala Lumpur, MY", type: "LIVE",    day: "Apr 13", image: lineup3,                   offsetY: 60,  rotate: -1.5 },
-  { id: 4, name: "DJ Supanat", origin: "Phuket, TH",       type: "DJ",      day: "Apr 15", image: lineup4,                   offsetY: 20,  rotate:  2   },
-  { id: 5, name: "K-Force",    origin: "Seoul, KR",        type: "SPECIAL", day: "Apr 19", image: lineup5, headliner: true,  offsetY: 35,  rotate: -1.2 },
+  { id: 1, name: "DJ Nakorn", origin: "Bangkok, TH", type: "DJ", day: "Apr 9", image: lineup1, headliner: true, offsetY: 40, rotate: -2 },
+  { id: 2, name: "Aria Siam", origin: "Chiang Mai, TH", type: "LIVE", day: "Apr 11", image: lineup2, headliner: true, offsetY: 0, rotate: 1.5 },
+  { id: 3, name: "Ray Kasem", origin: "Kuala Lumpur, MY", type: "LIVE", day: "Apr 13", image: lineup3, offsetY: 60, rotate: -1.5 },
+  { id: 4, name: "DJ Supanat", origin: "Phuket, TH", type: "DJ", day: "Apr 15", image: lineup4, offsetY: 20, rotate: 2 },
+  { id: 5, name: "K-Force", origin: "Seoul, KR", type: "SPECIAL", day: "Apr 19", image: lineup5, headliner: true, offsetY: 35, rotate: -1.2 },
 ];
-
-/* ─── Bouncing Spotlight Orb ───────────────────────────── */
-interface OrbProps { color: string; size: number; duration: number; x1: string; y1: string; x2: string; y2: string; blur: number; }
-function SpotlightOrb({ color, size, duration, x1, y1, x2, y2, blur }: OrbProps) {
-  return (
-    <motion.div
-      className="absolute pointer-events-none"
-      style={{ width: size, height: size, borderRadius: "50%", background: `radial-gradient(circle at 40% 40%, ${color} 0%, transparent 70%)`, filter: `blur(${blur}px)`, left: 0, top: 0, willChange: "transform" }}
-      animate={{ x: [x1, x2, x1], y: [y1, y2, y1] }}
-      transition={{ duration, repeat: Infinity, ease: "linear" }}
-    />
-  );
-}
 
 /* ─── Single Artist Card ───────────────────────────────── */
 function ArtistCard({ artist, isActive }: { artist: Artist; isActive: boolean }) {
@@ -62,21 +64,14 @@ function ArtistCard({ artist, isActive }: { artist: Artist; isActive: boolean })
 
   return (
     <div
-      data-card
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        // Responsive card width via CSS clamp
-        width: "clamp(220px, 58vw, 320px)",
-        flexShrink: 0,
-        // Broken-grid: small tilt + vertical stagger (scaled down for responsiveness)
-        transform: `translateY(${artist.offsetY * 0.5}px) rotate(${artist.rotate}deg)`,
+        width: "100%", // Fill the 3D slot width
         transition: "transform 0.4s ease, z-index 0s",
         zIndex: hovered || isActive ? 20 : 5,
         cursor: "pointer",
-        // Negative margin for overlap
-        marginRight: "clamp(-24px, -2.5vw, -12px)",
-        scrollSnapAlign: "start",
+        perspective: "1000px",
       }}
     >
       <motion.div
@@ -85,8 +80,8 @@ function ArtistCard({ artist, isActive }: { artist: Artist; isActive: boolean })
           boxShadow: isActive
             ? `0 0 40px ${cfg.color}40, 0 20px 40px rgba(0,0,0,0.6)`
             : hovered
-            ? `0 0 30px ${cfg.color}20, 0 12px 30px rgba(0,0,0,0.5)`
-            : "0 4px 24px rgba(0,0,0,0.4)",
+              ? `0 0 30px ${cfg.color}20, 0 12px 30px rgba(0,0,0,0.5)`
+              : "0 4px 24px rgba(0,0,0,0.4)",
         }}
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         className="relative overflow-hidden"
@@ -115,30 +110,30 @@ function ArtistCard({ artist, isActive }: { artist: Artist; isActive: boolean })
           <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(5,5,8,1) 0%, rgba(5,5,8,0.3) 50%, rgba(5,5,8,0.05) 100%)" }} />
 
           {/* Day pill */}
-          <div className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full" style={{ background: "rgba(5,5,8,0.8)", border: "1px solid rgba(255,255,255,0.1)" }}>
+          <div className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full" style={{ background: "rgba(8,51,68,0.85)", border: "1px solid rgba(255,255,255,0.1)" }}>
             <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cfg.color }} />
-            <span style={{ ...SG, fontSize: "0.62rem", color: "rgba(237,232,220,0.75)", fontWeight: 600, letterSpacing: "0.05em" }}>{artist.day}</span>
+            <span style={{ ...SG, fontSize: "0.62rem", color: "#FFFFFF", fontWeight: 700, letterSpacing: "0.05em" }}>{artist.day}</span>
           </div>
           {/* Ghost number */}
-          <div className="absolute bottom-16 left-3 pointer-events-none" style={{ ...SYNE, fontSize: "clamp(3rem,6vw,5rem)", fontWeight: 900, color: "rgba(237,232,220,0.04)", lineHeight: 1, letterSpacing: "-0.04em" }}>
+          <div className="absolute bottom-16 left-3 pointer-events-none" style={{ ...SYNE, fontSize: "clamp(3rem,6vw,5rem)", fontWeight: 900, color: "rgba(255,255,255,0.06)", lineHeight: 1, letterSpacing: "-0.04em" }}>
             {String(artist.id).padStart(2, "0")}
           </div>
         </div>
 
         {/* Info */}
         <div className="px-4 py-3">
-          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md mb-2" style={{ background: `${cfg.color}18`, border: `1px solid ${cfg.color}30` }}>
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md mb-2" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
             <Icon size={10} color={cfg.color} />
-            <span style={{ ...SG, fontSize: "0.58rem", color: cfg.color, fontWeight: 700, letterSpacing: "0.12em" }}>{cfg.label}</span>
+            <span style={{ ...SG, fontSize: "0.58rem", color: "#FFFFFF", fontWeight: 700, letterSpacing: "0.12em" }}>{cfg.label}</span>
           </div>
           <motion.h3
-            animate={{ color: isActive || hovered ? cfg.color : "#EDE8DC" }}
+            animate={{ color: isActive || hovered ? cfg.color : "#FFFFFF" }}
             transition={{ duration: 0.3 }}
             style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(1.1rem, 2vw, 1.6rem)", lineHeight: 1.05, letterSpacing: "-0.02em" }}
           >
             {artist.name}
           </motion.h3>
-          <p className="mt-0.5" style={{ ...SG, fontSize: "0.72rem", color: "rgba(237,232,220,0.3)" }}>{artist.origin}</p>
+          <p className="mt-0.5" style={{ ...SG, fontSize: "0.72rem", color: "rgba(255,255,255,0.5)" }}>{artist.origin}</p>
         </div>
 
         {/* Bottom glow */}
@@ -162,6 +157,12 @@ export function ArtistLineUp() {
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start end", "end start"] });
   const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "12%"]);
 
+  // ── 3D CoverFlow Logic ──
+  // Map index to state
+  const rotateToIndex = (index: number) => {
+    setCurrent(index);
+  };
+
   // ── Handle window resize for dynamic centering ──
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -173,116 +174,152 @@ export function ArtistLineUp() {
   useEffect(() => {
     if (paused) return;
     const id = setInterval(() => {
-      setCurrent(prev => (prev + 1) % artists.length);
-    }, 2500);
+      const nextIndex = (current + 1) % artists.length;
+      rotateToIndex(nextIndex);
+    }, 4000);
     return () => clearInterval(id);
-  }, [paused]);
+  }, [paused, current, artists.length]); // Added artists.length to dependencies
 
-  // ── Calculate X-Offset ──
-  // Card width is clamp(220px, 58vw, 320px)
-  // Margin-right is clamp(-24px, -2.5vw, -12px)
-  const getCardWidth = () => {
-    const vw = windowWidth;
-    let w = Math.max(220, Math.min(vw * 0.58, 320));
-    let m = Math.max(-24, Math.min(vw * -0.025, -12));
-    return w + m; 
-  };
-
-  const cardFullWidth = getCardWidth();
-  // We want the 'current' card to be dead-center.
-  // The 'x' offset for the track should be: (center_of_screen) - (center_of_current_card) - (offset_to_card_i)
-  const trackX = (windowWidth / 2) - (cardFullWidth / 2) - (current * cardFullWidth);
-
-  const prev = () => setCurrent(prev => (prev - 1 + artists.length) % artists.length);
-  const next = () => setCurrent(prev => (prev + 1) % artists.length);
+  const prev = () => rotateToIndex((current - 1 + artists.length) % artists.length);
+  const next = () => rotateToIndex((current + 1) % artists.length);
 
   return (
     <section
       id="lineup"
       ref={sectionRef}
       className="relative w-full py-24 md:py-36 overflow-hidden"
-      style={{ background: "#070810", minHeight: "60vh" }}
+      style={{ background: "#34D8F7", minHeight: "60vh" }}
     >
-      {/* ── Blend top/bottom ── */}
-      <div className="absolute top-0 left-0 right-0 pointer-events-none z-10" style={{ height: 100, background: "linear-gradient(to bottom, #070810 0%, transparent 100%)" }} />
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-10" style={{ height: 100, background: "linear-gradient(to top, #070810 0%, transparent 100%)" }} />
+      {/* ── Background Elements (Synced with AboutFestival) ── */}
+      <WaterAnimation />
 
-      {/* ── Spotlight orbs ── */}
-      <motion.div className="absolute inset-0 pointer-events-none" style={{ y: bgY }}>
-        <SpotlightOrb color="rgba(47,167,216,0.18)"  size={650} blur={90} duration={12} x1="-10%"  y1="0%"  x2="40%"  y2="30%" />
-        <SpotlightOrb color="rgba(156,108,255,0.12)" size={550} blur={90} duration={18} x1="50%"  y1="40%" x2="0%"   y2="10%"  />
-      </motion.div>
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true" style={{ zIndex: 1 }}>
+        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #083344, transparent)' }} />
+        <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #083344, transparent)' }} />
+        <div className="absolute top-4 right-4 w-64 h-64 text-cyan-950 opacity-[0.12]">
+          <LotusIcon className="w-full h-full" />
+        </div>
+        <div className="absolute bottom-4 left-4 w-48 h-48 text-cyan-950 opacity-[0.12] rotate-180">
+          <LotusIcon className="w-full h-full" />
+        </div>
+        <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 100" preserveAspectRatio="none">
+          <motion.path
+            d="M0,50 C360,100 720,0 1080,50 C1260,75 1350,25 1440,50 L1440,100 L0,100 Z"
+            fill="rgba(8, 51, 68, 0.06)"
+            animate={{
+              d: [
+                'M0,50 C360,100 720,0 1080,50 C1260,75 1350,25 1440,50 L1440,100 L0,100 Z',
+                'M0,30 C360,0 720,80 1080,30 C1260,5 1350,70 1440,30 L1440,100 L0,100 Z',
+                'M0,50 C360,100 720,0 1080,50 C1260,75 1350,25 1440,50 L1440,100 L0,100 Z',
+              ],
+            }}
+            transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        </svg>
+      </div>
+
+      {/* ── Blend top/bottom (Optional, adjusted for light background) ── */}
+      <div className="absolute top-0 left-0 right-0 pointer-events-none z-10" style={{ height: 100, background: "linear-gradient(to bottom, #34D8F7 0%, transparent 100%)" }} />
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-10" style={{ height: 100, background: "linear-gradient(to top, #34D8F7 0%, transparent 100%)" }} />
 
       {/* ── Section Header ── */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 lg:px-16 mb-12 md:mb-16">
         <div className="grid lg:grid-cols-2 gap-8 items-end">
           <div>
             <motion.div className="flex items-center gap-3 mb-6" initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}>
-              <div className="w-8 h-px bg-[#2FA7D8]" />
-              <span style={{ ...SG, fontSize: "0.7rem", letterSpacing: "0.25em", color: "#2FA7D8", textTransform: "uppercase" }}>Performing Artists</span>
+              <div className="w-8 h-px bg-[#083344]" />
+              <span style={{ ...SG, fontSize: "0.7rem", letterSpacing: "0.25em", color: "#083344", textTransform: "uppercase", fontWeight: 700 }}>Performing Artists</span>
             </motion.div>
             <div className="overflow-hidden">
               <motion.h2 initial={{ y: "100%", opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-                style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(2.4rem,5.5vw,5rem)", color: "#EDE8DC", lineHeight: 1, letterSpacing: "-0.03em" }}>
+                style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(2.4rem,5.5vw,5rem)", color: "#083344", lineHeight: 1, letterSpacing: "-0.03em" }}>
                 The Stage
               </motion.h2>
             </div>
             <div className="overflow-hidden">
               <motion.h2 initial={{ y: "100%", opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.08 }}
-                style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(2.4rem,5.5vw,5rem)", color: "transparent", WebkitTextStroke: "1.5px rgba(237,232,220,0.22)", lineHeight: 1, letterSpacing: "-0.03em" }}>
+                style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(2.4rem,5.5vw,5rem)", color: "#FFFFFF", WebkitTextStroke: "2.5px #000000", lineHeight: 1, letterSpacing: "-0.03em" }}>
                 Line Up
               </motion.h2>
             </div>
           </div>
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }}>
-            <p style={{ ...SG, fontSize: "0.9rem", color: "rgba(237,232,220,0.35)", lineHeight: 1.8 }}>
+            <p style={{ ...SG, fontSize: "0.9rem", color: "#164E63", lineHeight: 1.8, fontWeight: 500 }}>
               From global icons to local legends, experience the ultimate Songkran soundtrack across 11 pulse-pounding nights.
             </p>
           </motion.div>
         </div>
       </div>
 
-      {/* ── Motion Track Carousel ── */}
-      <div
-        className="relative z-20 cursor-grab active:cursor-grabbing"
+      {/* ── 3D CoverFlow Container ── */}
+      <div 
+        className="relative h-[550px] md:h-[650px] w-full flex items-center justify-center py-12"
+        style={{ perspective: "1200px" }}
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
       >
+        {/* Invisible Drag Layer */}
         <motion.div
           drag="x"
-          dragConstraints={{
-            left: (windowWidth / 2) - (cardFullWidth / 2) - ((artists.length - 1) * cardFullWidth),
-            right: (windowWidth / 2) - (cardFullWidth / 2),
-          }}
-          onDragStart={() => setPaused(true)}
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0}
           onDragEnd={(_, info) => {
-            const offset = info.offset.x;
-            const velocity = info.velocity.x;
-            
-            // Snap to next/prev if drag is significant or fast
-            if (offset < -50 || velocity < -500) {
-              next();
-            } else if (offset > 50 || velocity > 500) {
-              prev();
-            } else {
-              // Stay on current
-              setCurrent(current);
-            }
+            if (info.offset.x < -50) next();
+            else if (info.offset.x > 50) prev();
           }}
-          animate={{ x: trackX }}
-          transition={{ type: "spring", stiffness: 120, damping: 22, mass: 1 }}
-          className="flex items-start"
-          style={{
-            paddingTop: 40,
-            paddingBottom: 100,
-            willChange: "transform",
-            transformStyle: "preserve-3d",
-          }}
-        >
-          {artists.map((artist, i) => (
-            <ArtistCard key={artist.id} artist={artist} isActive={i === current} />
-          ))}
-        </motion.div>
+          className="absolute inset-0 z-50 cursor-grab active:cursor-grabbing"
+        />
+ 
+        <div className="relative w-full h-full flex items-center justify-center" style={{ transformStyle: "preserve-3d" }}>
+          {artists.map((artist, i) => {
+            // Calculate distance for CoverFlow math
+            let distance = i - current;
+            // Handle wraparound for smooth infinite flow
+            if (distance > artists.length / 2) distance -= artists.length;
+            if (distance < -artists.length / 2) distance += artists.length;
+ 
+            const absDist = Math.abs(distance);
+            const isActive = i === current;
+ 
+            // CoverFlow Math
+            // Center is front and center. Sides tilt and recede.
+            const rotateY = distance === 0 ? 0 : distance > 0 ? -45 : 45;
+            const translateZ = absDist * -180;
+            const translateX = distance * (windowWidth > 768 ? 160 : 120);
+            const scale = 1 - (absDist * (windowWidth > 768 ? 0.12 : 0.08));
+            const opacity = 1 - (absDist * 0.25);
+            const zIndex = 100 - Math.floor(absDist * 10);
+ 
+            return (
+              <motion.div
+                key={artist.id}
+                initial={false}
+                animate={{
+                  x: translateX,
+                  z: translateZ,
+                  rotateY: rotateY,
+                  scale: scale,
+                  opacity: Math.max(opacity, 0),
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 100,
+                  damping: 20,
+                  mass: 1
+                }}
+                className="absolute"
+                style={{
+                  width: windowWidth > 768 ? 320 : 260,
+                  zIndex: zIndex,
+                  transformStyle: "preserve-3d",
+                  backfaceVisibility: "hidden",
+                }}
+              >
+                <ArtistCard artist={artist} isActive={isActive} />
+              </motion.div>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Controls ── */}
@@ -297,7 +334,7 @@ export function ArtistLineUp() {
                 width: i === current ? 24 : 6,
                 height: 6,
                 borderRadius: 3,
-                background: i === current ? TYPE_CONFIG[artists[i].type].color : "rgba(255,255,255,0.2)",
+                background: i === current ? "#083344" : "rgba(8, 51, 68, 0.2)",
                 transition: "all 0.35s ease",
                 border: "none",
                 cursor: "pointer",
@@ -313,7 +350,7 @@ export function ArtistLineUp() {
             whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.92 }}
             onClick={prev}
             className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-            style={{ border: "1.5px solid rgba(0,212,255,0.35)", background: "rgba(0,212,255,0.07)", color: "#00d4ff", cursor: "pointer" }}
+            style={{ border: "1.5px solid rgba(8, 51, 68, 0.35)", background: "rgba(8, 51, 68, 0.07)", color: "#083344", cursor: "pointer" }}
           >
             <ChevronLeft size={18} />
           </motion.button>
@@ -321,7 +358,7 @@ export function ArtistLineUp() {
             whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.92 }}
             onClick={next}
             className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-            style={{ border: "1.5px solid rgba(0,212,255,0.35)", background: "rgba(0,212,255,0.07)", color: "#00d4ff", cursor: "pointer" }}
+            style={{ border: "1.5px solid rgba(8, 51, 68, 0.35)", background: "rgba(8, 51, 68, 0.07)", color: "#083344", cursor: "pointer" }}
           >
             <ChevronRight size={18} />
           </motion.button>
@@ -329,7 +366,7 @@ export function ArtistLineUp() {
       </div>
 
       {/* ── Disclaimer ── */}
-{/* 
+      {/* 
       <p className="relative z-10 text-center mt-8" style={{ ...SG, fontSize: "0.65rem", color: "rgba(237,232,220,0.15)", letterSpacing: "0.04em" }}>
         * Lineup subject to change without prior notice.
       </p>
