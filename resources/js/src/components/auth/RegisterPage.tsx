@@ -956,18 +956,18 @@ export function RegisterPage() {
     }`;
 
   const phoneSelectClass = `min-h-[50px] rounded-xl border-2 bg-white px-4 text-base font-medium text-slate-800 data-[size=default]:h-[50px] ${errors.phone_country_code
-      ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-      : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
+    ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
+    : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
     }`;
 
   const phoneNumberInputClass = `${inputBase} min-h-[50px] px-4 text-base ${errors.phone_national_number
-      ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-      : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
+    ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
+    : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
     }`;
 
   const countrySelectClass = `min-h-[50px] rounded-xl border-2 bg-white px-4 text-base font-medium text-slate-800 data-[size=default]:h-[50px] ${errors.country
-      ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-      : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
+    ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
+    : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
     }`;
 
   const selectedCountryOption = SORTED_COUNTRIES.find(c => c.code === countryVal);
@@ -1271,298 +1271,298 @@ export function RegisterPage() {
                     transition={{ duration: 0.25 }}
                     className="space-y-5"
                   >
-                        <div>
-                          <label htmlFor="full_name" className="block text-slate-700 text-sm font-semibold mb-1.5">
-                            Full Name <span className="text-red-500" aria-hidden="true">*</span>
-                          </label>
-                          <div className="relative">
-                            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
-                            <input
-                              id="full_name"
-                              type="text"
-                              autoComplete="name"
-                              placeholder="Enter your full name"
-                              className={inputClass('full_name')}
-                              {...register('full_name', {
-                                required: 'Full name is required.',
-                                minLength: { value: 2, message: 'Name must be at least 2 characters.' },
-                                pattern: { value: /^[a-zA-Z\s.''-]+$/, message: 'Name may only contain letters and spaces.' },
-                              })}
-                            />
-                          </div>
-                          <AnimatePresence>
-                            <FieldError id="err-full_name" message={errors.full_name?.message} />
-                          </AnimatePresence>
-                        </div>
+                    <div>
+                      <label htmlFor="full_name" className="block text-slate-700 text-sm font-semibold mb-1.5">
+                        Full Name <span className="text-red-500" aria-hidden="true">*</span>
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
+                        <input
+                          id="full_name"
+                          type="text"
+                          autoComplete="name"
+                          placeholder="Enter your full name"
+                          className={inputClass('full_name')}
+                          {...register('full_name', {
+                            required: 'Full name is required.',
+                            minLength: { value: 2, message: 'Name must be at least 2 characters.' },
+                            pattern: { value: /^[a-zA-Z\s.''-]+$/, message: 'Name may only contain letters and spaces.' },
+                          })}
+                        />
+                      </div>
+                      <AnimatePresence>
+                        <FieldError id="err-full_name" message={errors.full_name?.message} />
+                      </AnimatePresence>
+                    </div>
 
-                        <div>
-                          <label htmlFor="email" className="block text-slate-700 text-sm font-semibold mb-1.5">
-                            Email <span className="text-red-500" aria-hidden="true">*</span>
-                          </label>
-                          <div className="relative">
-                            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
-                            <input
-                              id="email"
-                              type="email"
-                              autoComplete="email"
-                              placeholder="nama@email.com"
-                              className={inputClass('email')}
-                              {...register('email', {
-                                required: 'Email is required.',
-                                pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email format.' },
-                              })}
-                            />
-                          </div>
-                          <AnimatePresence>
-                            <FieldError id="err-email" message={errors.email?.message} />
-                          </AnimatePresence>
-                        </div>
+                    <div>
+                      <label htmlFor="email" className="block text-slate-700 text-sm font-semibold mb-1.5">
+                        Email <span className="text-red-500" aria-hidden="true">*</span>
+                      </label>
+                      <div className="relative">
+                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
+                        <input
+                          id="email"
+                          type="email"
+                          autoComplete="email"
+                          placeholder="nama@email.com"
+                          className={inputClass('email')}
+                          {...register('email', {
+                            required: 'Email is required.',
+                            pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email format.' },
+                          })}
+                        />
+                      </div>
+                      <AnimatePresence>
+                        <FieldError id="err-email" message={errors.email?.message} />
+                      </AnimatePresence>
+                    </div>
 
-                        <div>
-                          <label htmlFor="phone_country_code" className="block text-slate-700 text-sm font-semibold mb-1.5">
-                            Phone Number <span className="text-red-500" aria-hidden="true">*</span>
-                          </label>
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-                            <Controller
-                              control={control}
-                              name="phone_country_code"
-                              rules={{
-                                required: 'Country code is required.',
-                                validate: (value) => /^\+\d{1,4}$/.test(normalizePhoneCountryCode(value)) || 'Invalid country code.',
-                              }}
-                              render={({ field }) => (
-                                <Select
-                                  value={field.value}
-                                  onValueChange={(value) => field.onChange(normalizePhoneCountryCode(value))}
-                                >
-                                  <SelectTrigger
-                                    id="phone_country_code"
-                                    className={phoneSelectClass}
-                                    aria-invalid={errors.phone_country_code ? 'true' : 'false'}
-                                  >
-                                    {phoneCountryOption ? (
-                                      <span className="flex items-center gap-2.5 truncate">
-                                        <span
-                                          className={`${phoneCountryOption.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`}
-                                          aria-hidden="true"
-                                        />
-                                        <span className="truncate text-base font-medium">{phoneCountryOption.dialCode}</span>
-                                      </span>
-                                    ) : (
-                                      <SelectValue placeholder="Code" />
-                                    )}
-                                  </SelectTrigger>
-                                  <SelectContent className="rounded-xl border-sky-100">
-                                    {PHONE_COUNTRY_CODES.map(option => (
-                                      <SelectItem key={`${option.country}-${option.dialCode}`} value={option.dialCode}>
-                                        <span className="flex items-center gap-2.5">
-                                          <span
-                                            className={`${option.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`}
-                                            aria-hidden="true"
-                                          />
-                                          <span>{option.countryName}</span>
-                                          <span className="text-slate-500">{option.dialCode}</span>
-                                        </span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            />
-                            <input
-                              id="phone_national_number"
-                              type="tel"
-                              autoComplete="tel-national"
-                              placeholder="822123450"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              maxLength={20}
-                              className={phoneNumberInputClass}
-                              {...phoneNationalNumberField}
-                            />
-                          </div>
-                          <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-                            Select the code, then enter the number without the country code.
-                          </p>
-                          <AnimatePresence>
-                            <FieldError id="err-phone_country_code" message={errors.phone_country_code?.message} />
-                          </AnimatePresence>
-                          <AnimatePresence>
-                            <FieldError id="err-phone_national_number" message={errors.phone_national_number?.message} />
-                          </AnimatePresence>
-                        </div>
-
-                        <div>
-                          <label htmlFor="country" className="block text-slate-700 text-sm font-semibold mb-1.5">
-                            Country <span className="text-red-500" aria-hidden="true">*</span>
-                          </label>
-                          <Controller
-                            control={control}
-                            name="country"
-                            rules={{ required: 'Country is required.' }}
-                            render={({ field }) => (
-                              <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger
-                                  id="country"
-                                  className={countrySelectClass}
-                                  aria-invalid={errors.country ? 'true' : 'false'}
-                                >
-                                  {selectedCountryOption ? (
-                                    <span className="flex items-center gap-2.5 truncate">
+                    <div>
+                      <label htmlFor="phone_country_code" className="block text-slate-700 text-sm font-semibold mb-1.5">
+                        Phone Number <span className="text-red-500" aria-hidden="true">*</span>
+                      </label>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                        <Controller
+                          control={control}
+                          name="phone_country_code"
+                          rules={{
+                            required: 'Country code is required.',
+                            validate: (value) => /^\+\d{1,4}$/.test(normalizePhoneCountryCode(value)) || 'Invalid country code.',
+                          }}
+                          render={({ field }) => (
+                            <Select
+                              value={field.value}
+                              onValueChange={(value) => field.onChange(normalizePhoneCountryCode(value))}
+                            >
+                              <SelectTrigger
+                                id="phone_country_code"
+                                className={phoneSelectClass}
+                                aria-invalid={errors.phone_country_code ? 'true' : 'false'}
+                              >
+                                {phoneCountryOption ? (
+                                  <span className="flex items-center gap-2.5 truncate">
+                                    <span
+                                      className={`${phoneCountryOption.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`}
+                                      aria-hidden="true"
+                                    />
+                                    <span className="truncate text-base font-medium">{phoneCountryOption.dialCode}</span>
+                                  </span>
+                                ) : (
+                                  <SelectValue placeholder="Code" />
+                                )}
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl border-sky-100">
+                                {PHONE_COUNTRY_CODES.map(option => (
+                                  <SelectItem key={`${option.country}-${option.dialCode}`} value={option.dialCode}>
+                                    <span className="flex items-center gap-2.5">
                                       <span
-                                        className={`fi fi-${selectedCountryOption.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
+                                        className={`${option.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`}
                                         aria-hidden="true"
                                       />
-                                      <span className="truncate text-base font-medium">{selectedCountryOption.name}</span>
+                                      <span>{option.countryName}</span>
+                                      <span className="text-slate-500">{option.dialCode}</span>
                                     </span>
-                                  ) : (
-                                    <span className="flex items-center gap-2.5 text-slate-400">
-                                      <Globe className="h-4 w-4 text-sky-400" aria-hidden="true" />
-                                      <SelectValue placeholder="Select your country" />
-                                    </span>
-                                  )}
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-sky-100">
-                                  {SORTED_COUNTRIES.map(c => (
-                                    <SelectItem key={c.code} value={c.code}>
-                                      <span className="flex items-center gap-2.5">
-                                        <span
-                                          className={`fi fi-${c.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
-                                          aria-hidden="true"
-                                        />
-                                        <span>{c.name}</span>
-                                      </span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                          />
-                          <AnimatePresence>
-                            <FieldError id="err-country" message={errors.country?.message} />
-                          </AnimatePresence>
-                        </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        <input
+                          id="phone_national_number"
+                          type="tel"
+                          autoComplete="tel-national"
+                          placeholder="822123450"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={20}
+                          className={phoneNumberInputClass}
+                          {...phoneNationalNumberField}
+                        />
+                      </div>
+                      <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                        Select the code, then enter the number without the country code.
+                      </p>
+                      <AnimatePresence>
+                        <FieldError id="err-phone_country_code" message={errors.phone_country_code?.message} />
+                      </AnimatePresence>
+                      <AnimatePresence>
+                        <FieldError id="err-phone_national_number" message={errors.phone_national_number?.message} />
+                      </AnimatePresence>
+                    </div>
 
-                        <div>
-                          <label htmlFor="identity_type" className="block text-slate-700 text-sm font-semibold mb-1.5">
-                            Document Type <span className="text-red-500" aria-hidden="true">*</span>
-                          </label>
-                          <div className="relative">
-                            <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
-                            <select
-                              id="identity_type"
-                              className={`${inputClass('identity_type')} appearance-none cursor-pointer`}
-                              {...register('identity_type', { required: 'Document type is required.' })}
+                    <div>
+                      <label htmlFor="country" className="block text-slate-700 text-sm font-semibold mb-1.5">
+                        Country <span className="text-red-500" aria-hidden="true">*</span>
+                      </label>
+                      <Controller
+                        control={control}
+                        name="country"
+                        rules={{ required: 'Country is required.' }}
+                        render={({ field }) => (
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger
+                              id="country"
+                              className={countrySelectClass}
+                              aria-invalid={errors.country ? 'true' : 'false'}
                             >
-                              <option value="">Select a document type</option>
-                              {availableIdentityTypes.map(option => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
+                              {selectedCountryOption ? (
+                                <span className="flex items-center gap-2.5 truncate">
+                                  <span
+                                    className={`fi fi-${selectedCountryOption.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
+                                    aria-hidden="true"
+                                  />
+                                  <span className="truncate text-base font-medium">{selectedCountryOption.name}</span>
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-2.5 text-slate-400">
+                                  <Globe className="h-4 w-4 text-sky-400" aria-hidden="true" />
+                                  <SelectValue placeholder="Select your country" />
+                                </span>
+                              )}
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-sky-100">
+                              {SORTED_COUNTRIES.map(c => (
+                                <SelectItem key={c.code} value={c.code}>
+                                  <span className="flex items-center gap-2.5">
+                                    <span
+                                      className={`fi fi-${c.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
+                                      aria-hidden="true"
+                                    />
+                                    <span>{c.name}</span>
+                                  </span>
+                                </SelectItem>
                               ))}
-                            </select>
-                            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      <AnimatePresence>
+                        <FieldError id="err-country" message={errors.country?.message} />
+                      </AnimatePresence>
+                    </div>
+
+                    <div>
+                      <label htmlFor="identity_type" className="block text-slate-700 text-sm font-semibold mb-1.5">
+                        Document Type <span className="text-red-500" aria-hidden="true">*</span>
+                      </label>
+                      <div className="relative">
+                        <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
+                        <select
+                          id="identity_type"
+                          className={`${inputClass('identity_type')} appearance-none cursor-pointer`}
+                          {...register('identity_type', { required: 'Document type is required.' })}
+                        >
+                          <option value="">Select a document type</option>
+                          {availableIdentityTypes.map(option => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
+                      </div>
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                        {identityHelperText}
+                      </p>
+                      <AnimatePresence>
+                        <FieldError id="err-identity_type" message={errors.identity_type?.message} />
+                      </AnimatePresence>
+                    </div>
+
+                    <div>
+                      <label htmlFor="identity_number" className="block text-slate-700 text-sm font-semibold mb-1">
+                        {identityNumberLabel} <span className="text-red-500" aria-hidden="true">*</span>
+                      </label>
+                      <div className="relative">
+                        <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
+                        <input
+                          id="identity_number"
+                          type="text"
+                          placeholder={identityNumberPlaceholder}
+                          className={inputClass('identity_number')}
+                          {...register('identity_number', {
+                            required: 'Document number is required.',
+                            minLength: { value: 6, message: 'Must be at least 6 characters.' },
+                          })}
+                        />
+                      </div>
+                      <AnimatePresence>
+                        <FieldError id="err-identity_number" message={errors.identity_number?.message} />
+                      </AnimatePresence>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <input
+                        id="agreeTerms"
+                        type="checkbox"
+                        className="mt-0.5 rounded border-2 border-sky-300 text-sky-600 cursor-pointer focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 flex-shrink-0"
+                        style={{ width: 18, height: 18 }}
+                        {...register('agreeTerms', { required: 'You must accept the terms and conditions.' })}
+                      />
+                      <div className="text-slate-600 text-xs leading-relaxed">
+                        <label htmlFor="agreeTerms" className="cursor-pointer">
+                          I agree to the
+                        </label>{' '}
+                        <button
+                          type="button"
+                          onClick={() => setLegalDialog('terms')}
+                          className="font-semibold text-sky-600 underline underline-offset-2 transition-colors hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-white rounded-sm"
+                        >
+                          Terms &amp; Conditions
+                        </button>{' '}
+                        and{' '}
+                        <button
+                          type="button"
+                          onClick={() => setLegalDialog('privacy')}
+                          className="font-semibold text-sky-600 underline underline-offset-2 transition-colors hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-white rounded-sm"
+                        >
+                          Privacy Policy
+                        </button>
+                        .
+                      </div>
+                    </div>
+                    <AnimatePresence>
+                      <FieldError id="err-terms" message={errors.agreeTerms?.message} />
+                    </AnimatePresence>
+
+                    <input type="hidden" {...recaptchaTokenField} />
+                    {recaptchaEnabled && (
+                      <div className="rounded-2xl border border-sky-100 bg-white/90 p-4 shadow-sm">
+                        <div className="mb-3 flex items-start gap-2">
+                          <Lock className="mt-0.5 h-4 w-4 text-sky-500" aria-hidden="true" />
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">Security verification</p>
+                            <p className="text-xs leading-relaxed text-slate-500">
+                              Complete Google reCAPTCHA before submitting the registration form.
+                            </p>
                           </div>
-                          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-                            {identityHelperText}
-                          </p>
-                          <AnimatePresence>
-                            <FieldError id="err-identity_type" message={errors.identity_type?.message} />
-                          </AnimatePresence>
                         </div>
 
-                        <div>
-                          <label htmlFor="identity_number" className="block text-slate-700 text-sm font-semibold mb-1">
-                            {identityNumberLabel} <span className="text-red-500" aria-hidden="true">*</span>
-                          </label>
-                          <div className="relative">
-                            <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
-                            <input
-                              id="identity_number"
-                              type="text"
-                              placeholder={identityNumberPlaceholder}
-                              className={inputClass('identity_number')}
-                              {...register('identity_number', {
-                                required: 'Document number is required.',
-                                minLength: { value: 6, message: 'Must be at least 6 characters.' },
-                              })}
+                        {recaptchaSiteKey === '' ? (
+                          <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+                            reCAPTCHA is not configured. Please contact the administrator to provide the site key.
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {!isRecaptchaReady && (
+                              <div className="flex items-center gap-2 text-xs text-slate-500">
+                                <Loader2 className="h-4 w-4 animate-spin text-sky-500" aria-hidden="true" />
+                                Loading security verification...
+                              </div>
+                            )}
+                            <div
+                              ref={handleRecaptchaContainerRef}
+                              className={!isRecaptchaReady ? 'min-h-[78px]' : undefined}
                             />
                           </div>
-                          <AnimatePresence>
-                            <FieldError id="err-identity_number" message={errors.identity_number?.message} />
-                          </AnimatePresence>
-                        </div>
-
-                        <div className="flex items-start gap-3">
-                          <input
-                            id="agreeTerms"
-                            type="checkbox"
-                            className="mt-0.5 rounded border-2 border-sky-300 text-sky-600 cursor-pointer focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 flex-shrink-0"
-                            style={{ width: 18, height: 18 }}
-                            {...register('agreeTerms', { required: 'You must accept the terms and conditions.' })}
-                          />
-                          <div className="text-slate-600 text-xs leading-relaxed">
-                            <label htmlFor="agreeTerms" className="cursor-pointer">
-                              I agree to the
-                            </label>{' '}
-                            <button
-                              type="button"
-                              onClick={() => setLegalDialog('terms')}
-                              className="font-semibold text-sky-600 underline underline-offset-2 transition-colors hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-white rounded-sm"
-                            >
-                              Terms &amp; Conditions
-                            </button>{' '}
-                            and{' '}
-                            <button
-                              type="button"
-                              onClick={() => setLegalDialog('privacy')}
-                              className="font-semibold text-sky-600 underline underline-offset-2 transition-colors hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-white rounded-sm"
-                            >
-                              Privacy Policy
-                            </button>
-                            .
-                          </div>
-                        </div>
-                        <AnimatePresence>
-                          <FieldError id="err-terms" message={errors.agreeTerms?.message} />
-                        </AnimatePresence>
-
-                        <input type="hidden" {...recaptchaTokenField} />
-                        {recaptchaEnabled && (
-                          <div className="rounded-2xl border border-sky-100 bg-white/90 p-4 shadow-sm">
-                            <div className="mb-3 flex items-start gap-2">
-                              <Lock className="mt-0.5 h-4 w-4 text-sky-500" aria-hidden="true" />
-                              <div>
-                                <p className="text-sm font-semibold text-slate-800">Security verification</p>
-                                <p className="text-xs leading-relaxed text-slate-500">
-                                  Complete Google reCAPTCHA before submitting the registration form.
-                                </p>
-                              </div>
-                            </div>
-
-                            {recaptchaSiteKey === '' ? (
-                              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-                                reCAPTCHA is not configured. Please contact the administrator to provide the site key.
-                              </div>
-                            ) : (
-                              <div className="space-y-3">
-                                {!isRecaptchaReady && (
-                                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                                    <Loader2 className="h-4 w-4 animate-spin text-sky-500" aria-hidden="true" />
-                                    Loading security verification...
-                                  </div>
-                                )}
-                                <div
-                                  ref={handleRecaptchaContainerRef}
-                                  className={!isRecaptchaReady ? 'min-h-[78px]' : undefined}
-                                />
-                              </div>
-                            )}
-                          </div>
                         )}
-                        <AnimatePresence>
-                          <FieldError id="err-recaptcha" message={errors.recaptcha_token?.message} />
-                        </AnimatePresence>
+                      </div>
+                    )}
+                    <AnimatePresence>
+                      <FieldError id="err-recaptcha" message={errors.recaptcha_token?.message} />
+                    </AnimatePresence>
                   </motion.div>
                 </div>
 
@@ -1682,7 +1682,7 @@ export function RegisterPage() {
                 <div>
                   <CheckCircle2 className="w-10 h-10 md:w-14 md:h-14 text-emerald-400 mx-auto mb-4" />
                   <h2 id="success-title" className="text-white text-2xl md:text-4xl font-black leading-tight tracking-tight mb-3" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                    Registration Successful! 🎉 <br className="hidden sm:block" /> Check Your Verification Email
+                    Registration Successful!<br className="hidden sm:block" /> Check Your Verification Email
                   </h2>
                   <p className="text-sky-200 text-base md:text-lg mb-1">
                     We’ve sent a verification link to
