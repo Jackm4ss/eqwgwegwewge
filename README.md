@@ -2,7 +2,7 @@
 
 Full Laravel 11 project for `register.songkremfestival.my` with Firestore-first user registration and email verification flow.
 
-## For Junior Developers
+
 
 If this is your first time running the project, do this first:
 
