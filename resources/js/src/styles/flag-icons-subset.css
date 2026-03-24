@@ -1,0 +1,42 @@
+.fib,
+.fi {
+  background-position: 50%;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.fi {
+  display: inline-block;
+  flex-shrink: 0;
+  line-height: 1em;
+  position: relative;
+  width: 1.333333em;
+}
+
+.fi::before {
+  content: "\00a0";
+}
+
+.fi-au { background-image: url('../../../../node_modules/flag-icons/flags/4x3/au.svg'); }
+.fi-bn { background-image: url('../../../../node_modules/flag-icons/flags/4x3/bn.svg'); }
+.fi-cn { background-image: url('../../../../node_modules/flag-icons/flags/4x3/cn.svg'); }
+.fi-de { background-image: url('../../../../node_modules/flag-icons/flags/4x3/de.svg'); }
+.fi-fr { background-image: url('../../../../node_modules/flag-icons/flags/4x3/fr.svg'); }
+.fi-gb { background-image: url('../../../../node_modules/flag-icons/flags/4x3/gb.svg'); }
+.fi-hk { background-image: url('../../../../node_modules/flag-icons/flags/4x3/hk.svg'); }
+.fi-id { background-image: url('../../../../node_modules/flag-icons/flags/4x3/id.svg'); }
+.fi-in { background-image: url('../../../../node_modules/flag-icons/flags/4x3/in.svg'); }
+.fi-jp { background-image: url('../../../../node_modules/flag-icons/flags/4x3/jp.svg'); }
+.fi-kh { background-image: url('../../../../node_modules/flag-icons/flags/4x3/kh.svg'); }
+.fi-kr { background-image: url('../../../../node_modules/flag-icons/flags/4x3/kr.svg'); }
+.fi-la { background-image: url('../../../../node_modules/flag-icons/flags/4x3/la.svg'); }
+.fi-mm { background-image: url('../../../../node_modules/flag-icons/flags/4x3/mm.svg'); }
+.fi-my { background-image: url('../../../../node_modules/flag-icons/flags/4x3/my.svg'); }
+.fi-nl { background-image: url('../../../../node_modules/flag-icons/flags/4x3/nl.svg'); }
+.fi-nz { background-image: url('../../../../node_modules/flag-icons/flags/4x3/nz.svg'); }
+.fi-ph { background-image: url('../../../../node_modules/flag-icons/flags/4x3/ph.svg'); }
+.fi-sg { background-image: url('../../../../node_modules/flag-icons/flags/4x3/sg.svg'); }
+.fi-th { background-image: url('../../../../node_modules/flag-icons/flags/4x3/th.svg'); }
+.fi-us { background-image: url('../../../../node_modules/flag-icons/flags/4x3/us.svg'); }
+.fi-vn { background-image: url('../../../../node_modules/flag-icons/flags/4x3/vn.svg'); }
+.fi-ae { background-image: url('../../../../node_modules/flag-icons/flags/4x3/ae.svg'); }

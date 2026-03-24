@@ -34,8 +34,11 @@
                 <p style="font-size:16px; font-weight:600;">{{ $user['country'] }}</p>
             </div>
             <div class="full">
-                <p class="small">Identity Number</p>
-                <p style="font-size:16px; font-weight:600;">{{ $user['identity_number'] }}</p>
+                <p class="small">Identity Document</p>
+                <p style="font-size:16px; font-weight:600;">
+                    {{ ($user['identity_type'] ?? 'passport') === 'national_id' ? 'National ID' : 'Passport' }}
+                    : {{ $user['identity_number'] }}
+                </p>
             </div>
         </div>
     </div>

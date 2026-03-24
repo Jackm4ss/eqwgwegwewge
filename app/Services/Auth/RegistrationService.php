@@ -19,12 +19,16 @@ class RegistrationService
     public function register(array $data, string $ip): array
     {
         try {
-            $user = $this->users->create([
+            $country = $this->normalizeCountry((string) $data['country']);
+
+            $payload = [
                 'full_name' => $this->normalizeName((string) $data['full_name']),
+                'identity_type' => $this->normalizeIdentityType((string) $data['identity_type']),
                 'identity_number' => $this->normalizeIdentityNumber((string) $data['identity_number']),
                 'email' => $this->normalizeEmail((string) $data['email']),
-                'phone_number' => trim((string) $data['phone_number']),
-                'country' => trim((string) $data['country']),
+                'phone_number' => $this->normalizePhoneNumber((string) $data['phone_number']),
+                'country' => $country,
+                'identity_country' => $country,
                 'account_status' => 'pending_verification',
                 'verification_status' => 'unverified',
                 'email_verified_at' => null,
@@ -32,7 +36,19 @@ class RegistrationService
                 'ticket_ready_email_sent_at' => null,
                 'agreed_terms_at' => now()->toISOString(),
                 'registered_ip' => $ip,
-            ]);
+            ];
+
+            $phoneCountryCode = $this->normalizePhoneCountryCode((string) ($data['phone_country_code'] ?? ''));
+            if ($phoneCountryCode !== '') {
+                $payload['phone_country_code'] = $phoneCountryCode;
+            }
+
+            $phoneNationalNumber = $this->normalizePhoneNationalNumber((string) ($data['phone_national_number'] ?? ''));
+            if ($phoneNationalNumber !== '') {
+                $payload['phone_national_number'] = $phoneNationalNumber;
+            }
+
+            $user = $this->users->create($payload);
         } catch (RegistrationConflictException $exception) {
             throw ValidationException::withMessages([
                 $exception->field => [$exception->getMessage()],
@@ -76,6 +92,37 @@ class RegistrationService
     private function normalizeIdentityNumber(string $identityNumber): string
     {
         return strtoupper(trim($identityNumber));
+    }
+
+    private function normalizeIdentityType(string $identityType): string
+    {
+        return strtolower(trim($identityType));
+    }
+
+    private function normalizeCountry(string $country): string
+    {
+        return strtoupper(trim($country));
+    }
+
+    private function normalizePhoneCountryCode(string $phoneCountryCode): string
+    {
+        $digits = preg_replace('/\D+/', '', $phoneCountryCode) ?? '';
+
+        return $digits === '' ? '' : '+'.$digits;
+    }
+
+    private function normalizePhoneNationalNumber(string $phoneNationalNumber): string
+    {
+        $digits = preg_replace('/\D+/', '', $phoneNationalNumber) ?? '';
+
+        return ltrim($digits, '0');
+    }
+
+    private function normalizePhoneNumber(string $phoneNumber): string
+    {
+        $digits = preg_replace('/\D+/', '', $phoneNumber) ?? '';
+
+        return $digits === '' ? '' : '+'.$digits;
     }
 
     private function normalizeName(string $name): string

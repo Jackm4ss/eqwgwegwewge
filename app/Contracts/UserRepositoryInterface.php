@@ -10,7 +10,7 @@ interface UserRepositoryInterface
 
     public function findById(string $id): ?array;
 
-    public function findByIdentityNumber(string $identityNumber): ?array;
+    public function findByIdentityDocument(string $identityType, string $identityCountry, string $identityNumber): ?array;
 
     public function update(string $id, array $data): array;
 

@@ -146,8 +146,10 @@ class VerificationFlowTest extends TestCase
         return [
             'full_name' => 'Test User',
             'email' => 'test@example.com',
-            'phone_number' => '+628123456789',
+            'phone_country_code' => '+62',
+            'phone_national_number' => '8123456789',
             'country' => 'ID',
+            'identity_type' => 'passport',
             'identity_number' => 'A1234567',
             'agreeTerms' => true,
         ];

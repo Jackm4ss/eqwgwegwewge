@@ -20,21 +20,25 @@ class InMemoryUserRepository implements UserRepositoryInterface
     public function create(array $data): array
     {
         $email = $this->normalizeEmail((string) $data['email']);
+        $identityType = $this->normalizeIdentityType((string) $data['identity_type']);
+        $identityCountry = $this->normalizeCountry((string) ($data['identity_country'] ?? $data['country'] ?? ''));
         $identityNumber = $this->normalizeIdentityNumber((string) $data['identity_number']);
         $emailHash = hash('sha256', $email);
-        $identityHash = hash('sha256', $identityNumber);
+        $identityHash = hash('sha256', $this->identityLookupKey($identityType, $identityCountry, $identityNumber));
 
         if (isset($this->emailIndexes[$emailHash])) {
             throw new RegistrationConflictException('email', 'Email already registered.');
         }
 
         if (isset($this->identityIndexes[$identityHash])) {
-            throw new RegistrationConflictException('identity_number', 'NIK / Passport already registered.');
+            throw new RegistrationConflictException('identity_number', 'This identity document is already registered.');
         }
 
         $payload = array_merge($data, [
             'user_id' => $data['user_id'] ?? 'user-'.(count($this->users) + 1),
             'email' => $email,
+            'identity_type' => $identityType,
+            'identity_country' => $identityCountry,
             'identity_number' => $identityNumber,
             'created_at' => $data['created_at'] ?? now()->toISOString(),
             'updated_at' => $data['updated_at'] ?? now()->toISOString(),
@@ -47,6 +51,8 @@ class InMemoryUserRepository implements UserRepositoryInterface
         ];
         $this->identityIndexes[$identityHash] = [
             'user_id' => $payload['user_id'],
+            'identity_type' => $identityType,
+            'identity_country' => $identityCountry,
             'normalized_identity_number' => $identityNumber,
         ];
 
@@ -65,9 +71,11 @@ class InMemoryUserRepository implements UserRepositoryInterface
         return $this->users[$id] ?? null;
     }
 
-    public function findByIdentityNumber(string $identityNumber): ?array
+    public function findByIdentityDocument(string $identityType, string $identityCountry, string $identityNumber): ?array
     {
-        $userId = $this->identityIndexes[hash('sha256', $this->normalizeIdentityNumber($identityNumber))]['user_id'] ?? null;
+        $userId = $this->identityIndexes[
+            hash('sha256', $this->identityLookupKey($identityType, $identityCountry, $identityNumber))
+        ]['user_id'] ?? null;
 
         return $userId ? $this->findById($userId) : null;
     }
@@ -147,9 +155,11 @@ class InMemoryUserRepository implements UserRepositoryInterface
         return isset($this->emailIndexes[hash('sha256', $this->normalizeEmail($email))]);
     }
 
-    public function identityIndexExists(string $identityNumber): bool
+    public function identityIndexExists(string $identityType, string $identityCountry, string $identityNumber): bool
     {
-        return isset($this->identityIndexes[hash('sha256', $this->normalizeIdentityNumber($identityNumber))]);
+        return isset($this->identityIndexes[
+            hash('sha256', $this->identityLookupKey($identityType, $identityCountry, $identityNumber))
+        ]);
     }
 
     public function firstUser(): ?array
@@ -165,5 +175,24 @@ class InMemoryUserRepository implements UserRepositoryInterface
     private function normalizeIdentityNumber(string $identityNumber): string
     {
         return strtoupper(trim($identityNumber));
+    }
+
+    private function normalizeIdentityType(string $identityType): string
+    {
+        return strtolower(trim($identityType));
+    }
+
+    private function normalizeCountry(string $country): string
+    {
+        return strtoupper(trim($country));
+    }
+
+    private function identityLookupKey(string $identityType, string $identityCountry, string $identityNumber): string
+    {
+        return implode(':', [
+            $this->normalizeIdentityType($identityType),
+            $this->normalizeCountry($identityCountry),
+            $this->normalizeIdentityNumber($identityNumber),
+        ]);
     }
 }

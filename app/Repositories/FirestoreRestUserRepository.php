@@ -23,12 +23,16 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
     public function create(array $data): array
     {
         $email = $this->normalizeEmail((string) $data['email']);
+        $identityType = $this->normalizeIdentityType((string) $data['identity_type']);
+        $identityCountry = $this->normalizeCountry((string) ($data['identity_country'] ?? $data['country'] ?? ''));
         $identityNumber = $this->normalizeIdentityNumber((string) $data['identity_number']);
         $now = now()->toISOString();
 
         $payload = array_merge($data, [
             'user_id' => $data['user_id'] ?? (string) str()->uuid(),
             'email' => $email,
+            'identity_type' => $identityType,
+            'identity_country' => $identityCountry,
             'identity_number' => $identityNumber,
             'created_at' => $data['created_at'] ?? $now,
             'updated_at' => $data['updated_at'] ?? $now,
@@ -41,7 +45,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
 
             try {
                 $emailIndexPath = $this->emailIndexPath($email);
-                $identityIndexPath = $this->identityIndexPath($identityNumber);
+                $identityIndexPath = $this->identityIndexPath($identityType, $identityCountry, $identityNumber);
 
                 $documents = $this->api()->batchGet([
                     $emailIndexPath,
@@ -53,7 +57,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
                 }
 
                 if ($documents[$identityIndexPath] !== null) {
-                    throw new RegistrationConflictException('identity_number', 'NIK / Passport already registered.');
+                    throw new RegistrationConflictException('identity_number', 'This identity document is already registered.');
                 }
 
                 $this->api()->commit([
@@ -65,7 +69,10 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
                     ], false),
                     $this->api()->makeSetWrite($identityIndexPath, [
                         'user_id' => $payload['user_id'],
+                        'identity_type' => $identityType,
+                        'identity_country' => $identityCountry,
                         'normalized_identity_number' => $identityNumber,
+                        'normalized_identity_key' => $this->identityLookupKey($identityType, $identityCountry, $identityNumber),
                         'created_at' => $storagePayload['created_at'],
                     ], false),
                 ], $transaction);
@@ -81,7 +88,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
                     continue;
                 }
 
-                $this->throwConflictIfIndexesExist($email, $identityNumber, $exception);
+                $this->throwConflictIfIndexesExist($email, $identityType, $identityCountry, $identityNumber, $exception);
                 throw $exception;
             } finally {
                 if (! $committed) {
@@ -108,10 +115,14 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
         return $this->findById((string) $index['user_id']);
     }
 
-    public function findByIdentityNumber(string $identityNumber): ?array
+    public function findByIdentityDocument(string $identityType, string $identityCountry, string $identityNumber): ?array
     {
         $indexDocument = $this->api()->getDocument(
-            $this->identityIndexPath($this->normalizeIdentityNumber($identityNumber))
+            $this->identityIndexPath(
+                $this->normalizeIdentityType($identityType),
+                $this->normalizeCountry($identityCountry),
+                $this->normalizeIdentityNumber($identityNumber)
+            )
         );
 
         if ($indexDocument === null) {
@@ -140,7 +151,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
             throw new RuntimeException('User not found.');
         }
 
-        $protectedFields = ['email', 'identity_number', 'user_id', 'created_at'];
+        $protectedFields = ['email', 'identity_type', 'identity_country', 'identity_number', 'user_id', 'created_at'];
         $changedProtectedFields = array_intersect(array_keys($data), $protectedFields);
 
         if ($changedProtectedFields !== []) {
@@ -279,6 +290,8 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
 
     private function throwConflictIfIndexesExist(
         string $email,
+        string $identityType,
+        string $identityCountry,
         string $identityNumber,
         \Throwable $exception,
     ): void {
@@ -287,8 +300,8 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
                 throw new RegistrationConflictException('email', 'Email already registered.');
             }
 
-            if ($this->api()->getDocument($this->identityIndexPath($identityNumber)) !== null) {
-                throw new RegistrationConflictException('identity_number', 'NIK / Passport already registered.');
+            if ($this->api()->getDocument($this->identityIndexPath($identityType, $identityCountry, $identityNumber)) !== null) {
+                throw new RegistrationConflictException('identity_number', 'This identity document is already registered.');
             }
         } catch (RegistrationConflictException $conflict) {
             throw $conflict;
@@ -313,10 +326,10 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
             .'/'.hash('sha256', $email);
     }
 
-    private function identityIndexPath(string $identityNumber): string
+    private function identityIndexPath(string $identityType, string $identityCountry, string $identityNumber): string
     {
         return (string) config('firebase.user_identity_index_collection', 'user_identity_index')
-            .'/'.hash('sha256', $identityNumber);
+            .'/'.hash('sha256', $this->identityLookupKey($identityType, $identityCountry, $identityNumber));
     }
 
     private function normalizeEmail(string $email): string
@@ -327,6 +340,25 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
     private function normalizeIdentityNumber(string $identityNumber): string
     {
         return strtoupper(trim($identityNumber));
+    }
+
+    private function normalizeIdentityType(string $identityType): string
+    {
+        return strtolower(trim($identityType));
+    }
+
+    private function normalizeCountry(string $country): string
+    {
+        return strtoupper(trim($country));
+    }
+
+    private function identityLookupKey(string $identityType, string $identityCountry, string $identityNumber): string
+    {
+        return implode(':', [
+            $this->normalizeIdentityType($identityType),
+            $this->normalizeCountry($identityCountry),
+            $this->normalizeIdentityNumber($identityNumber),
+        ]);
     }
 
     private function buildTicketPayload(array $user, array $ticketData, string $existingTicketId): array

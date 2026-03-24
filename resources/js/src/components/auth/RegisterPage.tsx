@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 import {
@@ -10,12 +10,21 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router';
 import { WaterAnimation } from './WaterAnimation';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/Select';
 
 interface FormData {
   full_name: string;
   email: string;
-  phone_number: string;
+  phone_country_code: string;
+  phone_national_number: string;
   country: string;
+  identity_type: 'national_id' | 'passport' | '';
   identity_number: string;
   agreeTerms: boolean;
 }
@@ -55,6 +64,69 @@ const COUNTRIES = [
   { code: 'US', name: 'United States' },
   { code: 'VN', name: 'Vietnam' },
 ];
+
+const PHONE_DIAL_CODES: Record<string, string> = {
+  AU: '+61',
+  BN: '+673',
+  KH: '+855',
+  CN: '+86',
+  FR: '+33',
+  DE: '+49',
+  HK: '+852',
+  IN: '+91',
+  ID: '+62',
+  JP: '+81',
+  LA: '+856',
+  MY: '+60',
+  MM: '+95',
+  NL: '+31',
+  NZ: '+64',
+  PH: '+63',
+  SG: '+65',
+  KR: '+82',
+  TH: '+66',
+  AE: '+971',
+  GB: '+44',
+  US: '+1',
+  VN: '+84',
+};
+
+const IDENTITY_TYPES = [
+  {
+    value: 'national_id',
+    label: 'IC / National ID',
+    description: 'MyKad untuk Malaysia, atau identitas nasional / resident ID resmi untuk negara lain.',
+  },
+  {
+    value: 'passport',
+    label: 'Passport',
+    description: 'Gunakan nomor passport yang masih berlaku sesuai dokumen perjalanan Anda.',
+  },
+] as const;
+
+const SORTED_COUNTRIES = [...COUNTRIES].sort((left, right) => left.name.localeCompare(right.name));
+
+const PHONE_COUNTRY_CODES = SORTED_COUNTRIES.map((country) => ({
+  country: country.code,
+  countryName: country.name,
+  dialCode: PHONE_DIAL_CODES[country.code],
+  flagClassName: `fi fi-${country.code.toLowerCase()}`,
+  label: `${country.name} (${PHONE_DIAL_CODES[country.code]})`,
+}));
+
+function normalizePhoneCountryCode(value: string) {
+  const digits = value.replace(/\D/g, '');
+
+  return digits ? `+${digits}` : '';
+}
+
+function normalizePhoneNationalNumber(value: string) {
+  return value.replace(/\D/g, '').replace(/^0+/, '');
+}
+
+function buildPhoneNumber(phoneCountryCode: string, phoneNationalNumber: string) {
+  return `${normalizePhoneCountryCode(phoneCountryCode)}${normalizePhoneNationalNumber(phoneNationalNumber)}`;
+}
 
 function LotusIcon({ className }: { className?: string }) {
   return (
@@ -139,20 +211,24 @@ export function RegisterPage() {
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
 
   const {
+    control,
     register,
     handleSubmit,
     trigger,
     getValues,
+    setValue,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<FormData>({
     mode: 'onTouched',
     defaultValues: {
       full_name: '',
       email: '',
-      phone_number: '',
+      phone_country_code: '',
+      phone_national_number: '',
       country: '',
+      identity_type: '',
       identity_number: '',
       agreeTerms: false,
     },
@@ -216,6 +292,26 @@ export function RegisterPage() {
     return () => window.cancelAnimationFrame(frame);
   }, [currentStep]);
 
+  const countryVal = watch('country');
+  const phoneCountryCodeVal = watch('phone_country_code');
+  const phoneNationalNumberVal = watch('phone_national_number');
+
+  useEffect(() => {
+    if (dirtyFields.phone_country_code) {
+      return;
+    }
+
+    const suggestedDialCode = PHONE_COUNTRY_CODES.find(option => option.country === countryVal)?.dialCode ?? '';
+
+    if (suggestedDialCode !== '') {
+      setValue('phone_country_code', suggestedDialCode, {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: false,
+      });
+    }
+  }, [countryVal, dirtyFields.phone_country_code, setValue]);
+
   const handleResetForm = () => {
     setIsSuccess(false);
     setRegisteredEmail('');
@@ -227,7 +323,7 @@ export function RegisterPage() {
 
   const handleNext = async () => {
     const fieldsMap: Record<number, (keyof FormData)[]> = {
-      1: ['full_name', 'email', 'phone_number', 'identity_number', 'country'],
+      1: ['full_name', 'email', 'phone_country_code', 'phone_national_number', 'country', 'identity_type', 'identity_number'],
     };
     const isValid = await trigger(fieldsMap[currentStep]);
     if (isValid) {
@@ -248,6 +344,12 @@ export function RegisterPage() {
     
     try {
       const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+      const payload = {
+        ...data,
+        phone_country_code: normalizePhoneCountryCode(data.phone_country_code),
+        phone_national_number: normalizePhoneNationalNumber(data.phone_national_number),
+        phone_number: buildPhoneNumber(data.phone_country_code, data.phone_national_number),
+      };
       
       const response = await fetch('/api/register', {
         method: 'POST',
@@ -256,7 +358,7 @@ export function RegisterPage() {
           'Accept': 'application/json',
           ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {})
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
@@ -291,8 +393,57 @@ export function RegisterPage() {
       : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
     }`;
 
-  const countryVal = getValues('country');
-  const countryLabel = COUNTRIES.find(c => c.code === countryVal)?.name ?? '';
+  const phoneSelectClass = `min-h-[50px] rounded-xl border-2 bg-white px-4 text-base font-medium text-slate-800 data-[size=default]:h-[50px] ${
+    errors.phone_country_code
+      ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
+      : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
+  }`;
+
+  const phoneNumberInputClass = `${inputBase} min-h-[50px] px-4 text-base ${
+    errors.phone_national_number
+      ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
+      : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
+  }`;
+
+  const countrySelectClass = `min-h-[50px] rounded-xl border-2 bg-white px-4 text-base font-medium text-slate-800 data-[size=default]:h-[50px] ${
+    errors.country
+      ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
+      : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
+  }`;
+
+  const selectedCountryOption = SORTED_COUNTRIES.find(c => c.code === countryVal);
+  const countryLabel = selectedCountryOption?.name ?? '';
+  const identityTypeVal = watch('identity_type');
+  const identityTypeLabel = identityTypeVal === 'national_id'
+    ? countryVal === 'MY'
+      ? 'IC Malaysia (MyKad)'
+      : 'National ID / Resident ID'
+    : identityTypeVal === 'passport'
+      ? 'Passport'
+      : 'Jenis Dokumen';
+  const identityNumberLabel = identityTypeVal === 'national_id'
+    ? countryVal === 'MY'
+      ? 'Nomor IC Malaysia (MyKad)'
+      : 'Nomor National ID / Resident ID'
+    : 'Nomor Passport';
+  const identityNumberPlaceholder = identityTypeVal === 'national_id'
+    ? countryVal === 'MY'
+      ? 'Contoh: 901231101234'
+      : 'Masukkan nomor identitas resmi Anda'
+    : 'Contoh: A1234567';
+  const identityHelperText = identityTypeVal === 'national_id'
+    ? countryVal === 'MY'
+      ? 'Untuk warga negara atau penduduk tetap Malaysia, gunakan nomor IC / MyKad.'
+      : 'Gunakan nomor identitas nasional atau resident ID yang resmi dan masih berlaku.'
+    : identityTypeVal === 'passport'
+      ? 'Gunakan nomor passport yang masih berlaku dan sesuai dokumen perjalanan Anda.'
+      : countryVal === 'MY'
+        ? 'Jika Anda penduduk Malaysia, pilih IC Malaysia (MyKad). Jika tidak, pilih Passport.'
+        : 'Pilih jenis dokumen yang akan digunakan untuk registrasi.';
+  const phoneCountryOption = PHONE_COUNTRY_CODES.find(option => option.dialCode === phoneCountryCodeVal);
+  const phonePreview = phoneCountryCodeVal && phoneNationalNumberVal
+    ? `${normalizePhoneCountryCode(phoneCountryCodeVal)} ${normalizePhoneNationalNumber(phoneNationalNumberVal)}`
+    : '';
 
   return (
     <div
@@ -640,25 +791,78 @@ export function RegisterPage() {
                         </div>
 
                         <div>
-                          <label htmlFor="phone_number" className="block text-slate-700 text-sm font-semibold mb-1.5">
+                          <label htmlFor="phone_country_code" className="block text-slate-700 text-sm font-semibold mb-1.5">
                             Nomor HP <span className="text-red-500" aria-hidden="true">*</span>
                           </label>
-                          <div className="relative">
-                            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                            <Controller
+                              control={control}
+                              name="phone_country_code"
+                              rules={{
+                                required: 'Kode negara wajib dipilih',
+                                validate: (value) => /^\+\d{1,4}$/.test(normalizePhoneCountryCode(value)) || 'Kode negara tidak valid',
+                              }}
+                              render={({ field }) => (
+                                <Select
+                                  value={field.value}
+                                  onValueChange={(value) => field.onChange(normalizePhoneCountryCode(value))}
+                                >
+                                  <SelectTrigger
+                                    id="phone_country_code"
+                                    className={phoneSelectClass}
+                                    aria-invalid={errors.phone_country_code ? 'true' : 'false'}
+                                  >
+                                    {phoneCountryOption ? (
+                                      <span className="flex items-center gap-2.5 truncate">
+                                        <span
+                                          className={`${phoneCountryOption.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`}
+                                          aria-hidden="true"
+                                        />
+                                        <span className="truncate text-base font-medium">{phoneCountryOption.dialCode}</span>
+                                      </span>
+                                    ) : (
+                                      <SelectValue placeholder="Kode" />
+                                    )}
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl border-sky-100">
+                                    {PHONE_COUNTRY_CODES.map(option => (
+                                      <SelectItem key={`${option.country}-${option.dialCode}`} value={option.dialCode}>
+                                        <span className="flex items-center gap-2.5">
+                                          <span
+                                            className={`${option.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`}
+                                            aria-hidden="true"
+                                          />
+                                          <span>{option.countryName}</span>
+                                          <span className="text-slate-500">{option.dialCode}</span>
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
                             <input
-                              id="phone_number"
+                              id="phone_national_number"
                               type="tel"
-                              autoComplete="tel"
-                              placeholder="+62 812 3456 7890"
-                              className={inputClass('phone_number')}
-                              {...register('phone_number', {
+                              autoComplete="tel-national"
+                              placeholder="822123450"
+                              inputMode="numeric"
+                              className={phoneNumberInputClass}
+                              {...register('phone_national_number', {
                                 required: 'Nomor HP wajib diisi',
-                                pattern: { value: /^[+]?[\d\s\-().]{10,16}$/, message: 'Nomor HP tidak valid' },
+                                setValueAs: (value: string) => normalizePhoneNationalNumber(value),
+                                pattern: { value: /^\d{4,20}$/, message: 'Nomor HP tidak valid' },
                               })}
                             />
                           </div>
+                          <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                            Pilih kode negara, lalu isi nomor tanpa mengulang kode negara. Contoh: +62 822123450.
+                          </p>
                           <AnimatePresence>
-                            <FieldError id="err-phone_number" message={errors.phone_number?.message} />
+                            <FieldError id="err-phone_country_code" message={errors.phone_country_code?.message} />
+                          </AnimatePresence>
+                          <AnimatePresence>
+                            <FieldError id="err-phone_national_number" message={errors.phone_national_number?.message} />
                           </AnimatePresence>
                         </div>
 
@@ -666,40 +870,94 @@ export function RegisterPage() {
                           <label htmlFor="country" className="block text-slate-700 text-sm font-semibold mb-1.5">
                             Negara <span className="text-red-500" aria-hidden="true">*</span>
                           </label>
-                          <div className="relative">
-                            <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
-                            <select
-                              id="country"
-                              className={`${inputClass('country')} appearance-none cursor-pointer`}
-                              {...register('country', { required: 'Negara wajib dipilih' })}
-                            >
-                              <option value="">Pilih negara Anda</option>
-                              {COUNTRIES.map(c => (
-                                <option key={c.code} value={c.code} disabled={c.code === '---'}>
-                                  {c.name}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
-                          </div>
+                          <Controller
+                            control={control}
+                            name="country"
+                            rules={{ required: 'Negara wajib dipilih' }}
+                            render={({ field }) => (
+                              <Select value={field.value} onValueChange={field.onChange}>
+                                <SelectTrigger
+                                  id="country"
+                                  className={countrySelectClass}
+                                  aria-invalid={errors.country ? 'true' : 'false'}
+                                >
+                                  {selectedCountryOption ? (
+                                    <span className="flex items-center gap-2.5 truncate">
+                                      <span
+                                        className={`fi fi-${selectedCountryOption.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
+                                        aria-hidden="true"
+                                      />
+                                      <span className="truncate text-base font-medium">{selectedCountryOption.name}</span>
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-2.5 text-slate-400">
+                                      <Globe className="h-4 w-4 text-sky-400" aria-hidden="true" />
+                                      <SelectValue placeholder="Pilih negara Anda" />
+                                    </span>
+                                  )}
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-sky-100">
+                                  {SORTED_COUNTRIES.map(c => (
+                                    <SelectItem key={c.code} value={c.code}>
+                                      <span className="flex items-center gap-2.5">
+                                        <span
+                                          className={`fi fi-${c.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
+                                          aria-hidden="true"
+                                        />
+                                        <span>{c.name}</span>
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
                           <AnimatePresence>
                             <FieldError id="err-country" message={errors.country?.message} />
                           </AnimatePresence>
                         </div>
 
                         <div>
+                          <label htmlFor="identity_type" className="block text-slate-700 text-sm font-semibold mb-1.5">
+                            Jenis Dokumen <span className="text-red-500" aria-hidden="true">*</span>
+                          </label>
+                          <div className="relative">
+                            <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
+                            <select
+                              id="identity_type"
+                              className={`${inputClass('identity_type')} appearance-none cursor-pointer`}
+                              {...register('identity_type', { required: 'Jenis dokumen wajib dipilih' })}
+                            >
+                              <option value="">Pilih jenis dokumen</option>
+                              {IDENTITY_TYPES.map(option => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
+                          </div>
+                          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                            {identityHelperText}
+                          </p>
+                          <AnimatePresence>
+                            <FieldError id="err-identity_type" message={errors.identity_type?.message} />
+                          </AnimatePresence>
+                        </div>
+
+                        <div>
                           <label htmlFor="identity_number" className="block text-slate-700 text-sm font-semibold mb-1">
-                            NIK / Nomor Passport <span className="text-red-500" aria-hidden="true">*</span>
+                            {identityNumberLabel} <span className="text-red-500" aria-hidden="true">*</span>
                           </label>
                           <div className="relative">
                             <IdCard className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 pointer-events-none" aria-hidden="true" style={{ width: 18, height: 18 }} />
                             <input
                               id="identity_number"
                               type="text"
-                              placeholder="Contoh: 3275XXXXXXXXXXXX atau A1234567"
+                              placeholder={identityNumberPlaceholder}
                               className={inputClass('identity_number')}
                               {...register('identity_number', {
-                                required: 'NIK / Nomor Passport wajib diisi',
+                                required: 'Nomor dokumen wajib diisi',
                                 minLength: { value: 6, message: 'Minimal 6 karakter' },
                               })}
                             />
@@ -731,8 +989,9 @@ export function RegisterPage() {
                             {[
                               { label: 'Nama Lengkap', value: getValues('full_name'), icon: User },
                               { label: 'Email', value: getValues('email'), icon: Mail },
-                              { label: 'NIK / Passport', value: getValues('identity_number'), icon: IdCard },
-                              { label: 'Nomor HP', value: getValues('phone_number'), icon: Phone },
+                              { label: 'Jenis Dokumen', value: identityTypeLabel, icon: IdCard },
+                              { label: identityNumberLabel, value: getValues('identity_number'), icon: IdCard },
+                              { label: 'Nomor HP', value: phonePreview, icon: Phone },
                               { label: 'Negara', value: countryLabel, icon: Globe },
                             ].map(d => (
                               <div key={d.label} className="flex flex-col gap-0.5 border-b border-sky-100/50 pb-2 last:border-0 last:pb-0">

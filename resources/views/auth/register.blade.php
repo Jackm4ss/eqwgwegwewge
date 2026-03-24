@@ -148,9 +148,18 @@
                   <input type="text" class="form-control" id="country" required value="{{ old('country') }}" name="country" placeholder="Indonesia" />
                 </div>
 
-                <div class="col-12 form-control-validation">
-                  <label for="identity_number" class="form-label">NIK / Passport</label>
-                  <input type="text" class="form-control" id="identity_number" required value="{{ old('identity_number') }}" name="identity_number" placeholder="Input NIK" />
+                <div class="col-md-6 form-control-validation">
+                  <label for="identity_type" class="form-label">Jenis Dokumen</label>
+                  <select class="form-control" id="identity_type" required name="identity_type">
+                    <option value="">Pilih jenis dokumen</option>
+                    <option value="national_id" @selected(old('identity_type') === 'national_id')>IC / National ID</option>
+                    <option value="passport" @selected(old('identity_type') === 'passport')>Passport</option>
+                  </select>
+                </div>
+
+                <div class="col-md-6 form-control-validation">
+                  <label for="identity_number" class="form-label">Nomor Dokumen</label>
+                  <input type="text" class="form-control" id="identity_number" required value="{{ old('identity_number') }}" name="identity_number" placeholder="Input nomor dokumen" />
                 </div>
 
                 <!-- Section: Konfirmasi -->
@@ -161,7 +170,7 @@
 
                 <div class="col-12 form-control-validation">
                   <div class="form-check mb-0 ms-2">
-                    <input class="form-check-input" required type="checkbox" id="terms-conditions" name="terms" />
+                    <input class="form-check-input" required type="checkbox" id="terms-conditions" name="agreeTerms" value="1" />
                     <label class="form-check-label" for="terms-conditions">
                       I agree to
                       <a href="javascript:void(0);">privacy policy & terms</a>

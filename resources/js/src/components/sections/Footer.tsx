@@ -165,9 +165,9 @@ export function Footer() {
             © 2026 Songkran Festival Malaysia · Organised by EQ Solutions · All rights reserved
           </p>
           <div className="flex items-center gap-3">
-            <span className="text-xl">🇹🇭</span>
+            <span className="fi fi-th text-xl rounded-[2px] shadow-sm" aria-hidden="true" />
             <div style={{ width: 1, height: 16, background: "rgba(237,232,220,0.1)" }} />
-            <span className="text-xl">🇲🇾</span>
+            <span className="fi fi-my text-xl rounded-[2px] shadow-sm" aria-hidden="true" />
           </div>
           {/* 
           <p style={{ ...SG, fontSize: "0.65rem", color: "rgba(237,232,220,0.18)" }}>
