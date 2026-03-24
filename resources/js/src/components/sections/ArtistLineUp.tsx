@@ -153,6 +153,15 @@ export function ArtistLineUp() {
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
   const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1500);
+ 
+  // ── Canvas Interaction Logic ──
+  const canvasRef = useRef<any>(null);
+  const handleCanvasReady = (api: any) => { canvasRef.current = api; };
+  const handlePageClick = (e: React.MouseEvent) => {
+    if (canvasRef.current?.spawnRipple) {
+      canvasRef.current.spawnRipple(e.clientX, e.clientY);
+    }
+  };
 
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start end", "end start"] });
   const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "12%"]);
@@ -189,9 +198,10 @@ export function ArtistLineUp() {
       ref={sectionRef}
       className="relative w-full py-24 md:py-36 overflow-hidden"
       style={{ background: "#34D8F7", minHeight: "60vh" }}
+      onClick={handlePageClick}
     >
       {/* ── Background Elements (Synced with AboutFestival) ── */}
-      <WaterAnimation />
+      <WaterAnimation onCanvasReady={handleCanvasReady} />
 
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true" style={{ zIndex: 1 }}>
         <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-[0.12]" style={{ background: 'radial-gradient(circle, #083344, transparent)' }} />
@@ -216,6 +226,13 @@ export function ArtistLineUp() {
             transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
           />
         </svg>
+      </div>
+ 
+      {/* Background text watermark (Synced with AboutFestival) */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden" style={{ zIndex: 1, opacity: 0.15 }}>
+        <span style={{ ...SYNE, fontSize: "clamp(80px,18vw,200px)", fontWeight: 800, color: "rgba(0, 0, 0, 0.04)", letterSpacing: "-0.05em", userSelect: "none", whiteSpace: "nowrap" }}>
+          LINE UP
+        </span>
       </div>
 
       {/* ── Blend top/bottom (Optional, adjusted for light background) ── */}
@@ -334,8 +351,9 @@ export function ArtistLineUp() {
                 width: i === current ? 24 : 6,
                 height: 6,
                 borderRadius: 3,
-                background: i === current ? "#083344" : "rgba(8, 51, 68, 0.2)",
-                transition: "all 0.35s ease",
+                background: i === current ? "#FFFFFF" : "rgba(8, 51, 68, 0.25)",
+                boxShadow: i === current ? "0 0 10px #FFFFFF, 0 0 5px rgba(0, 212, 255, 0.8)" : "none",
+                transition: "all 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
                 border: "none",
                 cursor: "pointer",
                 padding: 0,
@@ -347,30 +365,50 @@ export function ArtistLineUp() {
         {/* Arrow buttons */}
         <div className="flex items-center gap-3">
           <motion.button
-            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.92 }}
+            whileHover={{ 
+              scale: 1.15, 
+              boxShadow: "0 0 25px rgba(255, 255, 255, 0.7), 0 0 15px rgba(0, 212, 255, 0.6)",
+              borderColor: "#FFFFFF",
+              backgroundColor: "rgba(255, 255, 255, 0.35)"
+            }} 
+            whileTap={{ scale: 0.92 }}
             onClick={prev}
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-            style={{ border: "1.5px solid rgba(8, 51, 68, 0.35)", background: "rgba(8, 51, 68, 0.07)", color: "#083344", cursor: "pointer" }}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300"
+            style={{ 
+              border: "1.5px solid rgba(8, 51, 68, 0.5)", 
+              background: "rgba(255, 255, 255, 0.15)", 
+              color: "#083344", 
+              cursor: "pointer",
+              backdropFilter: "blur(6px)",
+              boxShadow: "0 0 15px rgba(255, 255, 255, 0.4), 0 0 5px rgba(0, 212, 255, 0.2)"
+            }}
           >
             <ChevronLeft size={18} />
           </motion.button>
           <motion.button
-            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.92 }}
+            whileHover={{ 
+              scale: 1.15, 
+              boxShadow: "0 0 25px rgba(255, 255, 255, 0.7), 0 0 15px rgba(0, 212, 255, 0.6)",
+              borderColor: "#FFFFFF",
+              backgroundColor: "rgba(255, 255, 255, 0.35)"
+            }} 
+            whileTap={{ scale: 0.92 }}
             onClick={next}
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-            style={{ border: "1.5px solid rgba(8, 51, 68, 0.35)", background: "rgba(8, 51, 68, 0.07)", color: "#083344", cursor: "pointer" }}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300"
+            style={{ 
+              border: "1.5px solid rgba(8, 51, 68, 0.5)", 
+              background: "rgba(255, 255, 255, 0.15)", 
+              color: "#083344", 
+              cursor: "pointer",
+              backdropFilter: "blur(6px)",
+              boxShadow: "0 0 15px rgba(255, 255, 255, 0.4), 0 0 5px rgba(0, 212, 255, 0.2)"
+            }}
           >
             <ChevronRight size={18} />
           </motion.button>
         </div>
       </div>
 
-      {/* ── Disclaimer ── */}
-      {/* 
-      <p className="relative z-10 text-center mt-8" style={{ ...SG, fontSize: "0.65rem", color: "rgba(237,232,220,0.15)", letterSpacing: "0.04em" }}>
-        * Lineup subject to change without prior notice.
-      </p>
-      */}
     </section>
   );
 }
