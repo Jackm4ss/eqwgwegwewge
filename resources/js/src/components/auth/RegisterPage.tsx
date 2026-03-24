@@ -132,6 +132,7 @@ export function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [canSubmitConfirmation, setCanSubmitConfirmation] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [timeLeft, setTimeLeft] = useState({ Hari: '00', Jam: '00', Menit: '00', Detik: '00' });
   const [direction, setDirection] = useState(1);
@@ -202,9 +203,23 @@ export function RegisterPage() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (currentStep !== 2) {
+      setCanSubmitConfirmation(false);
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      setCanSubmitConfirmation(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [currentStep]);
+
   const handleResetForm = () => {
     setIsSuccess(false);
     setRegisteredEmail('');
+    setCanSubmitConfirmation(false);
     setCurrentStep(1);
     setDirection(-1);
     reset(); // Clear form values
@@ -216,12 +231,14 @@ export function RegisterPage() {
     };
     const isValid = await trigger(fieldsMap[currentStep]);
     if (isValid) {
+      setCanSubmitConfirmation(false);
       setDirection(1);
       setCurrentStep(s => s + 1);
     }
   };
 
   const handlePrev = () => {
+    setCanSubmitConfirmation(false);
     setDirection(-1);
     setCurrentStep(s => s - 1);
   };
@@ -782,12 +799,13 @@ export function RegisterPage() {
                     ) : (
                       <motion.button
                         type="submit"
-                        disabled={isSubmitting}
-                        whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
-                        whileTap={{ scale: isSubmitting ? 1 : 0.97 }}
+                        disabled={isSubmitting || !canSubmitConfirmation}
+                        whileHover={{ scale: isSubmitting || !canSubmitConfirmation ? 1 : 1.02 }}
+                        whileTap={{ scale: isSubmitting || !canSubmitConfirmation ? 1 : 0.97 }}
                         className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                         style={{ background: 'linear-gradient(135deg, #0284C7, #0EA5E9)', boxShadow: '0 4px 14px rgba(2,132,199,0.35)' }}
                         aria-busy={isSubmitting}
+                        aria-disabled={isSubmitting || !canSubmitConfirmation}
                       >
                         {isSubmitting ? (
                           <>
