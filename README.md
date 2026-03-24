@@ -88,7 +88,7 @@ The repository now ships multiple environment templates:
 
 ### The 4 Values Most Developers Need to Change
 
-In most cases, juniors only need to update these variables in `.env`:
+In most cases only need to update these variables in `.env`:
 
 | Variable | What it means | Example |
 | --- | --- | --- |
