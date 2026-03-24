@@ -20,10 +20,13 @@ class RegistrationService
     {
         try {
             $country = $this->normalizeCountry((string) $data['country']);
+            $identityType = $this->normalizeIdentityType((string) $data['identity_type']);
+
+            $this->ensureIdentityTypeAllowedForCountry($identityType, $country);
 
             $payload = [
                 'full_name' => $this->normalizeName((string) $data['full_name']),
-                'identity_type' => $this->normalizeIdentityType((string) $data['identity_type']),
+                'identity_type' => $identityType,
                 'identity_number' => $this->normalizeIdentityNumber((string) $data['identity_number']),
                 'email' => $this->normalizeEmail((string) $data['email']),
                 'phone_number' => $this->normalizePhoneNumber((string) $data['phone_number']),
@@ -128,5 +131,14 @@ class RegistrationService
     private function normalizeName(string $name): string
     {
         return trim((string) preg_replace('/\s+/u', ' ', $name));
+    }
+
+    private function ensureIdentityTypeAllowedForCountry(string $identityType, string $country): void
+    {
+        if ($country !== 'MY' && $identityType !== 'passport') {
+            throw ValidationException::withMessages([
+                'identity_type' => ['Untuk pendaftar luar Malaysia, gunakan Passport sebagai identitas utama.'],
+            ]);
+        }
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Auth;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class RegisterRequest extends FormRequest
 {
@@ -25,6 +26,21 @@ class RegisterRequest extends FormRequest
             'country' => ['required', 'string', 'max:80'],
             'agreeTerms' => ['accepted'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $country = strtoupper(trim((string) $this->input('country')));
+            $identityType = strtolower(trim((string) $this->input('identity_type')));
+
+            if ($country !== '' && $country !== 'MY' && $identityType === 'national_id') {
+                $validator->errors()->add(
+                    'identity_type',
+                    'Untuk pendaftar luar Malaysia, gunakan Passport sebagai identitas utama.'
+                );
+            }
+        });
     }
 
     protected function prepareForValidation(): void

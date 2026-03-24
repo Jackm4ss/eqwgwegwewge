@@ -152,9 +152,10 @@
                   <label for="identity_type" class="form-label">Jenis Dokumen</label>
                   <select class="form-control" id="identity_type" required name="identity_type">
                     <option value="">Pilih jenis dokumen</option>
-                    <option value="national_id" @selected(old('identity_type') === 'national_id')>IC / National ID</option>
+                    <option value="national_id" @selected(old('identity_type') === 'national_id')>IC Malaysia / National ID</option>
                     <option value="passport" @selected(old('identity_type') === 'passport')>Passport</option>
                   </select>
+                  <small class="text-muted d-block mt-1">Untuk pendaftar luar Malaysia, gunakan Passport sebagai identitas utama.</small>
                 </div>
 
                 <div class="col-md-6 form-control-validation">
@@ -219,5 +220,35 @@
     <!-- Main JS -->
     <script src="{{ asset('assets-vuexy/js/main.js') }}"></script>
     <script src="{{ asset('assets-vuexy/js/pages-auth.js') }}"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const countryInput = document.getElementById('country');
+        const identityTypeSelect = document.getElementById('identity_type');
+        const nationalIdOption = identityTypeSelect?.querySelector('option[value="national_id"]');
+        let previousCountry = countryInput?.value.trim().toUpperCase() ?? '';
+
+        if (!countryInput || !identityTypeSelect || !nationalIdOption) {
+          return;
+        }
+
+        const syncIdentityType = () => {
+          const country = countryInput.value.trim().toUpperCase();
+          const passportOnly = country !== '' && country !== 'MY';
+
+          nationalIdOption.hidden = passportOnly;
+
+          if (passportOnly) {
+            identityTypeSelect.value = 'passport';
+          } else if (previousCountry !== '' && previousCountry !== 'MY') {
+            identityTypeSelect.value = '';
+          }
+
+          previousCountry = country;
+        };
+
+        countryInput.addEventListener('input', syncIdentityType);
+        syncIdentityType();
+      });
+    </script>
   </body>
 </html>

@@ -11,6 +11,16 @@ import {
 import { Link } from 'react-router';
 import { WaterAnimation } from './WaterAnimation';
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/Dialog';
+import { Button } from '../ui/Button';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -128,6 +138,295 @@ function buildPhoneNumber(phoneCountryCode: string, phoneNationalNumber: string)
   return `${normalizePhoneCountryCode(phoneCountryCode)}${normalizePhoneNationalNumber(phoneNationalNumber)}`;
 }
 
+type SweetAlertResult = {
+  isConfirmed?: boolean;
+  isDismissed?: boolean;
+};
+
+type SweetAlertInstance = {
+  fire: (options: Record<string, unknown>) => Promise<SweetAlertResult>;
+};
+
+let sweetAlertLoader: Promise<SweetAlertInstance> | null = null;
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildRegistrationReviewHtml(items: Array<{ label: string; value: string }>) {
+  return `
+    <div class="registration-review-swal__lead">
+      Pastikan seluruh data berikut sudah benar sebelum registrasi dikirim. Data ini akan digunakan untuk verifikasi peserta dan penerbitan tiket.
+    </div>
+    <div class="registration-review-swal__grid">
+      ${items.map((item) => `
+        <div class="registration-review-swal__item">
+          <span class="registration-review-swal__label">${escapeHtml(item.label)}</span>
+          <strong class="registration-review-swal__value">${escapeHtml(item.value || 'Belum diisi')}</strong>
+        </div>
+      `).join('')}
+    </div>
+    <p class="registration-review-swal__footnote">
+      Jika ada data yang belum sesuai, pilih "Periksa lagi" untuk kembali ke formulir dan lakukan perbaikan.
+    </p>
+  `;
+}
+
+function ensureSweetAlertStyles() {
+  const styleId = 'swal2-vuexy-style';
+  const customStyleId = 'swal2-registration-review-style';
+
+  if (document.getElementById(styleId)) {
+    if (document.getElementById(customStyleId)) {
+      return;
+    }
+  } else {
+    const link = document.createElement('link');
+    link.id = styleId;
+    link.rel = 'stylesheet';
+    link.href = '/assets-vuexy/vendor/libs/sweetalert2/sweetalert2.css';
+    document.head.appendChild(link);
+  }
+
+  if (document.getElementById(customStyleId)) {
+    return;
+  }
+
+  const style = document.createElement('style');
+  style.id = customStyleId;
+  style.textContent = `
+    .registration-review-swal {
+      width: min(680px, calc(100vw - 2rem)) !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      border-radius: 28px !important;
+      border: 1px solid rgba(186, 230, 253, 0.95) !important;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fcff 100%) !important;
+      box-shadow: 0 28px 80px rgba(12, 74, 110, 0.28) !important;
+    }
+
+    .registration-review-swal__title {
+      margin: 0 !important;
+      padding: 1.75rem 1.75rem 0.25rem !important;
+      color: #0f172a !important;
+      font-family: "Kanit", sans-serif !important;
+      font-size: 1.9rem !important;
+      font-weight: 700 !important;
+      line-height: 1.15 !important;
+      text-align: left !important;
+    }
+
+    .registration-review-swal__html {
+      margin: 0 !important;
+      padding: 0 1.75rem !important;
+      text-align: left !important;
+    }
+
+    .registration-review-swal__lead {
+      margin: 0 0 1rem;
+      padding: 1rem 1.1rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(186, 230, 253, 0.85);
+      background: linear-gradient(135deg, rgba(224, 242, 254, 0.95), rgba(240, 249, 255, 0.96));
+      color: #334155;
+      font-size: 0.93rem;
+      line-height: 1.7;
+    }
+
+    .registration-review-swal__grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+
+    .registration-review-swal__item {
+      padding: 0.95rem 1rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(186, 230, 253, 0.9);
+      background: #ffffff;
+      box-shadow: 0 10px 24px rgba(14, 116, 144, 0.08);
+    }
+
+    .registration-review-swal__label {
+      display: block;
+      margin-bottom: 0.4rem;
+      color: #64748b;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .registration-review-swal__value {
+      display: block;
+      color: #0f172a;
+      font-size: 0.97rem;
+      font-weight: 700;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .registration-review-swal__footnote {
+      margin: 1rem 0 0;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(226, 232, 240, 0.9);
+      color: #64748b;
+      font-size: 0.78rem;
+      line-height: 1.7;
+    }
+
+    .registration-review-swal__actions {
+      margin: 1.25rem 0 0 !important;
+      padding: 1.25rem 1.75rem 1.75rem !important;
+      border-top: 1px solid rgba(226, 232, 240, 0.9);
+      gap: 0.75rem !important;
+      justify-content: flex-end !important;
+    }
+
+    .registration-review-swal__confirm,
+    .registration-review-swal__cancel {
+      margin: 0 !important;
+      padding: 0.85rem 1.25rem !important;
+      border-radius: 0.95rem !important;
+      font-size: 0.95rem !important;
+      font-weight: 700 !important;
+      outline: none !important;
+      transition: transform 0.18s ease, filter 0.18s ease, background-color 0.18s ease !important;
+    }
+
+    .registration-review-swal__confirm {
+      border: 1px solid transparent !important;
+      background: linear-gradient(135deg, #0284C7, #0EA5E9) !important;
+      color: #ffffff !important;
+      box-shadow: 0 14px 30px rgba(2, 132, 199, 0.22) !important;
+    }
+
+    .registration-review-swal__confirm:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.03);
+    }
+
+    .registration-review-swal__cancel {
+      border: 1px solid rgba(125, 211, 252, 0.9) !important;
+      background: #ffffff !important;
+      color: #0369a1 !important;
+    }
+
+    .registration-review-swal__cancel:hover {
+      background: #f0f9ff !important;
+    }
+
+    .registration-review-swal__confirm:focus-visible,
+    .registration-review-swal__cancel:focus-visible,
+    .registration-review-swal .swal2-close:focus-visible {
+      box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.18) !important;
+    }
+
+    .registration-review-swal .swal2-close {
+      top: 1rem !important;
+      right: 1rem !important;
+      color: #64748b !important;
+      font-size: 1.6rem !important;
+      transition: background-color 0.18s ease, color 0.18s ease !important;
+    }
+
+    .registration-review-swal .swal2-close:hover {
+      background: rgba(226, 232, 240, 0.7) !important;
+      color: #0f172a !important;
+    }
+
+    @media (max-width: 640px) {
+      .registration-review-swal {
+        width: calc(100vw - 1rem) !important;
+        border-radius: 24px !important;
+      }
+
+      .registration-review-swal__title {
+        padding: 1.35rem 1.1rem 0.25rem !important;
+        font-size: 1.5rem !important;
+      }
+
+      .registration-review-swal__html {
+        padding: 0 1.1rem !important;
+      }
+
+      .registration-review-swal__grid {
+        grid-template-columns: 1fr;
+      }
+
+      .registration-review-swal__actions {
+        padding: 1rem 1.1rem 1.1rem !important;
+        flex-direction: column-reverse !important;
+      }
+
+      .registration-review-swal__confirm,
+      .registration-review-swal__cancel {
+        width: 100% !important;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+function ensureSweetAlert(): Promise<SweetAlertInstance> {
+  const globalWindow = window as Window & { Swal?: SweetAlertInstance };
+
+  if (globalWindow.Swal) {
+    ensureSweetAlertStyles();
+    return Promise.resolve(globalWindow.Swal);
+  }
+
+  if (sweetAlertLoader) {
+    return sweetAlertLoader;
+  }
+
+  const loader = new Promise<SweetAlertInstance>((resolve, reject) => {
+    ensureSweetAlertStyles();
+
+    const existingScript = document.getElementById('swal2-vuexy-script') as HTMLScriptElement | null;
+
+    if (existingScript) {
+      existingScript.addEventListener('load', () => {
+        if (globalWindow.Swal) {
+          resolve(globalWindow.Swal);
+          return;
+        }
+
+        reject(new Error('SweetAlert gagal dimuat.'));
+      }, { once: true });
+      existingScript.addEventListener('error', () => reject(new Error('SweetAlert gagal dimuat.')), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'swal2-vuexy-script';
+    script.src = '/assets-vuexy/vendor/libs/sweetalert2/sweetalert2.js';
+    script.async = true;
+    script.onload = () => {
+      if (globalWindow.Swal) {
+        resolve(globalWindow.Swal);
+        return;
+      }
+
+      reject(new Error('SweetAlert gagal dimuat.'));
+    };
+    script.onerror = () => reject(new Error('SweetAlert gagal dimuat.'));
+    document.body.appendChild(script);
+  }).finally(() => {
+    sweetAlertLoader = null;
+  });
+
+  sweetAlertLoader = loader;
+
+  return loader;
+}
+
 function LotusIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 120 120" className={className} aria-hidden="true" fill="currentColor">
@@ -200,15 +499,44 @@ const slideVariants = {
   }),
 };
 
+type LegalDialogType = 'terms' | 'privacy';
+
+const LEGAL_DIALOG_CONTENT: Record<LegalDialogType, {
+  title: string;
+  description: string;
+  paragraphs: string[];
+}> = {
+  terms: {
+    title: 'Syarat & Ketentuan',
+    description: 'Konten ini masih berupa dummy text untuk kebutuhan review UI dan akan diganti dengan naskah final.',
+    paragraphs: [
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Vestibulum id ligula porta felis euismod semper, sed posuere consectetur est at lobortis.',
+      'Praesent commodo cursus magna, vel scelerisque nisl consectetur et. Donec id elit non mi porta gravida at eget metus. Cras mattis consectetur purus sit amet fermentum, sed posuere consectetur est at lobortis.',
+      'Aenean lacinia bibendum nulla sed consectetur. Curabitur blandit tempus porttitor. Nulla vitae elit libero, a pharetra augue. Maecenas faucibus mollis interdum, sed posuere consectetur est at lobortis.',
+    ],
+  },
+  privacy: {
+    title: 'Kebijakan Privasi',
+    description: 'Konten ini masih berupa dummy text untuk kebutuhan review UI dan akan diganti dengan naskah final.',
+    paragraphs: [
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed posuere consectetur est at lobortis. Maecenas sed diam eget risus varius blandit sit amet non magna, id elit non mi porta gravida at eget metus.',
+      'Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue. Integer posuere erat a ante venenatis dapibus posuere velit aliquet, sed posuere consectetur est at lobortis.',
+      'Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Cras justo odio, dapibus ac facilisis in, egestas eget quam. Etiam porta sem malesuada magna mollis euismod, sed posuere consectetur est at lobortis.',
+    ],
+  },
+};
+
 export function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [canSubmitConfirmation, setCanSubmitConfirmation] = useState(false);
+  const [legalDialog, setLegalDialog] = useState<LegalDialogType | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [timeLeft, setTimeLeft] = useState({ Hari: '00', Jam: '00', Menit: '00', Detik: '00' });
   const [direction, setDirection] = useState(1);
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
+  const previousCountryRef = useRef('');
 
   const {
     control,
@@ -295,6 +623,7 @@ export function RegisterPage() {
   const countryVal = watch('country');
   const phoneCountryCodeVal = watch('phone_country_code');
   const phoneNationalNumberVal = watch('phone_national_number');
+  const identityTypeVal = watch('identity_type');
 
   useEffect(() => {
     if (dirtyFields.phone_country_code) {
@@ -311,6 +640,49 @@ export function RegisterPage() {
       });
     }
   }, [countryVal, dirtyFields.phone_country_code, setValue]);
+
+  useEffect(() => {
+    const previousCountry = previousCountryRef.current;
+    previousCountryRef.current = countryVal;
+
+    if (countryVal === '') {
+      return;
+    }
+
+    if (countryVal !== 'MY') {
+      if (identityTypeVal !== 'passport') {
+        setValue('identity_type', 'passport', {
+          shouldDirty: true,
+          shouldTouch: true,
+          shouldValidate: true,
+        });
+      }
+
+      if (identityTypeVal === 'national_id') {
+        setValue('identity_number', '', {
+          shouldDirty: true,
+          shouldTouch: false,
+          shouldValidate: false,
+        });
+      }
+
+      return;
+    }
+
+    if (previousCountry !== '' && previousCountry !== 'MY') {
+      setValue('identity_type', '', {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+
+      setValue('identity_number', '', {
+        shouldDirty: true,
+        shouldTouch: false,
+        shouldValidate: false,
+      });
+    }
+  }, [countryVal, identityTypeVal, setValue]);
 
   const handleResetForm = () => {
     setIsSuccess(false);
@@ -340,15 +712,59 @@ export function RegisterPage() {
   };
 
   const onSubmit = async (data: FormData) => {
-    setIsSubmitting(true);
-    
     try {
+      const phoneNumber = buildPhoneNumber(data.phone_country_code, data.phone_national_number);
+      const selectedCountry = SORTED_COUNTRIES.find(country => country.code === data.country)?.name ?? data.country;
+      const selectedIdentityLabel = data.identity_type === 'national_id'
+        ? data.country === 'MY'
+          ? 'IC Malaysia (MyKad)'
+          : 'National ID / Resident ID'
+        : 'Passport';
+      const selectedIdentityNumberLabel = data.country !== 'MY'
+        ? 'Nomor Passport'
+        : data.identity_type === 'national_id'
+          ? 'Nomor IC Malaysia (MyKad)'
+          : 'Nomor Passport';
+      const Swal = await ensureSweetAlert();
+      const confirmation = await Swal.fire({
+        title: 'Periksa kembali data Anda',
+        buttonsStyling: false,
+        showCloseButton: true,
+        backdrop: 'rgba(12, 74, 110, 0.55)',
+        html: buildRegistrationReviewHtml([
+          { label: 'Nama Lengkap', value: data.full_name },
+          { label: 'Email', value: data.email },
+          { label: 'Nomor HP', value: phoneNumber },
+          { label: 'Negara', value: selectedCountry },
+          { label: 'Jenis Dokumen', value: selectedIdentityLabel },
+          { label: selectedIdentityNumberLabel, value: data.identity_number },
+        ]),
+        customClass: {
+          popup: 'registration-review-swal',
+          title: 'registration-review-swal__title',
+          htmlContainer: 'registration-review-swal__html',
+          actions: 'registration-review-swal__actions',
+          confirmButton: 'registration-review-swal__confirm',
+          cancelButton: 'registration-review-swal__cancel',
+        },
+        showCancelButton: true,
+        focusCancel: true,
+        confirmButtonText: 'Ya, data sudah benar',
+        cancelButtonText: 'Periksa lagi',
+      });
+
+      if (!confirmation.isConfirmed) {
+        return;
+      }
+
+      setIsSubmitting(true);
+
       const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
       const payload = {
         ...data,
         phone_country_code: normalizePhoneCountryCode(data.phone_country_code),
         phone_national_number: normalizePhoneNationalNumber(data.phone_national_number),
-        phone_number: buildPhoneNumber(data.phone_country_code, data.phone_national_number),
+        phone_number: phoneNumber,
       };
       
       const response = await fetch('/api/register', {
@@ -413,37 +829,48 @@ export function RegisterPage() {
 
   const selectedCountryOption = SORTED_COUNTRIES.find(c => c.code === countryVal);
   const countryLabel = selectedCountryOption?.name ?? '';
-  const identityTypeVal = watch('identity_type');
+  const isMalaysianRegistrant = countryVal === 'MY';
+  const isForeignRegistrant = countryVal !== '' && countryVal !== 'MY';
+  const availableIdentityTypes = isMalaysianRegistrant
+    ? IDENTITY_TYPES
+    : IDENTITY_TYPES.filter(option => option.value === 'passport');
   const identityTypeLabel = identityTypeVal === 'national_id'
-    ? countryVal === 'MY'
+    ? isMalaysianRegistrant
       ? 'IC Malaysia (MyKad)'
       : 'National ID / Resident ID'
     : identityTypeVal === 'passport'
       ? 'Passport'
       : 'Jenis Dokumen';
-  const identityNumberLabel = identityTypeVal === 'national_id'
-    ? countryVal === 'MY'
+  const identityNumberLabel = isForeignRegistrant
+    ? 'Nomor Passport'
+    : identityTypeVal === 'national_id'
+    ? isMalaysianRegistrant
       ? 'Nomor IC Malaysia (MyKad)'
       : 'Nomor National ID / Resident ID'
     : 'Nomor Passport';
-  const identityNumberPlaceholder = identityTypeVal === 'national_id'
-    ? countryVal === 'MY'
+  const identityNumberPlaceholder = isForeignRegistrant
+    ? 'Contoh: A1234567'
+    : identityTypeVal === 'national_id'
+    ? isMalaysianRegistrant
       ? 'Contoh: 901231101234'
       : 'Masukkan nomor identitas resmi Anda'
     : 'Contoh: A1234567';
-  const identityHelperText = identityTypeVal === 'national_id'
-    ? countryVal === 'MY'
+  const identityHelperText = isForeignRegistrant
+    ? 'Untuk pendaftar luar Malaysia, gunakan Passport Only sebagai identitas utama.'
+    : identityTypeVal === 'national_id'
+    ? isMalaysianRegistrant
       ? 'Untuk warga negara atau penduduk tetap Malaysia, gunakan nomor IC / MyKad.'
       : 'Gunakan nomor identitas nasional atau resident ID yang resmi dan masih berlaku.'
     : identityTypeVal === 'passport'
       ? 'Gunakan nomor passport yang masih berlaku dan sesuai dokumen perjalanan Anda.'
-      : countryVal === 'MY'
-        ? 'Jika Anda penduduk Malaysia, pilih IC Malaysia (MyKad). Jika tidak, pilih Passport.'
+      : isMalaysianRegistrant
+        ? 'Untuk Malaysia, Anda bisa pilih IC Malaysia (MyKad) atau Passport.'
         : 'Pilih jenis dokumen yang akan digunakan untuk registrasi.';
   const phoneCountryOption = PHONE_COUNTRY_CODES.find(option => option.dialCode === phoneCountryCodeVal);
   const phonePreview = phoneCountryCodeVal && phoneNationalNumberVal
     ? `${normalizePhoneCountryCode(phoneCountryCodeVal)} ${normalizePhoneNationalNumber(phoneNationalNumberVal)}`
     : '';
+  const activeLegalDialog = legalDialog ? LEGAL_DIALOG_CONTENT[legalDialog] : null;
 
   return (
     <div
@@ -929,7 +1356,7 @@ export function RegisterPage() {
                               {...register('identity_type', { required: 'Jenis dokumen wajib dipilih' })}
                             >
                               <option value="">Pilih jenis dokumen</option>
-                              {IDENTITY_TYPES.map(option => (
+                              {availableIdentityTypes.map(option => (
                                 <option key={option.value} value={option.value}>
                                   {option.label}
                                 </option>
@@ -1013,9 +1440,27 @@ export function RegisterPage() {
                             style={{ width: 18, height: 18 }}
                             {...register('agreeTerms', { required: 'Anda harus menyetujui syarat dan ketentuan' })}
                           />
-                          <label htmlFor="agreeTerms" className="text-slate-600 text-xs leading-relaxed cursor-pointer">
-                            Saya menyetujui <a href="#" className="text-sky-600 underline">Syarat &amp; Ketentuan</a> serta <a href="#" className="text-sky-600 underline">Kebijakan Privasi</a>.
-                          </label>
+                          <div className="text-slate-600 text-xs leading-relaxed">
+                            <label htmlFor="agreeTerms" className="cursor-pointer">
+                              Saya menyetujui
+                            </label>{' '}
+                            <button
+                              type="button"
+                              onClick={() => setLegalDialog('terms')}
+                              className="font-semibold text-sky-600 underline underline-offset-2 transition-colors hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-white rounded-sm"
+                            >
+                              Syarat &amp; Ketentuan
+                            </button>{' '}
+                            serta{' '}
+                            <button
+                              type="button"
+                              onClick={() => setLegalDialog('privacy')}
+                              className="font-semibold text-sky-600 underline underline-offset-2 transition-colors hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-white rounded-sm"
+                            >
+                              Kebijakan Privasi
+                            </button>
+                            .
+                          </div>
                         </div>
                         <AnimatePresence>
                           <FieldError id="err-terms" message={errors.agreeTerms?.message} />
@@ -1099,6 +1544,39 @@ export function RegisterPage() {
 
         </motion.main>
       </div>
+
+      <Dialog open={legalDialog !== null} onOpenChange={(open) => !open && setLegalDialog(null)}>
+        {activeLegalDialog ? (
+          <DialogContent showCloseButton={false} className="max-w-2xl gap-0 overflow-hidden rounded-[1.75rem] border-sky-100 p-0 shadow-2xl">
+            <div className="bg-gradient-to-r from-sky-700 to-cyan-500 px-6 py-5 text-white">
+              <DialogHeader className="text-left">
+                <DialogTitle className="text-xl font-bold tracking-tight" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                  {activeLegalDialog.title}
+                </DialogTitle>
+                <DialogDescription className="text-sm text-sky-50/90">
+                  {activeLegalDialog.description}
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
+              <div className="flex flex-col gap-4 text-sm leading-7 text-slate-600">
+                {activeLegalDialog.paragraphs.map((paragraph, index) => (
+                  <p key={`${legalDialog}-${index}`}>{paragraph}</p>
+                ))}
+              </div>
+            </div>
+
+              <DialogFooter className="border-t border-slate-100 px-6 py-4">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Tutup
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        ) : null}
+      </Dialog>
 
       {/* SUCCESS OVERLAY */}
       <AnimatePresence>

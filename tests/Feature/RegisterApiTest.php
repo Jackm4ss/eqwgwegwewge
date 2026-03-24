@@ -167,6 +167,22 @@ class RegisterApiTest extends TestCase
             ->assertJsonValidationErrors(['identity_type']);
     }
 
+    public function test_register_rejects_national_id_for_non_malaysian_registrants(): void
+    {
+        Mail::fake();
+
+        $response = $this->postJson('/api/register', array_merge($this->validPayload(), [
+            'country' => 'ID',
+            'identity_type' => 'national_id',
+            'identity_number' => '3174010101010101',
+        ]));
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['identity_type']);
+
+        $this->assertCount(0, $this->repository->users);
+    }
+
     public function test_register_success_response_matches_frontend_contract(): void
     {
         Mail::fake();
