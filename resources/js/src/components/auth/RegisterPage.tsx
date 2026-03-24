@@ -871,6 +871,14 @@ export function RegisterPage() {
     ? `${normalizePhoneCountryCode(phoneCountryCodeVal)} ${normalizePhoneNationalNumber(phoneNationalNumberVal)}`
     : '';
   const activeLegalDialog = legalDialog ? LEGAL_DIALOG_CONTENT[legalDialog] : null;
+  const phoneNationalNumberField = register('phone_national_number', {
+    required: 'Nomor HP wajib diisi',
+    setValueAs: (value: string) => normalizePhoneNationalNumber(value),
+    pattern: { value: /^\d{4,20}$/, message: 'Nomor HP tidak valid' },
+    onChange: (event) => {
+      event.target.value = normalizePhoneNationalNumber(event.target.value);
+    },
+  });
 
   return (
     <div
@@ -1274,12 +1282,10 @@ export function RegisterPage() {
                               autoComplete="tel-national"
                               placeholder="822123450"
                               inputMode="numeric"
+                              pattern="[0-9]*"
+                              maxLength={20}
                               className={phoneNumberInputClass}
-                              {...register('phone_national_number', {
-                                required: 'Nomor HP wajib diisi',
-                                setValueAs: (value: string) => normalizePhoneNationalNumber(value),
-                                pattern: { value: /^\d{4,20}$/, message: 'Nomor HP tidak valid' },
-                              })}
+                              {...phoneNationalNumberField}
                             />
                           </div>
                           <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
