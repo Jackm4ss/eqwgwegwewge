@@ -16,9 +16,10 @@ class RegisterRequest extends FormRequest
         return [
             'full_name' => ['required', 'string', 'max:120'],
             'identity_number' => ['required', 'string', 'max:80'],
-            'email' => ['required', 'email:rfc,dns', 'max:120'],
+            'email' => ['required', 'email:rfc', 'max:120'],
             'phone_number' => ['required', 'string', 'max:30'],
             'country' => ['required', 'string', 'max:80'],
+            'agreeTerms' => ['accepted'],
         ];
     }
 
@@ -26,8 +27,9 @@ class RegisterRequest extends FormRequest
     {
         $this->merge([
             'email' => strtolower(trim((string) $this->input('email'))),
-            'full_name' => trim((string) $this->input('full_name')),
-            'identity_number' => trim((string) $this->input('identity_number')),
+            'full_name' => trim((string) preg_replace('/\s+/u', ' ', (string) $this->input('full_name'))),
+            'identity_number' => strtoupper(trim((string) $this->input('identity_number'))),
+            'phone_number' => trim((string) $this->input('phone_number')),
         ]);
     }
 }

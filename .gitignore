@@ -6,6 +6,9 @@
 .env
 .env.*
 !.env.example
+!.env.testing.example
+!.env.production.example
+!.env.ci.example
 /public/build
 /public/hot
 /bootstrap/cache/*

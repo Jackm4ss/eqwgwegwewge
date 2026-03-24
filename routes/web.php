@@ -2,6 +2,7 @@
 
 use App\Helpers\EmailMasker;
 use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\Ticket\TicketPageController;
 use App\Http\Controllers\Api\Auth\ForgotPasswordController;
 use App\Http\Controllers\Api\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\RegisterPageController;
@@ -48,6 +49,10 @@ Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 've
 
 Route::get('/email/verified', [EmailVerificationController::class, 'success'])
     ->name('email.verified');
+
+Route::get('/ticket/{ticketId}', TicketPageController::class)
+    ->middleware('signed')
+    ->name('ticket.show');
 
 Route::post('/login', function (Request $request) {
     $credentials = $request->validate([

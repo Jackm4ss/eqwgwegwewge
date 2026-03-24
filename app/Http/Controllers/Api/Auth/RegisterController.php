@@ -7,24 +7,21 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Services\Auth\RegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class RegisterController extends Controller
 {
     public function __invoke(RegisterRequest $request, RegistrationService $service): JsonResponse
     {
         try {
-            $user = $service->register($request->validated(), (string) $request->ip());
+            $service->register($request->validated(), (string) $request->ip());
 
             return response()->json([
                 'message' => 'Registration successful. Verification email has been sent.',
-                'redirect' => route('register.success', [
-                    'email' => $user['email'],
-                ]),
-            ]);
-        } catch (\InvalidArgumentException $exception) {
-            return response()->json([
-                'message' => $exception->getMessage(),
-            ], 422);
+                'status' => 'pending_verification',
+            ], 201);
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (\Throwable $throwable) {
             Log::error('Registration failed', ['error' => $throwable->getMessage()]);
 

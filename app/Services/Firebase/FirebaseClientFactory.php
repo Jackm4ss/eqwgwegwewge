@@ -12,18 +12,22 @@ class FirebaseClientFactory
 
     public function make(): ?FirestoreClient
     {
-        if (empty($this->config['project_id']) || empty($this->config['credentials'])) {
+        $credentialsPath = FirebasePathResolver::credentialsPath(
+            (string) ($this->config['credentials'] ?? '')
+        );
+
+        if (empty($this->config['project_id']) || $credentialsPath === null) {
             return null;
         }
 
-        if (! file_exists($this->config['credentials'])) {
+        if (! file_exists($credentialsPath)) {
             return null;
         }
 
         return new FirestoreClient([
             'projectId' => $this->config['project_id'],
-            'keyFilePath' => $this->config['credentials'],
-            'database' => $this->config['database'] ?? '(default)',
+            'keyFilePath' => $credentialsPath,
+            'database' => $this->config['database'] ?? FirestoreClient::DEFAULT_DATABASE,
         ]);
     }
 }

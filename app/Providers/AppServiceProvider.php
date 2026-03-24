@@ -3,12 +3,15 @@
 namespace App\Providers;
 
 use App\Contracts\UserRepositoryInterface;
+use App\Repositories\FirestoreRestUserRepository;
 use App\Repositories\FirestoreUserRepository;
 use App\Services\Firebase\FirebaseClientFactory;
+use App\Services\Firebase\FirestoreRestApi;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use RuntimeException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,9 +22,20 @@ class AppServiceProvider extends ServiceProvider
             fn () => new FirebaseClientFactory(config('firebase'))
         );
 
+        $this->app->singleton(
+            FirestoreRestApi::class,
+            fn () => new FirestoreRestApi(config('firebase'))
+        );
+
         $this->app->bind(
             UserRepositoryInterface::class,
-            FirestoreUserRepository::class
+            function ($app) {
+                return match ((string) config('firebase.transport', 'grpc')) {
+                    'grpc' => $app->make(FirestoreUserRepository::class),
+                    'rest' => $app->make(FirestoreRestUserRepository::class),
+                    default => throw new RuntimeException('Unsupported Firestore transport configuration.'),
+                };
+            }
         );
     }
 

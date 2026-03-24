@@ -132,6 +132,7 @@ export function RegisterPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
   const [timeLeft, setTimeLeft] = useState({ Hari: '00', Jam: '00', Menit: '00', Detik: '00' });
   const [direction, setDirection] = useState(1);
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
@@ -203,6 +204,7 @@ export function RegisterPage() {
 
   const handleResetForm = () => {
     setIsSuccess(false);
+    setRegisteredEmail('');
     setCurrentStep(1);
     setDirection(-1);
     reset(); // Clear form values
@@ -253,15 +255,10 @@ export function RegisterPage() {
         return;
       }
 
+      setRegisteredEmail(data.email);
       setIsSuccess(true);
-      toast.success(result.message || 'Pendaftaran berhasil! 🎉');
+      toast.success(result.message || 'Link verifikasi berhasil dikirim ke email Anda.');
     } catch (error: any) {
-      // Fallback for "no backend" case or fetch errors
-      if (error.message.includes('Unexpected token') || error.message.includes('Failed to fetch')) {
-         console.warn('Backend issue or no response, showing success for UI testing only.');
-         setIsSuccess(true);
-         return;
-      }
       toast.error(error.message || 'Terjadi kesalahan saat mendaftar. Silakan coba lagi.');
     } finally {
       setIsSubmitting(false);
@@ -865,18 +862,18 @@ export function RegisterPage() {
                 <div>
                   <CheckCircle2 className="w-10 h-10 md:w-14 md:h-14 text-emerald-400 mx-auto mb-4" />
                   <h2 id="success-title" className="text-white text-2xl md:text-4xl font-black leading-tight tracking-tight mb-3" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                    Yeay! 🎉 <br className="hidden sm:block" /> Tiketmu Udah Aman!
+                    Registrasi Berhasil! 🎉 <br className="hidden sm:block" /> Cek Email Verifikasi
                   </h2>
                   <p className="text-sky-200 text-base md:text-lg mb-1">
-                    Selamat bergabung jadi bagian dari
+                    Kami sudah mengirim link verifikasi ke
                   </p>
                   <p className="text-sky-100 font-bold text-xl md:text-2xl" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                    Songkran Music Festival 2026
+                    {registeredEmail || 'email Anda'}
                   </p>
                 </div>
 
                 <p className="text-sky-300 text-xs md:text-sm leading-relaxed max-w-sm mx-auto opacity-90">
-                  Cek kotak masuk emailmu untuk informasi tiket lengkap. Siapin baju renang dan pistol airmu, sampai ketemu di Malaysia! 💦
+                  Buka email tersebut, klik link verifikasi, lalu akun Anda akan aktif dan QR code tiket akan langsung tersedia.
                 </p>
 
                 <div className="flex flex-wrap gap-2 justify-center">
@@ -898,7 +895,7 @@ export function RegisterPage() {
                   className="w-full py-4 rounded-2xl bg-gradient-to-r from-sky-400 to-cyan-400 text-sky-950 font-black text-sm md:text-base uppercase tracking-widest hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] transition-all shadow-lg"
                   style={{ fontFamily: '"Kanit", sans-serif' }}
                 >
-                  Daftar Peserta Lain
+                  Daftarkan Peserta Lain
                 </motion.button>
               </div>
             </motion.div>

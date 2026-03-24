@@ -6,20 +6,22 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class VerifyRegistrationMail extends Mailable
+class TicketReadyMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(
         public readonly array $user,
-        public readonly string $verificationUrl,
+        public readonly array $ticket,
+        public readonly string $ticketUrl,
+        public readonly string $qrPngBinary,
     ) {
     }
 
     public function build(): self
     {
         return $this
-            ->subject('Verify Your Songkran Festival Registration')
-            ->view('emails.verify-registration');
+            ->subject('Your Songkran Festival Ticket Is Ready')
+            ->view('emails.ticket-ready');
     }
 }

@@ -2,33 +2,36 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Helpers\EmailMasker;
 use App\Http\Controllers\Controller;
 use App\Services\Auth\VerificationService;
+use App\Services\Tickets\TicketQrCodeService;
 use Illuminate\Http\Request;
 
 class EmailVerificationController extends Controller
 {
-    public function verify(Request $request, string $id, string $hash, VerificationService $service)
-    {
+    public function verify(
+        Request $request,
+        string $id,
+        string $hash,
+        VerificationService $service,
+        TicketQrCodeService $ticketQrCodeService,
+    ) {
         if (! $request->hasValidSignature()) {
             abort(403, 'Invalid or expired verification link.');
         }
 
-        $user = $service->verify($id, $hash);
-        abort_if(! $user, 404);
+        $result = $service->verify($id, $hash);
+        abort_if(! $result, 404);
 
-        session(['verified_email' => $user['email']]);
-
-        return redirect()->route('email.verified');
+        return redirect()->to(
+            $ticketQrCodeService->signedTicketUrl((string) $result['ticket']['ticket_id'])
+        );
     }
 
     public function success()
     {
-        $email = session('verified_email');
-
         return view('auth.email-verified', [
-            'maskedEmail' => $email ? EmailMasker::mask($email) : null,
+            'maskedEmail' => null,
         ]);
     }
 }

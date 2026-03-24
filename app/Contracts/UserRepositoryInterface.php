@@ -13,4 +13,10 @@ interface UserRepositoryInterface
     public function findByIdentityNumber(string $identityNumber): ?array;
 
     public function update(string $id, array $data): array;
+
+    public function activateAndIssueTicket(string $id, array $ticketData): array;
+
+    public function findTicketById(string $ticketId): ?array;
+
+    public function findTicketByUserId(string $userId): ?array;
 }

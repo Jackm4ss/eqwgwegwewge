@@ -3,11 +3,16 @@
 namespace App\Services\Auth;
 
 use App\Contracts\UserRepositoryInterface;
+use App\Mail\TicketReadyMail;
+use App\Services\Tickets\TicketQrCodeService;
+use Illuminate\Support\Facades\Mail;
 
 class VerificationService
 {
-    public function __construct(private readonly UserRepositoryInterface $users)
-    {
+    public function __construct(
+        private readonly UserRepositoryInterface $users,
+        private readonly TicketQrCodeService $ticketQrCodeService,
+    ) {
     }
 
     public function verify(string $id, string $hash): ?array
@@ -22,14 +27,21 @@ class VerificationService
             return null;
         }
 
-        if (($user['verification_status'] ?? null) !== 'verified') {
-            $user = $this->users->update($id, [
-                'verification_status' => 'verified',
-                'email_verified_at' => now()->toISOString(),
-                'account_status' => 'active',
-            ]);
-        }
+        $result = $this->users->activateAndIssueTicket(
+            $id,
+            $this->ticketQrCodeService->makeTicketAttributes($id),
+        );
 
-        return $user;
+        $ticket = $result['ticket'];
+        $ticketUrl = $this->ticketQrCodeService->signedTicketUrl((string) $ticket['ticket_id']);
+        $qrPngBinary = $this->ticketQrCodeService->renderPngBinary(
+            $this->ticketQrCodeService->payloadForTicket($ticket),
+        );
+
+        Mail::to($result['user']['email'])->send(
+            new TicketReadyMail($result['user'], $ticket, $ticketUrl, $qrPngBinary)
+        );
+
+        return $result;
     }
 }
