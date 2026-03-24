@@ -19,7 +19,7 @@ class VerifyRegistrationMail extends Mailable
     public function build(): self
     {
         return $this
-            ->subject('Verify Your Songkran Festival Registration')
+            ->subject('Verify Your Registration | Songkran Festival 2026')
             ->view('emails.verify-registration');
     }
 }

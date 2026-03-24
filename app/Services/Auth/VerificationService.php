@@ -49,6 +49,7 @@ class VerificationService
         $ticketUrl = $this->ticketQrCodeService->signedTicketUrl((string) $ticket['ticket_id']);
         $qrPngBinary = $this->ticketQrCodeService->renderPngBinary(
             $this->ticketQrCodeService->payloadForTicket($ticket),
+            240,
         );
 
         Mail::to($result['user']['email'])->send(

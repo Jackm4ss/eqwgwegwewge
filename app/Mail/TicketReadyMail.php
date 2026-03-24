@@ -21,7 +21,7 @@ class TicketReadyMail extends Mailable
     public function build(): self
     {
         return $this
-            ->subject('Your Songkran Festival Ticket Is Ready')
+            ->subject('Your Ticket Is Ready | Songkran Festival 2026')
             ->view('emails.ticket-ready');
     }
 }
