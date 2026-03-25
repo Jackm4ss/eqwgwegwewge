@@ -1382,7 +1382,7 @@ export function RegisterPage() {
                         />
                       </div>
                       <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-                        Enter the number without the country code.
+                        Choose country code then enter the number.
                       </p>
                       <AnimatePresence>
                         <FieldError id="err-phone_country_code" message={errors.phone_country_code?.message} />
