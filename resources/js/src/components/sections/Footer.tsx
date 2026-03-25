@@ -80,7 +80,7 @@ export function Footer() {
               </motion.div>
             </div>
             <div className="flex flex-wrap gap-3">
-              {[
+              {[ 
                 { label: "April 9–19", icon: Calendar, color: "#2FA7D8" },
                 { label: "One Utama", icon: MapPin, color: "#18C7CC" },
                 { label: "12PM–12AM", icon: Clock, color: "rgba(237,232,220,0.5)" },
@@ -139,7 +139,7 @@ export function Footer() {
               Event Details
             </p>
             <div className="flex flex-col gap-4">
-              {[
+              {[ 
                 { icon: MapPin, text: "Forecourt, One Utama (Old Wing), Petaling Jaya, Malaysia", color: "#2FA7D8" },
                 { icon: Calendar, text: "April 9–19, 2026", color: "#18C7CC" },
                 { icon: Clock, text: "12 PM – 12 AM Daily", color: "rgba(237,232,220,0.4)" },
@@ -158,6 +158,72 @@ export function Footer() {
         </div>
       </div>
 
+      {/* Sponsors Section */}
+<div className="relative py-8 px-6 md:px-12 lg:px-16">
+  <div className="max-w-7xl mx-auto text-center">
+    <p
+      style={{
+        ...SYNE,
+        fontWeight: 700,
+        fontSize: "0.7rem",
+        letterSpacing: "0.2em",
+        color: "rgba(237,232,220,0.3)",
+        textTransform: "uppercase",
+        marginBottom: 16,
+      }}
+    >
+      Our Sponsors
+    </p>
+    <div className="flex flex-wrap justify-center gap-6">
+      <img
+        src="/images/amazing thailand.png"
+        alt="Amazing Thailand Sponsor"
+        className="w-32 h-32 object-contain"
+      />
+      <img
+        src="/images/ditp.jpeg"
+        alt="DITP Sponsor"
+        className="w-32 h-32 object-contain"
+      />
+      <img
+        src="/images/Snake-Brand-Logo.png"
+        alt="Snake Brand Sponsor"
+        className="w-32 h-32 object-contain"
+      />
+      <img
+        src="/images/noodou.png"
+        alt="Noodou Sponsor"
+        className="w-32 h-32 object-contain"
+      />
+      <img
+        src="/images/singha-seeklogo.png"
+        alt="Singha Sponsor"
+        className="w-32 h-32 object-contain"
+      />
+      <img
+        src="/images/123.png"
+        alt="EQ Sponsor"
+        className="w-32 h-32 object-contain"
+      />
+      <img
+        src="/images/eq.png"
+        alt="EQ Solution Sponsor"
+        className="w-32 h-32 object-contain"
+      />
+      <img
+        src="/images/Royal_Thai_Embassy_Seal.svg.png"
+        alt="Royal Thai Embassy Sponsor"
+        className="w-32 h-32 object-contain"
+      />
+      <img
+        src="/images/wob.png"
+        alt="WOB Sponsor"
+        className="w-32 h-32 object-contain"
+      />
+    </div>
+  </div>
+</div>
+
       {/* Bottom bar */}
       <div className="relative py-6 px-6 md:px-12 lg:px-16">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
@@ -169,11 +235,6 @@ export function Footer() {
             <div style={{ width: 1, height: 16, background: "rgba(237,232,220,0.1)" }} />
             <span className="fi fi-my text-xl rounded-[2px] shadow-sm" aria-hidden="true" />
           </div>
-          {/* 
-          <p style={{ ...SG, fontSize: "0.65rem", color: "rgba(237,232,220,0.18)" }}>
-            * Activities tentative & subject to change
-          </p>
-          */}
         </div>
       </div>
     </footer>

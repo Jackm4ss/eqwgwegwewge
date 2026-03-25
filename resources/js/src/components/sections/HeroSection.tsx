@@ -69,30 +69,68 @@ export function HeroSection() {
   };
 
   return (
-    <section ref={ref} className="relative h-screen overflow-hidden" style={{ background: "#050508" }} onMouseMove={handleMouse}>
-      {/* BG Video + parallax */}
-      <motion.div className="absolute inset-0" style={{ y: bgY }}>
-        <video
-          src={BG_VIDEO}
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover"
-          style={{ opacity: 0.35 }}
-        />
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 60% 40%, rgba(24,199,204,0.06) 0%, transparent 65%), radial-gradient(ellipse at 20% 70%, rgba(244,160,51,0.05) 0%, transparent 60%)" }} />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(5,5,8,0.2) 0%, transparent 40%, rgba(5,5,8,0.7) 100%)" }} />
-      </motion.div>
+<section
+  ref={ref}
+  className="relative h-screen overflow-hidden"
+  style={{ background: "#0a0f14" }}
+  onMouseMove={handleMouse}
+>
+  {/* BG IMAGE */}
+  <motion.div className="absolute inset-0" style={{ y: bgY }}>
+    <img
+      src="/images/BACKGROUND.jpg"
+      className="w-full h-full object-cover"
+      style={{
+        opacity: 1,
+        filter: "brightness(1.05) contrast(1.05)"
+      }}
+    />
 
-      {/* Underwater Background Effect */}
-      <UnderwaterBackground className="opacity-45" intensity={1.1} speed={0.8} />
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background:
+          "linear-gradient(180deg, rgba(7,8,16,0.42) 0%, rgba(7,8,16,0.18) 38%, rgba(7,8,16,0.28) 68%, rgba(7,8,16,0.46) 100%)"
+      }}
+    />
 
-      {/* Parallax layer 2 */}
-      <motion.div className="absolute inset-0 pointer-events-none" style={{ x: px2, y: py2 }}>
-        <div className="absolute top-[22%] right-[12%] w-48 h-48 rounded-full opacity-5" style={{ background: "radial-gradient(circle, #18C7CC 0%, transparent 70%)" }} />
-        <div className="absolute bottom-[30%] left-[8%] w-64 h-64 rounded-full opacity-4" style={{ background: "radial-gradient(circle, #2FA7D8 0%, transparent 70%)" }} />
-      </motion.div>
+    {/* OPTIONAL: glow tipis biar ga flat */}
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background:
+          "radial-gradient(ellipse at 60% 40%, rgba(24,199,204,0.04) 0%, transparent 85%)"
+      }}
+    />
+  </motion.div>
+
+  {/* ❌ MATIIN UNDERWATER (INI PENYEBAB UTAMA GELAP/KABUT) */}
+  {/* <UnderwaterBackground /> */}
+
+  {/* PARALLAX GLOW SUPER HALUS */}
+  <motion.div
+    className="absolute inset-0 pointer-events-none"
+    style={{ x: px2, y: py2 }}
+  >
+    <div
+      className="absolute top-[25%] right-[15%] w-20 h-20 rounded-full"
+      style={{
+        background:
+          "radial-gradient(circle, rgba(24,199,204,0.08) 0%, transparent 80%)"
+      }}
+    />
+
+    <div
+      className="absolute bottom-[25%] left-[10%] w-24 h-24 rounded-full"
+      style={{
+        background:
+          "radial-gradient(circle, rgba(47,167,216,0.06) 0%, transparent 80%)"
+      }}
+    />
+  </motion.div>
+
 
       {/* Content */}
       <motion.div
@@ -101,15 +139,16 @@ export function HeroSection() {
       >
         {/* Top badge (pill shape, in flow to prevent overlap) */}
         <motion.div
-          className="px-4 md:px-8 lg:px-14 mb-4 md:mb-6 flex items-center"
+          className="absolute top-24 md:top-28 lg:top-32 left-0 right-0 px-4 md:px-8 lg:px-14 flex items-center z-10"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.8, type: "spring", stiffness: 100 }}
         >
           <div className="inline-flex items-center gap-2 md:gap-3 px-3 py-1.5 md:px-5 md:py-2.5 rounded-full border border-[#2FA7D8]/30 bg-[#2FA7D8]/10 backdrop-blur-md shadow-[0_4px_20px_rgba(47,167,216,0.15)] relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-b from-[#070810]/45 via-[#070810]/18 to-[#070810]/35" />
             {/* Subtle glass reflection */}
             <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
-            <div className="flex items-center gap-2">
+            <div className="relative z-10 flex items-center gap-2">
               <img src="https://flagcdn.com/th.svg" alt="Thailand" className="w-3 md:w-4 h-auto rounded-[2px]" />
               <span className="text-[0.55rem] md:text-[0.7rem]" style={{ ...SG, letterSpacing: "0.15em", color: "#EDE8DC", textTransform: "uppercase", fontWeight: 600 }}>
                 Thailand × Malaysia
@@ -119,80 +158,60 @@ export function HeroSection() {
           </div>
         </motion.div>
 
-        {/* SONG */}
-        <div className="overflow-hidden px-4 md:px-8 lg:px-14 mb-3 md:mb-2 lg:mb-0">
-          <motion.div
-            initial={{ y: "105%" }}
-            animate={{ y: 0 }}
-            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-          >
-            <motion.div
-              animate={{ x: [-20, 20, -20] }}
-              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <h1
-                style={{
-                  ...SYNE,
-                  fontWeight: 800,
-                  fontSize: "clamp(22px, 10vw, 190px)",
-                  lineHeight: 0.88,
-                  letterSpacing: "-0.04em",
-                  color: "#EDE8DC",
-                  userSelect: "none",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                SONGKRAN
-              </h1>
-            </motion.div>
-          </motion.div>
-        </div>
+        {/* SONGKRAN + FESTIVAL IMAGE */}
+        <div className="w-full flex flex-col items-center justify-center px-4 md:px-8 lg:px-14 gap-2">
 
-        {/* KRAN row with festival label */}
-        <div className="overflow-hidden px-4 md:px-8 lg:px-14 relative">
-          <motion.div
-            initial={{ y: "105%" }}
-            animate={{ y: 0 }}
-            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1], delay: 0.18 }}
-          >
-            <motion.div
-              animate={{ x: [20, -20, 20] }}
-              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <h1
-                style={{
-                  ...SYNE,
-                  fontWeight: 800,
-                  fontSize: "clamp(28px, 11vw, 220px)",
-                  lineHeight: 0.88,
-                  letterSpacing: "-0.04em",
-                  color: "transparent",
-                  WebkitTextStroke: "1.5px rgba(237,232,220,0.85)",
-                  userSelect: "none",
-                }}
-              >
-                FESTIVAL
-              </h1>
-            </motion.div>
+          {/* SONGKRAN */}
+          <motion.img
+            src="/images/Songkran.png"
+            className="w-full max-w-[900px] md:max-w-[1000px] lg:max-w-[1100px]"
+            style={{
+              x: px,
+              y: py,
+              filter: "drop-shadow(0 0 20px rgba(47,167,216,0.5))"
+            }}
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1 }}
+          />
 
-            {/* Floating label below FESTIVAL - Zig-zag opposite to FESTIVAL */}
-            <motion.div
-              animate={{ x: [-20, 20, -20] }}
-              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          {/* FESTIVAL */}
+          <motion.img
+            src="/images/Festival.png"
+            className="w-full max-w-[900px] md:max-w-[1000px] lg:max-w-[1100px]"
+            style={{
+              x: px2,
+              y: py2,
+              filter: "drop-shadow(0 0 20px rgba(47,167,216,0.5))"
+            }}
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.2 }}
+          />
+
+          {/* 2026 */}
+          <motion.div
+            className="flex flex-col items-center mt-3"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+          >
+            <span
+              style={{
+                ...SYNE,
+                fontWeight: 800,
+                fontSize: "clamp(1.5rem, 4vw, 2.2rem)",
+                color: "#2FA7D8",
+              }}
             >
-              <motion.div
-                className="flex flex-col items-start gap-2 self-start pl-2 md:pl-4 mt-1 md:mt-2 lg:mt-3"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1, duration: 0.8 }}
-              >
-                <span style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(1.5rem, 5vw, 2.5rem)", color: "#2FA7D8", lineHeight: 1 }}>2026</span>
-                <div style={{ width: "clamp(80px, 12vw, 120px)" }}>
-                  <ScribbleUnderline width={120} />
-                </div>
-              </motion.div>
-            </motion.div>
+              2026
+            </span>
+
+            <div style={{ width: "100px" }}>
+              <ScribbleUnderline width={100} />
+            </div>
           </motion.div>
+
         </div>
 
         {/* Bottom bar */}
@@ -210,12 +229,18 @@ export function HeroSection() {
           ].map(({ label, highlight }) => (
             <span
               key={label}
+              className="inline-flex items-center rounded-full px-3 py-1.5 md:px-4 md:py-2"
               style={{
                 ...SG,
                 fontSize: "0.75rem",
                 letterSpacing: "0.12em",
-                color: highlight ? "#2FA7D8" : "rgba(237,232,220,0.85)",
-                fontWeight: highlight ? 600 : 400,
+                color: highlight ? "#66D2FF" : "#F7F3EC",
+                fontWeight: highlight ? 700 : 500,
+                background: highlight ? "rgba(7,8,16,0.72)" : "rgba(7,8,16,0.78)",
+                border: highlight ? "1px solid rgba(47,167,216,0.38)" : "1px solid rgba(255,255,255,0.08)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                textShadow: "0 1px 8px rgba(7,8,16,0.9)",
               }}
             >
               {label}
@@ -327,21 +352,6 @@ export function HeroSection() {
       </motion.div>
 
       {/* Scroll indicator — bottom left */}
-      <motion.div
-        className="absolute bottom-10 left-6 md:left-12 flex items-center gap-3"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.6 }}
-      >
-        <motion.div
-          className="w-px bg-[#2FA7D8]/40"
-          animate={{ height: [20, 48, 20] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <span style={{ ...SG, fontSize: "0.6rem", letterSpacing: "0.3em", color: "rgba(237,232,220,0.85)", writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
-          SCROLL
-        </span>
-      </motion.div>
     </section>
   );
 }

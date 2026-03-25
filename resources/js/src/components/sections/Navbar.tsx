@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from "react";
+import { useState, memo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, Info, Music, Sparkles, Calendar, Image as ImageIcon, HelpCircle, ChevronRight, ArrowUpRight } from "lucide-react";
 
@@ -72,27 +72,7 @@ const NavLink = memo(({ l, onClick, isMobile = false }: { l: any, onClick: (id: 
 });
 
 export function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    let ticking = false;
-    const fn = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const isScrolled = window.scrollY > 80;
-          setScrolled((prev) => {
-            if (prev !== isScrolled) return isScrolled;
-            return prev;
-          });
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-    window.addEventListener("scroll", fn, { passive: true });
-    return () => window.removeEventListener("scroll", fn);
-  }, []);
 
   const go = (id: string) => {
     setTimeout(() => setOpen(false), 400);
@@ -132,7 +112,7 @@ export function Navbar() {
         className="fixed top-0 left-0 right-0 z-[200] px-4 lg:px-8 pt-4"
         style={{ transform: "translateZ(0)" }}
       >
-        <div className={`rounded-2xl transition-all duration-500 ${scrolled ? "bg-[#070810]/85 lg:backdrop-blur-xl border border-white/6 shadow-2xl shadow-black/50" : "bg-transparent"}`}>
+        <div className="rounded-2xl bg-[#070810]/85 border border-white/6 shadow-2xl shadow-black/50 transition-all duration-500 lg:backdrop-blur-xl">
           <div className="flex items-center justify-between px-5 py-3">
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
