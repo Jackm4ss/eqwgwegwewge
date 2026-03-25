@@ -15,5 +15,7 @@ return [
     'tickets_collection' => $resolveCollection('FIREBASE_TICKETS_COLLECTION', 'tickets'),
     'user_email_index_collection' => $resolveCollection('FIREBASE_USER_EMAIL_INDEX_COLLECTION', 'user_email_index'),
     'user_identity_index_collection' => $resolveCollection('FIREBASE_USER_IDENTITY_INDEX_COLLECTION', 'user_identity_index'),
+    'scan_logs_collection' => $resolveCollection('FIREBASE_SCAN_LOGS_COLLECTION', 'scan_logs'),
+    'admin_activity_logs_collection' => $resolveCollection('FIREBASE_ADMIN_ACTIVITY_LOGS_COLLECTION', 'admin_activity_logs'),
     'fallback_local' => (bool) env('FIREBASE_FALLBACK_LOCAL', env('APP_ENV') === 'local'),
 ];

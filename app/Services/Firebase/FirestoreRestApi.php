@@ -18,9 +18,7 @@ class FirestoreRestApi
 
     private ?array $credentialsData = null;
 
-    public function __construct(private readonly array $config)
-    {
-    }
+    public function __construct(private readonly array $config) {}
 
     public function available(): bool
     {
@@ -42,6 +40,54 @@ class FirestoreRestApi
         $this->throwIfFailed($response, 'Failed to fetch Firestore document.');
 
         return $response->json();
+    }
+
+    public function listDocuments(
+        string $collectionPath,
+        int $pageSize = 100,
+        ?string $pageToken = null,
+        ?string $orderBy = null,
+    ): array {
+        $query = [
+            'pageSize' => max(1, min($pageSize, 1000)),
+        ];
+
+        if ($pageToken !== null && $pageToken !== '') {
+            $query['pageToken'] = $pageToken;
+        }
+
+        if ($orderBy !== null && $orderBy !== '') {
+            $query['orderBy'] = $orderBy;
+        }
+
+        $response = $this->http()->get($this->collectionUrl($collectionPath), $query);
+
+        $this->throwIfFailed($response, 'Failed to list Firestore documents.');
+
+        return [
+            'documents' => (array) data_get($response->json(), 'documents', []),
+            'next_page_token' => (string) data_get($response->json(), 'nextPageToken', ''),
+        ];
+    }
+
+    public function listAllDocuments(string $collectionPath, ?string $orderBy = null): array
+    {
+        $documents = [];
+        $pageToken = null;
+
+        do {
+            $result = $this->listDocuments($collectionPath, 1000, $pageToken, $orderBy);
+
+            foreach ($result['documents'] as $document) {
+                if (is_array($document)) {
+                    $documents[] = $document;
+                }
+            }
+
+            $pageToken = $result['next_page_token'] !== '' ? $result['next_page_token'] : null;
+        } while ($pageToken !== null);
+
+        return $documents;
     }
 
     public function batchGet(array $documentPaths, ?string $transaction = null): array
@@ -68,9 +114,39 @@ class FirestoreRestApi
         return $this->parseBatchGetResponse($response->body(), $documentPaths);
     }
 
+    public function runQuery(array $structuredQuery): array
+    {
+        $response = $this->http()->post($this->documentsActionUrl('runQuery'), [
+            'structuredQuery' => $structuredQuery,
+        ]);
+
+        $this->throwIfFailed($response, 'Failed to query Firestore documents.');
+
+        return $this->parseRunQueryResponse($response->body());
+    }
+
+    public function runCountQuery(array $structuredQuery, string $alias = 'count'): int
+    {
+        $response = $this->http()->post($this->documentsActionUrl('runAggregationQuery'), [
+            'structuredAggregationQuery' => [
+                'structuredQuery' => $structuredQuery,
+                'aggregations' => [
+                    [
+                        'alias' => $alias,
+                        'count' => new \stdClass(),
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->throwIfFailed($response, 'Failed to count Firestore documents.');
+
+        return $this->parseAggregationCountResponse($response->body(), $alias);
+    }
+
     public function beginTransaction(): string
     {
-        $response = $this->http()->post($this->documentsActionUrl('beginTransaction'), new \stdClass());
+        $response = $this->http()->post($this->documentsActionUrl('beginTransaction'), new \stdClass);
 
         $this->throwIfFailed($response, 'Failed to begin Firestore transaction.');
 
@@ -94,6 +170,17 @@ class FirestoreRestApi
         $response = $this->http()->post($this->documentsActionUrl('commit'), $payload);
 
         $this->throwIfFailed($response, 'Failed to commit Firestore transaction.');
+    }
+
+    public function deleteDocument(string $documentPath): void
+    {
+        $response = $this->http()->delete($this->documentUrl($documentPath));
+
+        if ($response->status() === 404) {
+            return;
+        }
+
+        $this->throwIfFailed($response, 'Failed to delete Firestore document.');
     }
 
     public function rollbackQuietly(?string $transaction): void
@@ -120,6 +207,19 @@ class FirestoreRestApi
                 'name' => $this->documentName($documentPath),
                 'fields' => $this->encodeFields($fields),
             ],
+        ];
+
+        if ($exists !== null) {
+            $write['currentDocument'] = ['exists' => $exists];
+        }
+
+        return $write;
+    }
+
+    public function makeDeleteWrite(string $documentPath, ?bool $exists = null): array
+    {
+        $write = [
+            'delete' => $this->documentName($documentPath),
         ];
 
         if ($exists !== null) {
@@ -251,6 +351,7 @@ class FirestoreRestApi
         if (isset($payload['found']['name'])) {
             $path = $this->documentPathFromName((string) $payload['found']['name']);
             $results[$path] = $payload['found'];
+
             return;
         }
 
@@ -258,6 +359,76 @@ class FirestoreRestApi
             $path = $this->documentPathFromName((string) $payload['missing']);
             $results[$path] = null;
         }
+    }
+
+    private function parseRunQueryResponse(string $body): array
+    {
+        $documents = [];
+
+        foreach ($this->decodeStreamingPayload($body) as $payload) {
+            if (isset($payload['document']) && is_array($payload['document'])) {
+                $documents[] = $payload['document'];
+            }
+        }
+
+        return $documents;
+    }
+
+    private function parseAggregationCountResponse(string $body, string $alias): int
+    {
+        foreach ($this->decodeStreamingPayload($body) as $payload) {
+            $aggregateFields = data_get($payload, 'result.aggregateFields', []);
+
+            if (!is_array($aggregateFields) || !isset($aggregateFields[$alias]) || !is_array($aggregateFields[$alias])) {
+                continue;
+            }
+
+            $value = $aggregateFields[$alias];
+
+            if (isset($value['integerValue'])) {
+                return (int) $value['integerValue'];
+            }
+
+            if (isset($value['doubleValue'])) {
+                return (int) $value['doubleValue'];
+            }
+        }
+
+        return 0;
+    }
+
+    private function decodeStreamingPayload(string $body): array
+    {
+        $trimmedBody = trim($body);
+
+        if ($trimmedBody === '') {
+            return [];
+        }
+
+        $decoded = json_decode($trimmedBody, true);
+
+        if (is_array($decoded)) {
+            return array_is_list($decoded) ? $decoded : [$decoded];
+        }
+
+        $payloads = [];
+        $lines = preg_split('/\r\n|\r|\n/', $trimmedBody) ?: [];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+
+            if ($line === '') {
+                continue;
+            }
+
+            $payload = json_decode($line, true);
+
+            if (is_array($payload)) {
+                $payloads[] = $payload;
+            }
+        }
+
+        return $payloads;
     }
 
     private function encodeFields(array $fields): array
@@ -353,6 +524,12 @@ class FirestoreRestApi
     {
         return rtrim((string) ($this->config['api_base_url'] ?? 'https://firestore.googleapis.com/v1'), '/')
             .'/'.$this->databasePath().'/documents/'.$this->normalizeDocumentPath($documentPath);
+    }
+
+    private function collectionUrl(string $collectionPath): string
+    {
+        return rtrim((string) ($this->config['api_base_url'] ?? 'https://firestore.googleapis.com/v1'), '/')
+            .'/'.$this->databasePath().'/documents/'.$this->normalizeDocumentPath($collectionPath);
     }
 
     private function documentsActionUrl(string $action): string

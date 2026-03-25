@@ -109,7 +109,7 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/login', {
+      const response = await fetch('/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,12 +131,11 @@ export function LoginPage() {
       }
 
       toast.success('Welcome back!', {
-        description: 'You have successfully signed in.',
+        description: 'Admin access granted successfully.',
       });
 
-      // Redirect to home or intended page
       setTimeout(() => {
-        window.location.href = result.redirect || '/';
+        window.location.href = result.redirect || '/admin/dashboard';
       }, 1000);
 
     } catch (error: any) {
@@ -457,11 +456,11 @@ export function LoginPage() {
                     >
                       <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
                       <p className="text-red-700 text-xs leading-relaxed">
-                        <strong>Account not found.</strong> Use{' '}
+                        <strong>Login gagal.</strong> Gunakan akun admin hasil seeder, misalnya{' '}
                         <code className="bg-red-100 px-1 py-0.5 rounded text-red-800 font-mono">
-                          demo@songkran.com
+                          admin01@songkran.local
                         </code>{' '}
-                        to try the demo login.
+                        untuk development lokal.
                       </p>
                     </motion.div>
                   )}

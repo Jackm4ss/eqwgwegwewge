@@ -10,7 +10,9 @@ If this is your first time running the project, do this first:
 2. Put your Firebase credential JSON in `storage/app/secrets/firebase-credentials.json`
 3. Set your own `FIREBASE_COLLECTION_PREFIX` in `.env`
 4. Run `php artisan key:generate`
-5. Start Laravel and test the register page
+5. Run `php artisan migrate`
+6. Seed admins with `php artisan admin:seed --password=YOUR_PASSWORD`
+7. Start Laravel and test the register page
 
 If you are using Laragon, you can point `APP_URL` to your local vhost such as `http://event-system.test`.
 
@@ -65,6 +67,8 @@ composer install
 npm install
 cp .env.example .env
 php artisan key:generate
+php artisan migrate
+php artisan admin:seed --password=YOUR_PASSWORD
 php artisan serve
 ```
 
@@ -85,6 +89,8 @@ The repository now ships multiple environment templates:
 - Running tests in a special environment: use `.env.testing.example`
 - CI pipeline maintainer: use `.env.ci.example`
 - Ops / senior developer preparing deploy: use `.env.production.example`
+
+`.env.example` now includes the Firebase/admin environment variables needed for local bootstrapping.
 
 ### The 4 Values Most Developers Need to Change
 
@@ -111,6 +117,29 @@ Recommended local pattern:
 - Keep `MAIL_MAILER=log` if you only want to test the UI and backend flow
 - Keep `RECAPTCHA_ENABLED=false` in local
 - Do not put secrets in `.env.example`
+- Seed admin accounts with `php artisan admin:seed --password=YOUR_PASSWORD`
+
+### Admin Seed Flow
+
+Use the explicit command below for local admin accounts:
+
+```bash
+php artisan admin:seed --password=YOUR_PASSWORD
+```
+
+Optional count override:
+
+```bash
+php artisan admin:seed --password=YOUR_PASSWORD --count=8
+```
+
+This creates accounts like:
+
+- `admin01@songkran.local`
+- `admin02@songkran.local`
+- `...`
+
+This flow is easier for because they do not need to keep a shared default password in `.env.example`.
 
 Important Firebase variables:
 

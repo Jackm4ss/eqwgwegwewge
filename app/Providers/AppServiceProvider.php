@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Contracts\UserRepositoryInterface;
 use App\Repositories\FirestoreRestUserRepository;
 use App\Repositories\FirestoreUserRepository;
+use App\Services\Admin\AdminFirestoreRepository;
 use App\Services\Firebase\FirebaseClientFactory;
 use App\Services\Firebase\FirestoreRestApi;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -27,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
             fn () => new FirestoreRestApi(config('firebase'))
         );
 
+        $this->app->singleton(AdminFirestoreRepository::class);
+
         $this->app->bind(
             UserRepositoryInterface::class,
             function ($app) {
@@ -48,6 +51,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('resend-verification', function (Request $request) {
             return Limit::perMinute(3)->by(
                 $request->ip().'|'.$request->input('email')
+            );
+        });
+
+        RateLimiter::for('admin-login', function (Request $request) {
+            return Limit::perMinute(5)->by(
+                strtolower((string) $request->input('email')).'|'.$request->ip()
             );
         });
     }

@@ -26,7 +26,7 @@
       href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap"
       rel="stylesheet" />
 
-    <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/fonts/iconify-icons.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/fonts/iconify-icons-subset.css') }}" />
 
     <script src="{{ asset('assets-vuexy/vendor/libs/@algolia/autocomplete-js.js') }}"></script>
 
@@ -84,7 +84,7 @@
               </div>
 
               <h4 class="mb-1">Portal Login</h4>
-              <p class="mb-6">Live sign-in is handled in the main portal. This repository only keeps the registration and recovery screens.</p>
+              <p class="mb-6">Admin authentication now uses the dedicated admin session endpoint for local-first dashboard access.</p>
 
               @if (session('status'))
                   <div class="alert alert-success mb-4 rounded-0" role="alert">
@@ -102,7 +102,7 @@
                   </div>
               @endif
 
-              <form id="formAuthentication" class="mb-4" action="{{ route('login.submit') }}" method="POST">
+              <form id="formAuthentication" class="mb-4" action="{{ route('admin.login.store') }}" method="POST">
                 @csrf
                 <div class="mb-6 form-control-validation">
                   <label for="email" class="form-label">Email</label>

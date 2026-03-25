@@ -30,6 +30,40 @@ class TicketQrCodeService
         ];
     }
 
+    public function regenerateTicketAttributes(array $ticket): array
+    {
+        $version = (string) ($ticket['qr_version'] ?? 'v1');
+        $numericVersion = (int) preg_replace('/\D+/', '', $version);
+        $nextVersion = $numericVersion > 0 ? $numericVersion + 1 : 2;
+        $now = now()->toISOString();
+
+        return array_merge($ticket, [
+            'ticket_code' => strtoupper((string) Str::ulid()),
+            'qr_version' => 'v'.$nextVersion,
+            'status' => 'active',
+            'attendance_status' => 'not_checked_in',
+            'checked_in_at' => null,
+            'last_scanned_at' => null,
+            'regenerated_at' => $now,
+            'updated_at' => $now,
+        ]);
+    }
+
+    public function resetAttendanceAttributes(array $ticket): array
+    {
+        $now = now()->toISOString();
+
+        return array_merge($ticket, [
+            'status' => 'active',
+            'attendance_status' => 'not_checked_in',
+            'checked_in_at' => null,
+            'last_scanned_at' => null,
+            'qr_reset_at' => $now,
+            'qr_reset_count' => ((int) ($ticket['qr_reset_count'] ?? 0)) + 1,
+            'updated_at' => $now,
+        ]);
+    }
+
     public function payloadForTicket(array $ticket): string
     {
         return $this->payloadForTicketCode((string) $ticket['ticket_code']);
@@ -48,7 +82,7 @@ class TicketQrCodeService
     {
         $renderer = new ImageRenderer(
             new RendererStyle($size, 2),
-            new SvgImageBackEnd()
+            new SvgImageBackEnd
         );
 
         return (new Writer($renderer))->writeString($payload);

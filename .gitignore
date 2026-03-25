@@ -22,6 +22,8 @@
 /storage/framework/views/*
 !/storage/framework/views/.gitignore
 /storage/app/local_firestore_users.json
+/storage/app/private/admin-backups/*
+/storage/app/private/test-admin-backups/*
 
 # OS junk
 .DS_Store
