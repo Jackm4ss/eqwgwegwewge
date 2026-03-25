@@ -61,46 +61,6 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   );
 }
 
-/* Password strength meter */
-function PasswordStrength({ password }: { password: string }) {
-  if (!password) return null;
-
-  const checks = [
-    password.length >= 8,
-    /[A-Z]/.test(password),
-    /[0-9]/.test(password),
-    /[^a-zA-Z0-9]/.test(password),
-  ];
-  const score = checks.filter(Boolean).length;
-  const labels = ['', 'Weak', 'Fair', 'Strong', 'Very Strong'];
-  const colors = ['', 'bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-emerald-400'];
-  const textColors = ['', 'text-red-500', 'text-orange-500', 'text-yellow-600', 'text-emerald-600'];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      className="mt-2"
-      aria-live="polite"
-    >
-      <div className="flex gap-1 mb-1" role="img" aria-label={`Password strength: ${labels[score]}`}>
-        {[1, 2, 3, 4].map(i => (
-          <motion.div
-            key={i}
-            className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i <= score ? colors[score] : 'bg-slate-200'}`}
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 0.3, delay: i * 0.06 }}
-            style={{ transformOrigin: 'left' }}
-          />
-        ))}
-      </div>
-      <p className={`text-[11px] font-medium ${textColors[score]}`}>{labels[score]}</p>
-    </motion.div>
-  );
-}
-
 /* Social login button */
 function SocialButton({
   icon, label, onClick,
@@ -132,11 +92,8 @@ export function LoginPage() {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm<LoginFormData>({ mode: 'onTouched' });
-
-  const passwordValue = watch('password', '');
 
   const handleCanvasReady = useCallback((fn: (x: number, y: number) => void) => {
     addRippleRef.current = fn;
@@ -470,9 +427,7 @@ export function LoginPage() {
                   <AnimatePresence>
                     <FieldError id="err-login-password" message={errors.password?.message} />
                   </AnimatePresence>
-                  <AnimatePresence>
-                    {passwordValue && <PasswordStrength password={passwordValue} />}
-                  </AnimatePresence>
+                  {/* Password strength meter intentionally hidden on login */}
                 </div>
 
                 {/* Remember me */}
