@@ -504,23 +504,6 @@ export function FestivalActivities() {
 
           <div className="relative">
             <div
-              className="absolute left-0 top-0 bottom-0 w-24 pointer-events-none z-10"
-              style={{
-                background: "linear-gradient(to right, rgba(186,230,253,0.88), transparent)",
-                opacity: canScrollLeft ? 1 : 0,
-                transition: "opacity 0.3s",
-              }}
-            />
-            <div
-              className="absolute right-0 top-0 bottom-0 w-24 pointer-events-none z-10"
-              style={{
-                background: "linear-gradient(to left, rgba(186,230,253,0.88), transparent)",
-                opacity: canScrollRight ? 1 : 0,
-                transition: "opacity 0.3s",
-              }}
-            />
-
-            <div
               ref={scrollRef}
               className="flex gap-5 overflow-x-auto pt-4 pb-8"
               style={{
