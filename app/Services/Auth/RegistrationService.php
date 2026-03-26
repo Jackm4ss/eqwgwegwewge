@@ -64,13 +64,15 @@ class RegistrationService
             (string) $user['user_id'],
             $this->ticketQrCodeService->makeTicketAttributes((string) $user['user_id']),
         );
-        $result['user'] = $this->ticketDelivery->sendIfNeeded(
+        $delivery = $this->ticketDelivery->sendIfNeeded(
             (string) $user['user_id'],
             $result['user'],
             $result['ticket'],
         );
+        $result['user'] = $delivery['user'];
+        $result['delivery'] = $delivery['delivery'];
 
-        return $result['user'];
+        return $result;
     }
 
     public function resendVerification(string $email): void

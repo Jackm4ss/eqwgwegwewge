@@ -10,12 +10,30 @@ class TicketReadyMail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    public array $templateAssets;
+
     public function __construct(
         public readonly array $user,
         public readonly array $ticket,
-        public readonly string $ticketUrl,
+        public readonly string $ticketDownloadUrl,
         public readonly string $qrPngBinary,
     ) {
+        $assetDirectory = rtrim(
+            (string) env('SONGKRAN_MAILER_TEMPLATE_PATH', 'C:\\Users\\INI\\Music\\mailer'),
+            "\\/"
+        );
+
+        $this->templateAssets = [
+            'logo' => $assetDirectory.DIRECTORY_SEPARATOR.'Songkran logo.png',
+            'venueSponsor' => $assetDirectory.DIRECTORY_SEPARATOR.'123.png',
+            'sponsorEmbassy' => $assetDirectory.DIRECTORY_SEPARATOR.'Royal_Thai_Embassy_Seal.svg.png',
+            'sponsorDitp' => $assetDirectory.DIRECTORY_SEPARATOR.'ditp.jpeg',
+            'sponsorAmazingThailand' => $assetDirectory.DIRECTORY_SEPARATOR.'amazing thailand.png',
+            'sponsorSingha' => $assetDirectory.DIRECTORY_SEPARATOR.'singha-seeklogo.png',
+            'sponsorSnakeBrand' => $assetDirectory.DIRECTORY_SEPARATOR.'Snake-Brand-Logo.png',
+            'mediaWob' => $assetDirectory.DIRECTORY_SEPARATOR.'wob.png',
+            'mediaNoodou' => $assetDirectory.DIRECTORY_SEPARATOR.'noodou.png',
+        ];
     }
 
     public function build(): self

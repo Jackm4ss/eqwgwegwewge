@@ -41,6 +41,15 @@ interface FormData {
   agreeTerms: boolean;
 }
 
+interface RegisterResponse {
+  message?: string;
+  status?: 'ticket_ready' | 'ticket_ready_email_pending';
+  email_sent?: boolean;
+  ticket_url?: string;
+  ticket_code?: string;
+  errors?: Record<string, string[]>;
+}
+
 const FORM_FIELDS: Array<keyof FormData> = [
   'full_name',
   'email',
@@ -646,6 +655,10 @@ export function RegisterPage() {
   const [isRecaptchaReady, setIsRecaptchaReady] = useState(!recaptchaEnabled);
   const [legalDialog, setLegalDialog] = useState<LegalDialogType | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState('');
+  const [registeredTicketUrl, setRegisteredTicketUrl] = useState('');
+  const [registeredTicketCode, setRegisteredTicketCode] = useState('');
+  const [ticketEmailSent, setTicketEmailSent] = useState(true);
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
   const previousCountryRef = useRef('');
 
@@ -857,6 +870,10 @@ export function RegisterPage() {
 
     setIsSuccess(false);
     setRegisteredEmail('');
+    setRegistrationSuccessMessage('');
+    setRegisteredTicketUrl('');
+    setRegisteredTicketCode('');
+    setTicketEmailSent(true);
     reset(); // Clear form values
   };
 
@@ -932,7 +949,7 @@ export function RegisterPage() {
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
+      const result: RegisterResponse = await response.json();
 
       if (!response.ok) {
         if (result.errors) {
@@ -956,8 +973,18 @@ export function RegisterPage() {
       }
 
       setRegisteredEmail(data.email);
+      setRegistrationSuccessMessage(result.message || '');
+      setRegisteredTicketUrl(result.ticket_url || '');
+      setRegisteredTicketCode(result.ticket_code || '');
+      setTicketEmailSent(result.email_sent !== false);
       setIsSuccess(true);
-      toast.success(result.message || 'Your QR ticket has been sent to your email.');
+      toast.success(
+        result.message || (
+          result.email_sent === false
+            ? 'Registration completed. Your ticket is ready, but the email could not be sent right now.'
+            : 'Your QR ticket has been sent to your email.'
+        ),
+      );
     } catch (error: any) {
       toast.error(error.message || 'Something went wrong while registering. Please try again.');
     } finally {
@@ -1739,13 +1766,13 @@ export function RegisterPage() {
                 <div>
                   <CheckCircle2 className="w-10 h-10 md:w-14 md:h-14 text-emerald-400 mx-auto mb-4" />
                   <h2 id="success-title" className="text-white text-2xl md:text-4xl font-black leading-tight tracking-tight mb-3" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                    Registration Successful!<br className="hidden sm:block" /> Check Your Ticket Email
+                    Registration Successful!<br className="hidden sm:block" /> {ticketEmailSent ? 'Check Your Ticket Email' : 'Your Ticket Is Ready'}
                   </h2>
                   <p className="hidden text-sky-200 text-base md:text-lg mb-1">
                     We’ve sent a verification link to
                   </p>
                   <p className="text-sky-200 text-base md:text-lg mb-1">
-                    Your QR ticket has been sent to
+                    {ticketEmailSent ? 'Your QR ticket has been sent to' : 'We could not send the ticket email right now for'}
                   </p>
                   <p className="text-sky-100 font-bold text-xl md:text-2xl" style={{ fontFamily: '"Kanit", sans-serif' }}>
                     {registeredEmail || 'your email'}
@@ -1753,8 +1780,35 @@ export function RegisterPage() {
                 </div>
 
                 <p className="text-sky-300 text-xs md:text-sm leading-relaxed max-w-sm mx-auto opacity-90">
-                  Open the email to find your active festival pass, QR code, and direct ticket link for event entry.
+                  {registrationSuccessMessage || (
+                    ticketEmailSent
+                      ? 'Open the email to find your active festival pass, QR code, and direct ticket link for event entry.'
+                      : 'Use the direct ticket link below to open your active festival pass immediately.'
+                  )}
                 </p>
+
+                {/* {registeredTicketCode && (
+                  <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-200/80">Ticket Code</p>
+                    <p className="mt-2 break-all text-base font-black text-white md:text-lg" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                      {registeredTicketCode}
+                    </p>
+                  </div>
+                )} */}
+
+                {!ticketEmailSent && registeredTicketUrl && (
+                  <motion.a
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    href={registeredTicketUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block w-full py-4 rounded-2xl bg-white text-sky-900 font-black text-sm md:text-base uppercase tracking-widest hover:bg-sky-50 transition-all shadow-lg"
+                    style={{ fontFamily: '"Kanit", sans-serif' }}
+                  >
+                    Open My Ticket Now
+                  </motion.a>
+                )}
 
                 <div className="hidden flex-wrap gap-2 justify-center">
                   {[

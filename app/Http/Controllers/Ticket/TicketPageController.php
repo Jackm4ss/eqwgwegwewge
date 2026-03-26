@@ -60,9 +60,30 @@ class TicketPageController extends Controller
             'ticket' => $ticket,
             'user' => $user,
             'qrSvg' => $qrSvg,
-            'qrSvgDownloadUrl' => 'data:image/svg+xml;charset=UTF-8,'.rawurlencode($qrSvg),
+            'qrDownloadUrl' => $ticketQrCodeService->signedTicketDownloadUrl($ticketId),
             'countryName' => $countryName,
             'countryFlagUrl' => $countryFlagUrl,
+        ]);
+    }
+
+    public function download(
+        string $ticketId,
+        UserRepositoryInterface $users,
+        TicketQrCodeService $ticketQrCodeService,
+    ) {
+        $ticket = $users->findTicketById($ticketId);
+        abort_if(! $ticket, 404);
+
+        $qrSvg = $ticketQrCodeService->renderSvg(
+            $ticketQrCodeService->payloadForTicket($ticket),
+            320,
+        );
+
+        $filename = 'songkran-ticket-'.strtolower((string) ($ticket['ticket_code'] ?? $ticketId)).'.svg';
+
+        return response($qrSvg, 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 }

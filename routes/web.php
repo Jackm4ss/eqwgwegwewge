@@ -30,9 +30,9 @@ Route::get('/register', function () {
 
 Route::post('/register', function (RegisterRequest $request, RegistrationService $service) {
     try {
-        $user = $service->register($request->validated(), $request->ip());
+        $result = $service->register($request->validated(), $request->ip());
 
-        return redirect()->route('register.success', ['email' => $user['email']]);
+        return redirect()->route('register.success', ['email' => data_get($result, 'user.email')]);
     } catch (InvalidArgumentException $e) {
         return back()->withInput($request->except('password', 'password_confirmation'))->withErrors(['error' => $e->getMessage()]);
     }
@@ -59,6 +59,10 @@ Route::get('/email/verified', [EmailVerificationController::class, 'success'])
 Route::get('/ticket/{ticketId}', TicketPageController::class)
     ->middleware('signed')
     ->name('ticket.show');
+
+Route::get('/ticket/{ticketId}/download', [TicketPageController::class, 'download'])
+    ->middleware('signed')
+    ->name('ticket.download');
 
 $adminPath = config('admin.path', 'admin');
 

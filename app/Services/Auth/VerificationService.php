@@ -31,7 +31,9 @@ class VerificationService
             $this->ticketQrCodeService->makeTicketAttributes($id),
         );
 
-        $result['user'] = $this->ticketDelivery->sendIfNeeded($id, $result['user'], $result['ticket']);
+        $delivery = $this->ticketDelivery->sendIfNeeded($id, $result['user'], $result['ticket']);
+        $result['user'] = $delivery['user'];
+        $result['delivery'] = $delivery['delivery'];
 
         return $result;
     }

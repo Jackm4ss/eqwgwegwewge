@@ -5,6 +5,7 @@ namespace App\Services\Auth;
 use App\Contracts\UserRepositoryInterface;
 use App\Mail\TicketReadyMail;
 use App\Services\Tickets\TicketQrCodeService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class TicketDeliveryService
@@ -18,23 +19,58 @@ class TicketDeliveryService
     public function sendIfNeeded(string $userId, array $user, array $ticket): array
     {
         $ticketReadyEmailSentAt = $user['ticket_ready_email_sent_at'] ?? null;
+        $ticketUrl = $this->ticketQrCodeService->signedTicketUrl((string) $ticket['ticket_id']);
+        $ticketDownloadUrl = $this->ticketQrCodeService->signedTicketDownloadUrl((string) $ticket['ticket_id']);
 
         if (! empty($ticketReadyEmailSentAt)) {
-            return $user;
+            return [
+                'user' => $user,
+                'delivery' => [
+                    'status' => 'already_sent',
+                    'email_sent' => true,
+                    'ticket_url' => $ticketUrl,
+                ],
+            ];
         }
 
-        $ticketUrl = $this->ticketQrCodeService->signedTicketUrl((string) $ticket['ticket_id']);
         $qrPngBinary = $this->ticketQrCodeService->renderPngBinary(
             $this->ticketQrCodeService->payloadForTicket($ticket),
             240,
         );
 
-        Mail::to($user['email'])->send(
-            new TicketReadyMail($user, $ticket, $ticketUrl, $qrPngBinary)
-        );
+        try {
+            Mail::to($user['email'])->send(
+                new TicketReadyMail($user, $ticket, $ticketDownloadUrl, $qrPngBinary)
+            );
+        } catch (\Throwable $throwable) {
+            Log::warning('Ticket ready email delivery failed', [
+                'user_id' => $userId,
+                'email' => $user['email'] ?? null,
+                'ticket_id' => $ticket['ticket_id'] ?? null,
+                'error' => $throwable->getMessage(),
+            ]);
 
-        return $this->users->update($userId, [
+            return [
+                'user' => $user,
+                'delivery' => [
+                    'status' => 'failed',
+                    'email_sent' => false,
+                    'ticket_url' => $ticketUrl,
+                ],
+            ];
+        }
+
+        $updatedUser = $this->users->update($userId, [
             'ticket_ready_email_sent_at' => now()->toISOString(),
         ]);
+
+        return [
+            'user' => $updatedUser,
+            'delivery' => [
+                'status' => 'sent',
+                'email_sent' => true,
+                'ticket_url' => $ticketUrl,
+            ],
+        ];
     }
 }
