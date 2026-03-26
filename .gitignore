@@ -52,3 +52,7 @@ test-results/
 dist/
 build/
 out/
+!/public/build/
+!/public/build/manifest.json
+!/public/build/assets/
+!/public/build/assets/**
