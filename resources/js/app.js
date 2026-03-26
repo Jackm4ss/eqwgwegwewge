@@ -317,7 +317,7 @@ function initRegisterForm() {
       }
 
       setTimeout(() => {
-        window.location.href = data.redirect;
+        window.location.href = data.success_url || data.redirect;
       }, 700);
     } catch (error) {
       if (formMessage) {
@@ -329,7 +329,7 @@ function initRegisterForm() {
 }
 
 /* =========================
-   RESEND VERIFICATION
+   RESEND TICKET EMAIL
 ========================= */
 function initResendVerification() {
   const resendBtn = document.getElementById("resendBtn");
@@ -345,17 +345,17 @@ function initResendVerification() {
 
   const startCooldown = () => {
     resendBtn.disabled = true;
-    cooldown.innerText = `You can request a new verification link in ${seconds} seconds.`;
+    cooldown.innerText = `You can request a new ticket email in ${seconds} seconds.`;
 
     timer = setInterval(() => {
       seconds--;
-      cooldown.innerText = `You can request a new verification link in ${seconds} seconds.`;
+      cooldown.innerText = `You can request a new ticket email in ${seconds} seconds.`;
 
       if (seconds <= 0) {
         clearInterval(timer);
         timer = null;
         resendBtn.disabled = false;
-        cooldown.innerText = "You can request a new verification email now.";
+        cooldown.innerText = "You can request a new ticket email now.";
       }
     }, 1000);
   };
@@ -365,7 +365,7 @@ function initResendVerification() {
   resendBtn.addEventListener("click", async () => {
     if (!email) {
       if (msg) {
-        msg.innerText = "Verification email is missing. Please return to the registration page.";
+        msg.innerText = "Ticket email address is missing. Please return to the registration page.";
       }
       return;
     }
@@ -391,16 +391,16 @@ function initResendVerification() {
         msg.innerText = data.message || "Request sent";
       }
 
-      setButtonLabel(resendBtn, "Resend Verification Email");
+      setButtonLabel(resendBtn, "Resend Ticket Email");
       seconds = 60;
 
       if (timer) clearInterval(timer);
       startCooldown();
     } catch (error) {
       if (msg) {
-        msg.innerText = "Failed to resend verification email.";
+        msg.innerText = "Failed to resend ticket email.";
       }
-      setButtonLabel(resendBtn, "Resend Verification Email");
+      setButtonLabel(resendBtn, "Resend Ticket Email");
       resendBtn.disabled = false;
     }
   });

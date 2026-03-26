@@ -4,15 +4,16 @@ namespace App\Services\Auth;
 
 use App\Contracts\UserRepositoryInterface;
 use App\Exceptions\RegistrationConflictException;
-use App\Mail\VerifyRegistrationMail;
+use App\Mail\TicketReadyMail;
+use App\Services\Tickets\TicketQrCodeService;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
 class RegistrationService
 {
     public function __construct(
         private readonly UserRepositoryInterface $users,
+        private readonly TicketQrCodeService $ticketQrCodeService,
     ) {
     }
 
@@ -58,33 +59,54 @@ class RegistrationService
             ]);
         }
 
-        $this->sendVerification($user);
+        $result = $this->users->activateAndIssueTicket(
+            (string) $user['user_id'],
+            $this->ticketQrCodeService->makeTicketAttributes((string) $user['user_id']),
+        );
 
-        return $user;
+        $this->sendTicketEmail((string) $user['user_id'], $result);
+
+        return $result;
     }
 
     public function resendVerification(string $email): void
     {
         $user = $this->users->findByEmail($this->normalizeEmail($email));
-        if (! $user || $user['verification_status'] === 'verified') {
+
+        if (! $user) {
             return;
         }
 
-        $this->sendVerification($user);
-    }
-
-    private function sendVerification(array $user): void
-    {
-        $verificationUrl = URL::temporarySignedRoute(
-            'verification.verify',
-            now()->addDay(),
-            [
-                'id' => $user['user_id'],
-                'hash' => sha1($user['email']),
-            ],
+        $result = $this->users->activateAndIssueTicket(
+            (string) $user['user_id'],
+            $this->ticketQrCodeService->makeTicketAttributes((string) $user['user_id']),
         );
 
-        Mail::to($user['email'])->send(new VerifyRegistrationMail($user, $verificationUrl));
+        $this->sendTicketEmail((string) $user['user_id'], $result, true);
+    }
+
+    private function sendTicketEmail(string $userId, array &$result, bool $force = false): void
+    {
+        $ticketReadyEmailSentAt = $result['user']['ticket_ready_email_sent_at'] ?? null;
+
+        if (! $force && ! empty($ticketReadyEmailSentAt)) {
+            return;
+        }
+
+        $ticket = $result['ticket'];
+        $ticketUrl = $this->ticketQrCodeService->signedTicketUrl((string) $ticket['ticket_id']);
+        $qrPngBinary = $this->ticketQrCodeService->renderPngBinary(
+            $this->ticketQrCodeService->payloadForTicket($ticket),
+            240,
+        );
+
+        Mail::to($result['user']['email'])->send(
+            new TicketReadyMail($result['user'], $ticket, $ticketUrl, $qrPngBinary)
+        );
+
+        $result['user'] = $this->users->update($userId, [
+            'ticket_ready_email_sent_at' => now()->toISOString(),
+        ]);
     }
 
     private function normalizeEmail(string $email): string

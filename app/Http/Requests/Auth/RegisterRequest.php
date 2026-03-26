@@ -58,7 +58,15 @@ class RegisterRequest extends FormRequest
                 return;
             }
 
-            $isVerified = app(RecaptchaService::class)->verify($recaptchaToken, $this->ip());
+            $expectedAction = trim((string) config('services.recaptcha.expected_action', 'register'));
+            $minimumScore = config('services.recaptcha.minimum_score');
+
+            $isVerified = app(RecaptchaService::class)->verify(
+                $recaptchaToken,
+                $this->ip(),
+                $expectedAction !== '' ? $expectedAction : null,
+                is_numeric($minimumScore) ? (float) $minimumScore : null,
+            );
 
             if (! $isVerified) {
                 $validator->errors()->add(

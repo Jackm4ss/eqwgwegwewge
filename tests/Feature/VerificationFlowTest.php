@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Contracts\UserRepositoryInterface;
 use App\Mail\TicketReadyMail;
-use App\Mail\VerifyRegistrationMail;
 use App\Services\Tickets\TicketQrCodeService;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Mail;
@@ -30,39 +29,38 @@ class VerificationFlowTest extends TestCase
         $this->app->instance(UserRepositoryInterface::class, $this->repository);
     }
 
-    public function test_valid_verification_activates_account_creates_ticket_and_redirects_to_signed_ticket_page(): void
+    public function test_existing_verification_link_redirects_to_already_issued_ticket_page(): void
     {
         Mail::fake();
 
         $this->postJson('/api/register', $this->validPayload())->assertCreated();
         $user = $this->repository->firstUser();
+        $ticket = $this->repository->findTicketByUserId($user['user_id']);
 
         $verificationUrl = $this->verificationUrl($user['user_id'], $user['email']);
 
         $response = $this->get($verificationUrl);
 
-        $ticket = $this->repository->findTicketByUserId($user['user_id']);
         $expectedTicketUrl = app(TicketQrCodeService::class)->signedTicketUrl($ticket['ticket_id']);
 
         $response->assertRedirect($expectedTicketUrl);
 
-        $verifiedUser = $this->repository->findById($user['user_id']);
+        $sameUser = $this->repository->findById($user['user_id']);
 
-        $this->assertSame('active', $verifiedUser['account_status']);
-        $this->assertSame('verified', $verifiedUser['verification_status']);
-        $this->assertNotNull($verifiedUser['email_verified_at']);
-        $this->assertNotNull($verifiedUser['ticket_ready_email_sent_at']);
+        $this->assertSame('active', $sameUser['account_status']);
+        $this->assertSame('verified', $sameUser['verification_status']);
+        $this->assertNotNull($sameUser['email_verified_at']);
+        $this->assertNotNull($sameUser['ticket_ready_email_sent_at']);
         $this->assertNotNull($ticket);
         $this->assertSame('active', $ticket['status']);
         $this->assertCount(1, $this->repository->tickets);
 
-        Mail::assertSent(VerifyRegistrationMail::class, 1);
         Mail::assertSent(TicketReadyMail::class, function (TicketReadyMail $mail) use ($user) {
             return $mail->hasTo($user['email']);
         });
     }
 
-    public function test_verification_is_idempotent_and_does_not_create_duplicate_ticket(): void
+    public function test_verification_link_is_idempotent_and_does_not_create_duplicate_ticket(): void
     {
         Mail::fake();
 
@@ -109,8 +107,6 @@ class VerificationFlowTest extends TestCase
 
         $this->postJson('/api/register', $this->validPayload())->assertCreated();
         $user = $this->repository->firstUser();
-
-        $this->get($this->verificationUrl($user['user_id'], $user['email']))->assertRedirect();
         $ticket = $this->repository->findTicketByUserId($user['user_id']);
 
         $this->get("/ticket/{$ticket['ticket_id']}")->assertForbidden();
@@ -122,8 +118,6 @@ class VerificationFlowTest extends TestCase
 
         $this->postJson('/api/register', $this->validPayload())->assertCreated();
         $user = $this->repository->firstUser();
-
-        $this->get($this->verificationUrl($user['user_id'], $user['email']))->assertRedirect();
         $ticket = $this->repository->findTicketByUserId($user['user_id']);
 
         $signedTicketUrl = app(TicketQrCodeService::class)->signedTicketUrl($ticket['ticket_id']);

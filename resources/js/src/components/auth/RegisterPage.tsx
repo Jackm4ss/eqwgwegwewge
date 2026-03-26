@@ -4,9 +4,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 import {
   User, Mail, Phone, Globe, MapPin, IdCard,
-  Calendar, Music2, ChevronDown, CheckCircle2,
+  Calendar, Music2, ChevronDown,
   AlertCircle, Loader2,
-  Droplets, Star, Waves, Sparkles, X, Lock
+  Droplets, Star, Waves, Sparkles, Lock
 } from 'lucide-react';
 import { Link } from 'react-router';
 import { WaterAnimation } from './WaterAnimation';
@@ -24,6 +24,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '../ui/Select';
@@ -53,23 +54,17 @@ const FORM_FIELDS: Array<keyof FormData> = [
 ];
 
 type GrecaptchaRenderParameters = {
-  sitekey: string;
-  callback?: (token: string) => void;
-  'expired-callback'?: () => void;
-  'error-callback'?: () => void;
-  theme?: 'light' | 'dark';
+  action: string;
 };
 
 type GrecaptchaInstance = {
   ready: (callback: () => void) => void;
-  render: (container: HTMLElement, parameters: GrecaptchaRenderParameters) => number;
-  reset: (widgetId?: number) => void;
+  execute: (siteKey: string, parameters: GrecaptchaRenderParameters) => Promise<string>;
 };
 
 declare global {
   interface Window {
     grecaptcha?: GrecaptchaInstance;
-    __googleRecaptchaOnLoad?: () => void;
   }
 }
 
@@ -153,6 +148,24 @@ const PHONE_COUNTRY_CODES = SORTED_COUNTRIES.map((country) => ({
   label: `${country.name} (${PHONE_DIAL_CODES[country.code]})`,
 }));
 
+const PRIORITY_PHONE_COUNTRY_CODES = ['MY', 'TH', 'SG', 'ID', 'BN', 'MM', 'VN'] as const;
+
+const PRIORITY_PHONE_COUNTRY_OPTIONS = PRIORITY_PHONE_COUNTRY_CODES
+  .map((countryCode) => PHONE_COUNTRY_CODES.find((option) => option.country === countryCode))
+  .filter((option): option is (typeof PHONE_COUNTRY_CODES)[number] => option !== undefined);
+
+const OTHER_PHONE_COUNTRY_OPTIONS = PHONE_COUNTRY_CODES.filter(
+  (option) => !PRIORITY_PHONE_COUNTRY_CODES.includes(option.country as (typeof PRIORITY_PHONE_COUNTRY_CODES)[number]),
+);
+
+const PRIORITY_NATIONALITY_OPTIONS = PRIORITY_PHONE_COUNTRY_CODES
+  .map((countryCode) => SORTED_COUNTRIES.find((country) => country.code === countryCode))
+  .filter((country): country is (typeof SORTED_COUNTRIES)[number] => country !== undefined);
+
+const OTHER_NATIONALITY_OPTIONS = SORTED_COUNTRIES.filter(
+  (country) => !PRIORITY_PHONE_COUNTRY_CODES.includes(country.code as (typeof PRIORITY_PHONE_COUNTRY_CODES)[number]),
+);
+
 function normalizePhoneCountryCode(value: string) {
   const digits = value.replace(/\D/g, '');
 
@@ -191,7 +204,7 @@ function getMetaContent(name: string) {
   return (document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null)?.content?.trim() ?? '';
 }
 
-function ensureRecaptcha() {
+function ensureRecaptcha(siteKey: string) {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return Promise.resolve<GrecaptchaInstance | null>(null);
   }
@@ -217,11 +230,7 @@ function ensureRecaptcha() {
       return true;
     };
 
-    window.__googleRecaptchaOnLoad = () => {
-      resolveWhenReady();
-    };
-
-    const existingScript = document.getElementById('google-recaptcha-api');
+    const existingScript = document.getElementById('google-recaptcha-api') as HTMLScriptElement | null;
     if (existingScript) {
       if (resolveWhenReady()) {
         return;
@@ -243,14 +252,35 @@ function ensureRecaptcha() {
 
     const script = document.createElement('script');
     script.id = 'google-recaptcha-api';
-    script.src = 'https://www.google.com/recaptcha/api.js?render=explicit&hl=en&onload=__googleRecaptchaOnLoad';
+    script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}&hl=en`;
     script.async = true;
     script.defer = true;
+    script.onload = () => {
+      if (!resolveWhenReady()) {
+        resolve(null);
+      }
+    };
     script.onerror = () => resolve(null);
     document.head.appendChild(script);
   });
 
   return recaptchaLoader;
+}
+
+async function executeRecaptcha(siteKey: string, action: string) {
+  const grecaptcha = await ensureRecaptcha(siteKey);
+
+  if (!grecaptcha) {
+    return null;
+  }
+
+  try {
+    const token = await grecaptcha.execute(siteKey, { action });
+
+    return token.trim() || null;
+  } catch {
+    return null;
+  }
 }
 
 function escapeHtml(value: string) {
@@ -616,15 +646,12 @@ const LEGAL_DIALOG_CONTENT: Record<LegalDialogType, {
 export function RegisterPage() {
   const recaptchaEnabled = getMetaContent('recaptcha-enabled') === '1';
   const recaptchaSiteKey = getMetaContent('recaptcha-site-key');
+  const recaptchaAction = getMetaContent('recaptcha-action') || 'register';
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
   const [isRecaptchaReady, setIsRecaptchaReady] = useState(!recaptchaEnabled);
   const [legalDialog, setLegalDialog] = useState<LegalDialogType | null>(null);
-  const [registeredEmail, setRegisteredEmail] = useState('');
-  const [recaptchaContainerElement, setRecaptchaContainerElement] = useState<HTMLDivElement | null>(null);
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
   const previousCountryRef = useRef('');
-  const recaptchaWidgetIdRef = useRef<number | null>(null);
 
   const {
     control,
@@ -634,16 +661,15 @@ export function RegisterPage() {
     setError,
     clearErrors,
     watch,
-    reset,
     formState: { errors, dirtyFields },
   } = useForm<FormData>({
     mode: 'onTouched',
     defaultValues: {
       full_name: '',
       email: '',
-      phone_country_code: '',
+      phone_country_code: PHONE_DIAL_CODES.MY,
       phone_national_number: '',
-      country: '',
+      country: 'MY',
       identity_type: '',
       identity_number: '',
       recaptcha_token: '',
@@ -671,21 +697,13 @@ export function RegisterPage() {
     });
   }, [setValue]);
 
-  const resetRecaptchaWidget = useCallback((clearError = false) => {
-    if (window.grecaptcha && recaptchaWidgetIdRef.current !== null) {
-      window.grecaptcha.reset(recaptchaWidgetIdRef.current);
-    }
-
+  const resetRecaptchaState = useCallback((clearError = false) => {
     clearRecaptchaToken(false);
 
     if (clearError) {
       clearErrors('recaptcha_token');
     }
   }, [clearErrors, clearRecaptchaToken]);
-
-  const handleRecaptchaContainerRef = useCallback((node: HTMLDivElement | null) => {
-    setRecaptchaContainerElement(node);
-  }, []);
 
   const handleCanvasReady = useCallback((fn: (x: number, y: number) => void) => {
     addRippleRef.current = fn;
@@ -699,12 +717,8 @@ export function RegisterPage() {
 
   useEffect(() => {
     if (!recaptchaEnabled) {
+      resetRecaptchaState(true);
       setIsRecaptchaReady(true);
-      return;
-    }
-
-    if (!recaptchaContainerElement) {
-      setIsRecaptchaReady(false);
       return;
     }
 
@@ -716,61 +730,28 @@ export function RegisterPage() {
     let isMounted = true;
     setIsRecaptchaReady(false);
 
-    ensureRecaptcha().then((grecaptcha) => {
+    ensureRecaptcha(recaptchaSiteKey).then((grecaptcha) => {
       if (!isMounted) {
         return;
       }
 
-      if (!grecaptcha || !recaptchaContainerElement) {
-        setIsRecaptchaReady(false);
-        return;
-      }
-
-      if (recaptchaWidgetIdRef.current !== null) {
-        grecaptcha.reset(recaptchaWidgetIdRef.current);
-        setIsRecaptchaReady(true);
-        return;
-      }
-
-      try {
-        recaptchaContainerElement.innerHTML = '';
-        recaptchaWidgetIdRef.current = grecaptcha.render(recaptchaContainerElement, {
-          sitekey: recaptchaSiteKey,
-          theme: 'light',
-          callback: (token: string) => {
-            syncRecaptchaToken(token, true);
-          },
-          'expired-callback': () => {
-            resetRecaptchaWidget();
-            setError('recaptcha_token', {
-              type: 'manual',
-              message: 'reCAPTCHA verification expired. Please check it again.',
-            });
-          },
-          'error-callback': () => {
-            resetRecaptchaWidget();
-            setError('recaptcha_token', {
-              type: 'manual',
-              message: 'Failed to load reCAPTCHA. Please try again.',
-            });
-          },
-        });
-
-        setIsRecaptchaReady(true);
-      } catch {
-        recaptchaWidgetIdRef.current = null;
+      if (!grecaptcha) {
         setIsRecaptchaReady(false);
         setError('recaptcha_token', {
           type: 'manual',
-          message: 'Failed to render reCAPTCHA. Please try again.',
+          message: 'Failed to load reCAPTCHA. Please refresh and try again.',
         });
+        return;
       }
+
+      clearErrors('recaptcha_token');
+      setIsRecaptchaReady(true);
     });
 
     return () => {
       isMounted = false;
     };
-  }, [recaptchaContainerElement, recaptchaEnabled, recaptchaSiteKey, resetRecaptchaWidget, setError, syncRecaptchaToken]);
+  }, [clearErrors, recaptchaEnabled, recaptchaSiteKey, resetRecaptchaState, setError]);
 
   const countryVal = watch('country');
   const phoneCountryCodeVal = watch('phone_country_code');
@@ -836,17 +817,6 @@ export function RegisterPage() {
     }
   }, [countryVal, identityTypeVal, setValue]);
 
-  const handleResetForm = () => {
-    if (recaptchaEnabled) {
-      resetRecaptchaWidget(true);
-      recaptchaWidgetIdRef.current = null;
-    }
-
-    setIsSuccess(false);
-    setRegisteredEmail('');
-    reset(); // Clear form values
-  };
-
   const onSubmit = async (data: FormData) => {
     try {
       const phoneNumber = buildPhoneNumber(data.phone_country_code, data.phone_national_number);
@@ -871,7 +841,7 @@ export function RegisterPage() {
           { label: 'Full Name', value: data.full_name },
           { label: 'Email', value: data.email },
           { label: 'Phone Number', value: phoneNumber },
-          { label: 'Country', value: selectedCountry },
+          { label: 'Nationality', value: selectedCountry },
           { label: 'Document Type', value: selectedIdentityLabel },
           { label: selectedIdentityNumberLabel, value: data.identity_number },
         ]),
@@ -894,6 +864,31 @@ export function RegisterPage() {
       }
 
       setIsSubmitting(true);
+      let recaptchaToken = data.recaptcha_token.trim();
+
+      if (recaptchaEnabled) {
+        if (recaptchaSiteKey === '') {
+          setError('recaptcha_token', {
+            type: 'manual',
+            message: 'reCAPTCHA is not configured. Please contact the administrator.',
+          });
+          return;
+        }
+
+        const generatedToken = await executeRecaptcha(recaptchaSiteKey, recaptchaAction);
+
+        if (!generatedToken) {
+          setError('recaptcha_token', {
+            type: 'manual',
+            message: 'Automatic reCAPTCHA verification failed. Please try again.',
+          });
+          return;
+        }
+
+        recaptchaToken = generatedToken;
+        syncRecaptchaToken(generatedToken, false);
+        setIsRecaptchaReady(true);
+      }
 
       const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
       const payload = {
@@ -901,6 +896,7 @@ export function RegisterPage() {
         phone_country_code: normalizePhoneCountryCode(data.phone_country_code),
         phone_national_number: normalizePhoneNationalNumber(data.phone_national_number),
         phone_number: phoneNumber,
+        recaptcha_token: recaptchaToken,
       };
 
       const response = await fetch('/api/register', {
@@ -928,7 +924,7 @@ export function RegisterPage() {
           });
 
           if ((result.errors as Record<string, string[]>).recaptcha_token) {
-            resetRecaptchaWidget();
+            resetRecaptchaState();
           }
         } else {
           throw new Error(result.message || 'Registration failed');
@@ -936,9 +932,14 @@ export function RegisterPage() {
         return;
       }
 
-      setRegisteredEmail(data.email);
-      setIsSuccess(true);
-      toast.success(result.message || 'A verification link has been sent to your email.');
+      const successUrl = typeof result.success_url === 'string' ? result.success_url.trim() : '';
+
+      if (successUrl === '') {
+        throw new Error(result.message || 'Registration succeeded, but the success page could not be opened.');
+      }
+
+      window.location.assign(successUrl);
+      return;
     } catch (error: any) {
       toast.error(error.message || 'Something went wrong while registering. Please try again.');
     } finally {
@@ -998,9 +999,7 @@ export function RegisterPage() {
         : 'Use an official and valid national ID or resident ID number.'
       : identityTypeVal === 'passport'
         ? 'Use a valid passport number that matches your travel document.'
-        : isMalaysianRegistrant
-          ? 'For Malaysia, you may choose Malaysia IC (MyKad) or Passport.'
-          : 'Select the document you will use for registration.';
+        : 'For Malaysia, you may choose Malaysia IC (MyKad) or Passport.';
   const phoneCountryOption = PHONE_COUNTRY_CODES.find(option => option.dialCode === phoneCountryCodeVal);
   const activeLegalDialog = legalDialog ? LEGAL_DIALOG_CONTENT[legalDialog] : null;
   const phoneNationalNumberField = register('phone_national_number', {
@@ -1011,19 +1010,7 @@ export function RegisterPage() {
       event.target.value = normalizePhoneNationalNumber(event.target.value);
     },
   });
-  const recaptchaTokenField = register('recaptcha_token', {
-    validate: (value) => {
-      if (!recaptchaEnabled) {
-        return true;
-      }
-
-      if (recaptchaSiteKey === '') {
-        return 'reCAPTCHA is not configured. Please contact the administrator.';
-      }
-
-      return value.trim() !== '' || 'Please complete the reCAPTCHA verification.';
-    },
-  });
+  const recaptchaTokenField = register('recaptcha_token');
 
   return (
     <div
@@ -1353,7 +1340,22 @@ export function RegisterPage() {
                                 )}
                               </SelectTrigger>
                               <SelectContent className="rounded-xl border-sky-100">
-                                {PHONE_COUNTRY_CODES.map(option => (
+                                {PRIORITY_PHONE_COUNTRY_OPTIONS.map(option => (
+                                  <SelectItem key={`${option.country}-${option.dialCode}`} value={option.dialCode}>
+                                    <span className="flex items-center gap-2.5">
+                                      <span
+                                        className={`${option.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`}
+                                        aria-hidden="true"
+                                      />
+                                      <span>{option.countryName}</span>
+                                      <span className="text-slate-500">{option.dialCode}</span>
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                                {PRIORITY_PHONE_COUNTRY_OPTIONS.length > 0 && OTHER_PHONE_COUNTRY_OPTIONS.length > 0 && (
+                                  <SelectSeparator className="bg-sky-100" />
+                                )}
+                                {OTHER_PHONE_COUNTRY_OPTIONS.map(option => (
                                   <SelectItem key={`${option.country}-${option.dialCode}`} value={option.dialCode}>
                                     <span className="flex items-center gap-2.5">
                                       <span
@@ -1394,12 +1396,12 @@ export function RegisterPage() {
 
                     <div>
                       <label htmlFor="country" className="block text-slate-700 text-sm font-semibold mb-1.5">
-                        Country <span className="text-red-500" aria-hidden="true">*</span>
+                        Nationality <span className="text-red-500" aria-hidden="true">*</span>
                       </label>
                       <Controller
                         control={control}
                         name="country"
-                        rules={{ required: 'Country is required.' }}
+                        rules={{ required: 'Nationality is required.' }}
                         render={({ field }) => (
                           <Select value={field.value} onValueChange={field.onChange}>
                             <SelectTrigger
@@ -1418,12 +1420,26 @@ export function RegisterPage() {
                               ) : (
                                 <span className="flex items-center gap-2.5 text-slate-400">
                                   <Globe className="h-4 w-4 text-sky-400" aria-hidden="true" />
-                                  <SelectValue placeholder="Select your country" />
+                                  <SelectValue placeholder="Select your nationality" />
                                 </span>
                               )}
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-sky-100">
-                              {SORTED_COUNTRIES.map(c => (
+                              {PRIORITY_NATIONALITY_OPTIONS.map(c => (
+                                <SelectItem key={c.code} value={c.code}>
+                                  <span className="flex items-center gap-2.5">
+                                    <span
+                                      className={`fi fi-${c.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
+                                      aria-hidden="true"
+                                    />
+                                    <span>{c.name}</span>
+                                  </span>
+                                </SelectItem>
+                              ))}
+                              {PRIORITY_NATIONALITY_OPTIONS.length > 0 && OTHER_NATIONALITY_OPTIONS.length > 0 && (
+                                <SelectSeparator className="bg-sky-100" />
+                              )}
+                              {OTHER_NATIONALITY_OPTIONS.map(c => (
                                 <SelectItem key={c.code} value={c.code}>
                                   <span className="flex items-center gap-2.5">
                                     <span
@@ -1535,7 +1551,7 @@ export function RegisterPage() {
                           <div>
                             <p className="text-sm font-semibold text-slate-800">Security verification</p>
                             <p className="text-xs leading-relaxed text-slate-500">
-                              Complete Google reCAPTCHA before submitting the registration form.
+
                             </p>
                           </div>
                         </div>
@@ -1549,13 +1565,14 @@ export function RegisterPage() {
                             {!isRecaptchaReady && (
                               <div className="flex items-center gap-2 text-xs text-slate-500">
                                 <Loader2 className="h-4 w-4 animate-spin text-sky-500" aria-hidden="true" />
-                                Loading security verification...
+                                Preparing automatic security verification...
                               </div>
                             )}
-                            <div
-                              ref={handleRecaptchaContainerRef}
-                              className={!isRecaptchaReady ? 'min-h-[78px]' : undefined}
-                            />
+                            {isRecaptchaReady && (
+                              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                                You are not a robot. No checkbox is required.
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1643,85 +1660,6 @@ export function RegisterPage() {
         ) : null}
       </Dialog>
 
-      {/* SUCCESS OVERLAY */}
-      <AnimatePresence>
-        {isSuccess && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="fixed inset-0 flex items-center justify-center p-4 md:p-6"
-            style={{ zIndex: 100, backgroundColor: 'rgba(12,74,110,0.98)', backdropFilter: 'blur(20px)' }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="success-title"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white/10 border border-white/20 p-6 md:p-10 rounded-[2.5rem] shadow-2xl backdrop-blur-md scrollbar-hide text-center"
-            >
-              {/* CLOSE BUTTON */}
-              <button
-                onClick={handleResetForm}
-                className="absolute top-5 right-5 p-2 text-sky-200 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10"
-                aria-label="Close"
-              >
-                <X className="w-6 h-6" />
-              </button>
-
-              {/* ICON */}
-              <motion.div
-                animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.05, 1] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="w-20 h-20 md:w-28 md:h-28 mx-auto mb-6 text-sky-300"
-              >
-                <LotusIcon className="w-full h-full drop-shadow-[0_0_15px_rgba(125,211,252,0.4)]" />
-              </motion.div>
-
-              <div className="space-y-6">
-                <div>
-                  <CheckCircle2 className="w-10 h-10 md:w-14 md:h-14 text-emerald-400 mx-auto mb-4" />
-                  <h2 id="success-title" className="text-white text-2xl md:text-4xl font-black leading-tight tracking-tight mb-3" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                    Registration Successful!<br className="hidden sm:block" /> Check Your Verification Email
-                  </h2>
-                  <p className="text-sky-200 text-base md:text-lg mb-1">
-                    We’ve sent a verification link to
-                  </p>
-                  <p className="text-sky-100 font-bold text-xl md:text-2xl" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                    {registeredEmail || 'your email'}
-                  </p>
-                </div>
-
-                <p className="text-sky-300 text-xs md:text-sm leading-relaxed max-w-sm mx-auto opacity-90">
-                  Open the email, click the verification link, and your account will be activated with the ticket QR code ready right away.
-                </p>
-
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {[
-                    { text: '📅 9–19 April 2026', color: 'from-sky-500/20 to-sky-400/10' },
-                    { text: '📍 Malaysia', color: 'from-cyan-500/20 to-cyan-400/10' },
-                    { text: '🎵 50+ Artists', color: 'from-indigo-500/20 to-indigo-400/10' }
-                  ].map((item, idx) => (
-                    <span key={idx} className={`bg-gradient-to-br ${item.color} border border-white/10 text-sky-100 text-[10px] md:text-xs px-4 py-2 rounded-full font-semibold tracking-wide backdrop-blur-sm`}>
-                      {item.text}
-                    </span>
-                  ))}
-                </div>
-
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleResetForm}
-                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-sky-400 to-cyan-400 text-sky-950 font-black text-sm md:text-base uppercase tracking-widest hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] transition-all shadow-lg"
-                  style={{ fontFamily: '"Kanit", sans-serif' }}
-                >
-                  Register Another Attendee
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

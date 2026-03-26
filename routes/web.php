@@ -30,9 +30,9 @@ Route::get('/register', function () {
 
 Route::post('/register', function (RegisterRequest $request, RegistrationService $service) {
     try {
-        $user = $service->register($request->validated(), $request->ip());
+        $result = $service->register($request->validated(), $request->ip());
 
-        return redirect()->route('register.success', ['email' => $user['email']]);
+        return redirect()->route('register.success', ['email' => $result['user']['email']]);
     } catch (InvalidArgumentException $e) {
         return back()->withInput($request->except('password', 'password_confirmation'))->withErrors(['error' => $e->getMessage()]);
     }

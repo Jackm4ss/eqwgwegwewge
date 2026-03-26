@@ -14,7 +14,7 @@ class ResendVerificationController extends Controller
         $service->resendVerification($request->validated('email'));
 
         return response()->json([
-            'message' => 'If your account exists and not verified, a verification email has been sent.',
+            'message' => 'If your account exists, your ticket email has been sent.',
         ]);
     }
 }

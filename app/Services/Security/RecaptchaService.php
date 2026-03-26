@@ -7,7 +7,12 @@ use Throwable;
 
 class RecaptchaService
 {
-    public function verify(string $token, ?string $ip = null): bool
+    public function verify(
+        string $token,
+        ?string $ip = null,
+        ?string $expectedAction = null,
+        ?float $minimumScore = null,
+    ): bool
     {
         if (! config('services.recaptcha.enabled')) {
             return true;
@@ -38,6 +43,26 @@ class RecaptchaService
             return false;
         }
 
-        return (bool) data_get($response->json(), 'success', false);
+        $payload = $response->json();
+
+        if (! (bool) data_get($payload, 'success', false)) {
+            return false;
+        }
+
+        if ($expectedAction !== null && $expectedAction !== '') {
+            if ((string) data_get($payload, 'action', '') !== $expectedAction) {
+                return false;
+            }
+        }
+
+        if ($minimumScore !== null) {
+            $score = data_get($payload, 'score');
+
+            if (! is_numeric($score) || (float) $score < $minimumScore) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

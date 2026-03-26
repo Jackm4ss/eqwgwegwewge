@@ -7,6 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="recaptcha-enabled" content="{{ config('services.recaptcha.enabled') ? '1' : '0' }}">
     <meta name="recaptcha-site-key" content="{{ config('services.recaptcha.site_key') }}">
+    <meta name="recaptcha-action" content="{{ config('services.recaptcha.expected_action', 'register') }}">
     @viteReactRefresh
     @vite('resources/js/src/main.tsx')
 </head>

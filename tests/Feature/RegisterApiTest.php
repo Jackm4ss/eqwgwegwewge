@@ -3,7 +3,8 @@
 namespace Tests\Feature;
 
 use App\Contracts\UserRepositoryInterface;
-use App\Mail\VerifyRegistrationMail;
+use App\Mail\TicketReadyMail;
+use App\Services\Tickets\TicketQrCodeService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Mail;
@@ -44,26 +45,34 @@ class RegisterApiTest extends TestCase
             ]);
     }
 
-    public function test_register_creates_pending_user_and_indexes_and_sends_verification_mail(): void
+    public function test_register_immediately_activates_user_issues_ticket_and_sends_ticket_mail(): void
     {
         Mail::fake();
 
         $payload = $this->validPayload();
 
         $response = $this->postJson('/api/register', $payload);
+        $user = $this->repository->firstUser();
+        $this->assertNotNull($user);
+        $ticket = $this->repository->findTicketByUserId($user['user_id']);
+        $this->assertNotNull($ticket);
 
         $response->assertCreated()
             ->assertJson([
-                'message' => 'Registration successful. Verification email has been sent.',
-                'status' => 'pending_verification',
+                'message' => 'Registration successful. Please check your email for your QR ticket.',
+                'status' => 'active',
+                'success_url' => route('register.success', ['email' => strtolower($payload['email'])]),
+            ])
+            ->assertJsonMissing([
+                'ticket_view_url' => app(TicketQrCodeService::class)->signedTicketUrl($ticket['ticket_id']),
             ]);
 
-        $user = $this->repository->firstUser();
-
         $this->assertNotNull($user);
-        $this->assertSame('pending_verification', $user['account_status']);
-        $this->assertSame('unverified', $user['verification_status']);
-        $this->assertNull($user['ticket_id']);
+        $this->assertSame('active', $user['account_status']);
+        $this->assertSame('verified', $user['verification_status']);
+        $this->assertNotNull($user['email_verified_at']);
+        $this->assertNotNull($user['ticket_id']);
+        $this->assertNotNull($user['ticket_ready_email_sent_at']);
         $this->assertSame('test@example.com', $user['email']);
         $this->assertSame('+62', $user['phone_country_code']);
         $this->assertSame('8123456789', $user['phone_national_number']);
@@ -76,8 +85,11 @@ class RegisterApiTest extends TestCase
             $payload['country'],
             $payload['identity_number'],
         ));
+        $this->assertNotNull($ticket);
+        $this->assertSame('active', $ticket['status']);
+        $this->assertSame($user['ticket_id'], $ticket['ticket_id']);
 
-        Mail::assertSent(VerifyRegistrationMail::class, function (VerifyRegistrationMail $mail) use ($payload) {
+        Mail::assertSent(TicketReadyMail::class, function (TicketReadyMail $mail) use ($payload) {
             return $mail->hasTo(strtolower($payload['email']));
         });
     }
@@ -98,7 +110,7 @@ class RegisterApiTest extends TestCase
             ->assertJsonValidationErrors(['email']);
 
         $this->assertCount(1, $this->repository->users);
-        $this->assertCount(0, $this->repository->tickets);
+        $this->assertCount(1, $this->repository->tickets);
     }
 
     public function test_register_rejects_duplicate_identity_number_with_structured_error(): void
@@ -117,7 +129,7 @@ class RegisterApiTest extends TestCase
             ->assertJsonValidationErrors(['identity_number']);
 
         $this->assertCount(1, $this->repository->users);
-        $this->assertCount(0, $this->repository->tickets);
+        $this->assertCount(1, $this->repository->tickets);
     }
 
     public function test_register_allows_same_identity_number_for_different_identity_types(): void
@@ -196,7 +208,7 @@ class RegisterApiTest extends TestCase
         $response = $this->postJson('/api/register', $this->validPayload());
 
         $response->assertCreated()
-            ->assertJsonStructure(['message', 'status'])
+            ->assertJsonStructure(['message', 'status', 'success_url'])
             ->assertJsonMissing(['redirect']);
     }
 
@@ -222,6 +234,8 @@ class RegisterApiTest extends TestCase
         config([
             'services.recaptcha.enabled' => true,
             'services.recaptcha.secret_key' => 'test-secret',
+            'services.recaptcha.expected_action' => 'register',
+            'services.recaptcha.minimum_score' => 0.5,
             'services.recaptcha.verify_url' => 'https://www.google.com/recaptcha/api/siteverify',
         ]);
 
@@ -242,6 +256,8 @@ class RegisterApiTest extends TestCase
         config([
             'services.recaptcha.enabled' => true,
             'services.recaptcha.secret_key' => 'test-secret',
+            'services.recaptcha.expected_action' => 'register',
+            'services.recaptcha.minimum_score' => 0.5,
             'services.recaptcha.verify_url' => 'https://www.google.com/recaptcha/api/siteverify',
         ]);
 
@@ -268,12 +284,16 @@ class RegisterApiTest extends TestCase
         config([
             'services.recaptcha.enabled' => true,
             'services.recaptcha.secret_key' => 'test-secret',
+            'services.recaptcha.expected_action' => 'register',
+            'services.recaptcha.minimum_score' => 0.5,
             'services.recaptcha.verify_url' => 'https://www.google.com/recaptcha/api/siteverify',
         ]);
 
         Http::fake([
             'https://www.google.com/recaptcha/api/siteverify' => Http::response([
                 'success' => true,
+                'action' => 'register',
+                'score' => 0.9,
             ], 200),
         ]);
 
@@ -283,11 +303,41 @@ class RegisterApiTest extends TestCase
 
         $response->assertCreated()
             ->assertJson([
-                'message' => 'Registration successful. Verification email has been sent.',
-                'status' => 'pending_verification',
+                'message' => 'Registration successful. Please check your email for your QR ticket.',
+                'status' => 'active',
             ]);
 
         $this->assertCount(1, $this->repository->users);
+    }
+
+    public function test_register_rejects_recaptcha_token_with_low_score_or_wrong_action_when_enabled(): void
+    {
+        Mail::fake();
+
+        config([
+            'services.recaptcha.enabled' => true,
+            'services.recaptcha.secret_key' => 'test-secret',
+            'services.recaptcha.expected_action' => 'register',
+            'services.recaptcha.minimum_score' => 0.5,
+            'services.recaptcha.verify_url' => 'https://www.google.com/recaptcha/api/siteverify',
+        ]);
+
+        Http::fake([
+            'https://www.google.com/recaptcha/api/siteverify' => Http::response([
+                'success' => true,
+                'action' => 'homepage',
+                'score' => 0.2,
+            ], 200),
+        ]);
+
+        $response = $this->postJson('/api/register', array_merge($this->validPayload(), [
+            'recaptcha_token' => 'suspicious-token',
+        ]));
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['recaptcha_token']);
+
+        $this->assertCount(0, $this->repository->users);
     }
 
     private function validPayload(): array

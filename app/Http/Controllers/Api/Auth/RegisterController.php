@@ -14,11 +14,12 @@ class RegisterController extends Controller
     public function __invoke(RegisterRequest $request, RegistrationService $service): JsonResponse
     {
         try {
-            $service->register($request->validated(), (string) $request->ip());
+            $result = $service->register($request->validated(), (string) $request->ip());
 
             return response()->json([
-                'message' => 'Registration successful. Verification email has been sent.',
-                'status' => 'pending_verification',
+                'message' => 'Registration successful. Please check your email for your QR ticket.',
+                'status' => 'active',
+                'success_url' => route('register.success', ['email' => $result['user']['email']]),
             ], 201);
         } catch (ValidationException $exception) {
             throw $exception;
