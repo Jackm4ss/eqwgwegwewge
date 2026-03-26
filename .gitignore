@@ -9,7 +9,6 @@
 !.env.testing.example
 !.env.production.example
 !.env.ci.example
-/public/build
 /public/hot
 /bootstrap/cache/*
 !/bootstrap/cache/.gitignore
