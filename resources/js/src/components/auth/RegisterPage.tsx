@@ -628,12 +628,12 @@ const LEGAL_DIALOG_CONTENT: Record<LegalDialogType, {
   paragraphs: string[];
 }> = {
   terms: {
-    title: 'Terms & Conditions',
-    description: 'This content is still dummy text for UI review purposes and will be replaced with the final copy.',
+    title: 'CARLSBERG MALAYSIA CONTEST/PROMOTION STANDARD TERMS AND CONDITIONS',
+    description: '',
     paragraphs: [
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Vestibulum id ligula porta felis euismod semper, sed posuere consectetur est at lobortis.',
-      'Praesent commodo cursus magna, vel scelerisque nisl consectetur et. Donec id elit non mi porta gravida at eget metus. Cras mattis consectetur purus sit amet fermentum, sed posuere consectetur est at lobortis.',
-      'Aenean lacinia bibendum nulla sed consectetur. Curabitur blandit tempus porttitor. Nulla vitae elit libero, a pharetra augue. Maecenas faucibus mollis interdum, sed posuere consectetur est at lobortis.',
+      'Carlsberg Malaysia\'s Contest/Promotion will be governed by these standard terms and conditions and the Contest/Promotion terms and conditions (collectively "these Terms and Conditions"). Each Participant agrees that he/she has read and understood these Terms and Conditions and by their participation in the Contest/Promotion, each Participant agrees to be bound by these Terms and Conditions.',
+      'The Organiser of the Contest/Promotion is Carlsberg Marketing Sdn Bhd ("Carlsberg").',
+      'The Contest/Promotion is only open to all non-muslim Malaysian citizens or Permanent Resident of the Age of Eligibility as stated in the Contest/Promotion terms and conditions. Unless otherwise prescribed in the Contest/Promotion terms and conditions, to enter the Contest/Promotion, Participants must be a non-muslim, age twenty one (21) years and above as at the commencement date of the Contest/Promotion.',
     ],
   },
   privacy: {
@@ -1591,8 +1591,10 @@ export function RegisterPage() {
                           className="font-semibold text-sky-600 underline underline-offset-2 transition-colors hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-white rounded-sm"
                         >
                           Terms &amp; Conditions
-                        </button>{' '}
-                        and{' '}
+                        </button>
+                        .
+                        {/*
+                        {' '}and{' '}
                         <button
                           type="button"
                           onClick={() => setLegalDialog('privacy')}
@@ -1600,7 +1602,8 @@ export function RegisterPage() {
                         >
                           Privacy Policy
                         </button>
-                        .
+                        . 
+                        */}
                       </div>
                     </div>
                     <AnimatePresence>

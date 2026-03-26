@@ -3,34 +3,116 @@ import { motion, AnimatePresence } from "motion/react";
 
 const TILT: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 
-const faqs = [
+type FAQItem = {
+  q: string;
+  a: string[];
+  list?: boolean;
+};
+
+const faqs: FAQItem[] = [
   {
-    q: "Is the event free to attend?",
-    a: "Yes! Songkran Festival Malaysia 2026 is a free-entry event, open to everyone. Participants are required to register via our website in advance, or may register on-site by scanning the QR code provided at the event entrance.",
+    q: "Ticket and Entry Requirements",
+    list: true,
+    a: [
+      "Age Restriction: Minors under 13 years old need to be accompanied by an adult or guardian.",
+      "Valid QR code and original ID cards or passports must be presented at the venue.",
+      "Name Matching: QR ticket must be registered to the attendee's full name, matching their official ID.",
+      "Re-entry on the same day does not require QR scanning, provided the valid UV stamp of the day is still visible.",
+    ],
   },
   {
-    q: "When and where is the festival?",
-    a: "The festival will take place at 1 Utama Shopping Centre (GF Forecourt Carpark) from 9th to 19th April 2026, operating daily from 12:00 PM to 12:00 AM.",
+    q: "Prohibited Items",
+    list: true,
+    a: [
+      "To ensure safety, the following are generally prohibited:",
+      "Weapons, sharp objects, and fireworks.",
+      "Drugs and illegal substances.",
+      "Professional cameras (DSLR/mirrorless) and selfie sticks unless under 30 cm.",
+      "External food and drinks.",
+    ],
   },
   {
-    q: "What should I wear to the water play?",
-    a: "We recommend wearing light, comfortable clothing that you don’t mind getting wet. Non-slip footwear is highly encouraged, and don’t forget to bring waterproof protection for your belongings.",
+    q: "Safety & Behavioral Guidelines",
+    list: true,
+    a: [
+      "Water Fight Safety: Do not aim high-pressure water guns at faces or eyes.",
+      "Cultural Respect: Do not splash food vendors, crew on duty, the elderly, or young children.",
+      "Liability: Organizers are not responsible for lost or stolen personal property.",
+    ],
   },
   {
-    q: "Is it suitable for families and children?",
-    a: "Absolutely! The festival is family-friendly and suitable for visitors of all ages. We encourage parents to supervise children, especially in water play areas.",
+    q: "Event & Weather Policy",
+    list: true,
+    a: [
+      "Rain or Shine: Events proceed regardless of weather unless conditions are deemed dangerous, in which case the organizer may amend the event.",
+      "Changes: Organizers reserve the right to change schedules, lineups, or terms without prior notice.",
+    ],
   },
   {
-    q: "Will there be food and drinks?",
-    a: "Yes! There will be a wide variety of food and beverage vendors, offering everything from local favourites to authentic Thai cuisine and refreshing drinks.",
+    q: "Media Rights",
+    a: [
+      "By entering the event, you consent to being photographed or recorded, with the content being used for promotional purposes.",
+    ],
   },
   {
-    q: "Who is organising this festival?",
-    a: "This event is proudly organised by EQ Solutions, in close collaboration with the Royal Thai Embassy and 1 Utama Shopping Centre, bringing together a vibrant cultural celebration for the public.",
+    q: "Do I need to scan the QR code every day?",
+    a: [
+      "You only need to scan once per day upon entry. If you have already scanned for the day, there is no need to scan again when re-entering.",
+    ],
   },
   {
-    q: "Are activities confirmed?",
-    a: "Yes, a range of exciting activities are planned, including water play zones, live performances, games, and cultural showcases.",
+    q: "What if I lose my QR code?",
+    a: [
+      "No worries. You can retrieve your registration QR code from your confirmation email, or re-register on-site by scanning the registration QR displayed at the entrance.",
+    ],
+  },
+  {
+    q: "Is there a place to change clothes?",
+    a: [
+      "There are no changing facilities within the event grounds. Visitors are advised to change at the restrooms inside 1 Utama Shopping Centre before entering or after leaving the water play areas.",
+    ],
+  },
+  {
+    q: "Are there lockers or storage spaces for belongings?",
+    a: [
+      "There are locker and storage spaces prepared. However, visitors are encouraged to bring minimal belongings. The organiser is not responsible for any loss or damage to personal items.",
+    ],
+  },
+  {
+    q: "What items should I avoid bringing?",
+    a: [
+      "Please avoid bringing valuables, electronics without waterproof protection, and any prohibited or dangerous items. Water play areas will get very wet.",
+    ],
+  },
+  {
+    q: "What happens if it rains?",
+    a: [
+      "The festival will continue rain or shine. In the event of severe weather for safety reasons, certain activities or performances may be temporarily paused.",
+    ],
+  },
+  {
+    q: "Is parking available at the venue?",
+    a: [
+      "Yes, parking is available within 1 Utama Shopping Centre. Visitors are encouraged to arrive early, as parking may be limited during peak hours.",
+    ],
+  },
+  {
+    q: "Is first aid available on-site?",
+    a: [
+      "Yes, a first aid station will be available throughout the event for any medical assistance.",
+    ],
+  },
+  {
+    q: "Can I bring my own water guns or buckets?",
+    a: [
+      "Yes. You are welcome to bring your own water guns. However, buckets, high-pressure devices, or unsafe equipment are not permitted.",
+    ],
+  },
+  {
+    q: "Will there be security at the event?",
+    a: [
+      "Yes, security personnel and event crew will be stationed throughout the venue to ensure a safe and enjoyable experience for all visitors.",
+    ],
   },
 ];
 
@@ -68,7 +150,6 @@ export function FAQ() {
             WebkitBackdropFilter: "blur(12px)",
           }}
         >
-          {/* Header */}
           <div className="grid md:grid-cols-2 gap-12 items-end mb-16 md:mb-20">
             <div>
               <motion.div
@@ -126,11 +207,10 @@ export function FAQ() {
             </motion.p>
           </div>
 
-          {/* Accordion */}
           <div className="space-y-3">
             {faqs.map((faq, i) => (
               <motion.div
-                key={i}
+                key={faq.q}
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
@@ -197,7 +277,7 @@ export function FAQ() {
                       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                       style={{ overflow: "hidden" }}
                     >
-                      <p
+                      <div
                         style={{
                           ...TILT,
                           fontSize: "0.76rem",
@@ -208,8 +288,19 @@ export function FAQ() {
                           paddingBottom: 24,
                         }}
                       >
-                        {faq.a}
-                      </p>
+                        <div className="space-y-3">
+                          {faq.a.map((line, lineIndex) => (
+                            faq.list ? (
+                              <div key={`${faq.q}-${lineIndex}`} className="flex gap-3">
+                                <span className="pt-1 text-[0.9em] leading-none text-black/45">-</span>
+                                <p>{line}</p>
+                              </div>
+                            ) : (
+                              <p key={`${faq.q}-${lineIndex}`}>{line}</p>
+                            )
+                          ))}
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

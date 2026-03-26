@@ -222,7 +222,7 @@ export function EventDetails() {
                 </p>
 
                 <a
-                  href="https://maps.app.goo.gl/MUU1nHAw2zrs2cZ96"
+                  href="https://maps.app.goo.gl/nV1FXduimtyZ2cbXA"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 mt-3 group"

@@ -97,7 +97,7 @@ export function Footer() {
             {/* <div className="flex flex-wrap gap-3">
               {[
                 { label: "April 9–19", icon: Calendar, color: "#2FA7D8" },
-                { label: "One Utama", icon: MapPin, color: "#18C7CC", link: "https://maps.app.goo.gl/MUU1nHAw2zrs2cZ96" },
+                { label: "One Utama", icon: MapPin, color: "#18C7CC", link: "https://maps.app.goo.gl/nV1FXduimtyZ2cbXA" },
                 { label: "12PM–12AM", icon: Clock, color: "rgba(237,232,220,0.5)" },
               ].map(({ label, icon: Icon, color, link }) => (
                 link ? (
@@ -197,7 +197,7 @@ export function Footer() {
             </p>
             <div className="flex flex-col gap-4">
               {[
-                { icon: MapPin, text: "@Gf Forecourt Outdoor Carpark 1 Utama, Malaysia", color: "#2FA7D8", link: "https://maps.app.goo.gl/MUU1nHAw2zrs2cZ96" },
+                { icon: MapPin, text: "@Gf Forecourt Outdoor Carpark 1 Utama, Malaysia", color: "#2FA7D8", link: "https://maps.app.goo.gl/nV1FXduimtyZ2cbXA" },
                 { icon: Calendar, text: "April 9–19, 2026", color: "#18C7CC" },
                 { icon: Clock, text: "12 PM – 12 AM Daily", color: "rgba(237,232,220,0.4)" },
               ].map(({ icon: Icon, text, color, link }, i) => (
