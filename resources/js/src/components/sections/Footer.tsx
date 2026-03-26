@@ -1,5 +1,10 @@
 import { motion } from "motion/react";
-import { MapPin, Calendar, Clock, Instagram, Facebook, Twitter } from "lucide-react";
+import {
+  MapPin, Calendar, Clock, Instagram, Facebook, Twitter,
+  ShoppingCart, Briefcase, Utensils, Pill, Crosshair, Wine,
+  Activity, Users, Mountain, Droplets, Mic, Droplet,
+  UtensilsCrossed, ArrowUp, AlertTriangle, Hand
+} from "lucide-react";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const SG: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
@@ -19,6 +24,25 @@ function ScribbleLine({ width = 200 }: { width?: number }) {
     </svg>
   );
 }
+
+const PROHIBITED_ITEMS = [
+  { label: "Trolley", icon: ShoppingCart },
+  { label: "Outside Tables & Chairs", icon: Briefcase },
+  { label: "Outside Foods & Drinks", icon: Utensils },
+  { label: "Drugs", icon: Pill },
+  { label: "Weapon", icon: Crosshair },
+  { label: "Glassware or Dangerous Item Into Wet Zone", icon: Wine },
+  { label: "Running", icon: Activity },
+  { label: "Pushing & Rough Play", icon: Users },
+  { label: "Climbing on Booth, Structures & Stage", icon: Mountain },
+  { label: "Water Play in Dry Zone", icon: Droplets },
+  { label: "Water Throwing at Performers, Crew, Stage Equipment", icon: Mic },
+  { label: "Water Soaker Refilling at Vendor's Washing Area", icon: Droplet },
+  { label: "Spraying People While Eating", icon: UtensilsCrossed },
+  { label: "Standing On Chair or Table", icon: ArrowUp },
+  { label: "Entering Restricted Area", icon: AlertTriangle },
+  { label: "Sexual Harassment", icon: Hand },
+];
 
 export function Footer() {
   const scrollTo = (id: string) => {
@@ -301,6 +325,36 @@ export function Footer() {
               alt="WOB Sponsor"
               className="w-32 h-32 object-contain"
             />
+          </div>
+        </div>
+      </div>
+
+      {/* DON'T Section */}
+      <div className="relative py-16 px-6 md:px-12 lg:px-16" style={{ borderTop: "1px solid rgba(237,232,220,0.05)" }}>
+        <div className="max-w-6xl mx-auto flex flex-col items-center mt-4">
+          {/* Header */}
+          <div className="bg-[#E60012] text-white px-16 py-3.5 rounded-[30px] mb-16 shadow-[0_0_20px_rgba(230,0,18,0.3)] border border-[#ff3344] hover:scale-105 transition-transform duration-300">
+            <h3 style={{ ...SG, fontWeight: 700, fontSize: "1.6rem", letterSpacing: "0.15em", color: "#ffffff" }}>DON'T</h3>
+          </div>
+
+          {/* Grid */}
+          <div className="flex flex-wrap justify-center gap-x-6 md:gap-x-10 gap-y-12 text-center max-w-[1050px] mx-auto">
+            {PROHIBITED_ITEMS.map((item, idx) => {
+              const Icon = item.icon;
+              return (
+                <div key={idx} className="flex flex-col items-center w-[130px] md:w-[150px] group">
+                  <div className="relative flex items-center justify-center w-[85px] h-[85px] md:w-[100px] md:h-[100px] rounded-full border-[3px] border-[#E60012] mb-5 overflow-hidden bg-[#030305] group-hover:bg-[#E60012]/10 transition-colors duration-300 shadow-[0_4px_15px_rgba(0,0,0,0.3)] flex-shrink-0">
+                    {/* Diagonal line */}
+                    <div className="absolute w-[140%] h-[3.5px] bg-[#E60012] rotate-[-45deg] z-20 group-hover:scale-105 transition-transform duration-300" />
+                    {/* Icon */}
+                    <Icon size={42} className="text-[#EDE8DC] z-10 group-hover:scale-110 group-hover:text-white transition-all duration-300" strokeWidth={1.2} />
+                  </div>
+                  <span style={{ ...SG, fontSize: "0.82rem", color: "rgba(237,232,220,0.8)", lineHeight: 1.4, fontWeight: 500 }} className="group-hover:text-white transition-colors duration-300">
+                    {item.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
