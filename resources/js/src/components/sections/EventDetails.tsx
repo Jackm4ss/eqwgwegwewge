@@ -214,11 +214,11 @@ export function EventDetails() {
                     marginBottom: "0.3rem",
                   }}
                 >
-                  Forecourt, One Utama
+                  @Gf Forecourt Outdoor Carpark 1 Utama, Malaysia
                 </p>
 
                 <p style={{ ...TILT, fontSize: "0.72rem", color: "rgba(0,0,0,0.58)" }}>
-                  (Old Wing) · Malaysia
+                  1 Utama · Malaysia
                 </p>
 
                 <a
@@ -345,10 +345,10 @@ export function EventDetails() {
                   </div>
                 </SpotlightCard>
 
-                <a 
-                  href="https://www.eqsolutions.com.my/" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
+                <a
+                  href="https://www.eqsolutions.com.my/"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex-1 group cursor-pointer no-underline block"
                 >
                   <SpotlightCard

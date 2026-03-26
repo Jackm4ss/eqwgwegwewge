@@ -138,7 +138,7 @@ export function HeroSection() {
 
       {/* Content — full-screen centered */}
       <motion.div
-        className="absolute inset-0 flex flex-col items-center justify-center"
+        className="absolute inset-0 flex flex-col items-center justify-start md:justify-center"
         style={{ y: contentY, opacity: fade }}
       >
 
@@ -146,7 +146,7 @@ export function HeroSection() {
         <div className="flex flex-col items-center w-full px-4" style={{ gap: "8px" }}>
 
           {/* Songkran Festival Logo — dengan STEAM di belakang */}
-          <div className="relative flex items-center justify-center" style={{ width: "100vw", height: "clamp(120px, 22vh, 300px)" }}>
+          <div className="relative flex items-start md:items-center justify-center -mt-[2vh] md:mt-0" style={{ width: "100vw", height: "clamp(120px, 22vh, 300px)" }}>
 
             {/* STEAM — tepat di belakang logo, lebih besar */}
             <motion.img
@@ -285,8 +285,7 @@ export function HeroSection() {
             onClick={() => window.location.href = '/register'}
             className="group relative overflow-hidden rounded-full px-8 py-3.5 md:px-10 md:py-4 transition-all hover:scale-105 active:scale-95"
             style={{
-              background: "#3FD7F5",
-              boxShadow: "0 0 24px rgba(63,215,245,0.4), 0 0 8px rgba(63,215,245,0.2)",
+              background: 'linear-gradient(135deg, #0284C7, #0EA5E9)', boxShadow: '0 4px 14px rgba(2,132,199,0.35)'
             }}
           >
             {/* Hover: darken overlay */}

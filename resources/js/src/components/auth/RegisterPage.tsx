@@ -1356,7 +1356,7 @@ export function RegisterPage() {
                           id="email"
                           type="email"
                           autoComplete="email"
-                          placeholder="nama@email.com"
+                          placeholder="Your email"
                           className={inputClass('email')}
                           {...register('email', {
                             required: 'Email is required.',
@@ -1670,8 +1670,8 @@ export function RegisterPage() {
                       </>
                     ) : (
                       <>
-                        <span>Register Now</span>
-                        <Droplets className="w-4 h-4" aria-hidden="true" />
+                        <span>Submit</span>
+
                       </>
                     )}
                   </motion.button>
