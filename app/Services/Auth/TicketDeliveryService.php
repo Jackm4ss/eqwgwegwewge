@@ -20,7 +20,6 @@ class TicketDeliveryService
     {
         $ticketReadyEmailSentAt = $user['ticket_ready_email_sent_at'] ?? null;
         $ticketUrl = $this->ticketQrCodeService->signedTicketUrl((string) $ticket['ticket_id']);
-        $ticketDownloadUrl = $this->ticketQrCodeService->signedTicketDownloadUrl((string) $ticket['ticket_id']);
 
         if (! empty($ticketReadyEmailSentAt)) {
             return [
@@ -40,7 +39,7 @@ class TicketDeliveryService
 
         try {
             Mail::to($user['email'])->send(
-                new TicketReadyMail($user, $ticket, $ticketDownloadUrl, $qrPngBinary)
+                new TicketReadyMail($user, $ticket, $ticketUrl, $qrPngBinary)
             );
         } catch (\Throwable $throwable) {
             Log::warning('Ticket ready email delivery failed', [

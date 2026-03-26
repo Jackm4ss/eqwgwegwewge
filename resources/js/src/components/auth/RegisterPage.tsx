@@ -1023,6 +1023,7 @@ export function RegisterPage() {
   const selectedCountryOption = SORTED_COUNTRIES.find(c => c.code === countryVal);
   const isMalaysianRegistrant = countryVal === 'MY';
   const isForeignRegistrant = countryVal !== '' && countryVal !== 'MY';
+  const hasDirectTicketUrl = registeredTicketUrl.trim() !== '';
   const availableIdentityTypes = isMalaysianRegistrant
     ? IDENTITY_TYPES
     : IDENTITY_TYPES.filter(option => option.value === 'passport');
@@ -1614,7 +1615,7 @@ export function RegisterPage() {
                           <div>
                             <p className="text-sm font-semibold text-slate-800">Background protection</p>
                             <p className="text-xs leading-relaxed text-slate-500">
-                              Google reCAPTCHA v3 runs automatically in the background when you submit this form.
+
                             </p>
                           </div>
                         </div>
@@ -1637,7 +1638,7 @@ export function RegisterPage() {
                             )}
                             <span>
                               {isRecaptchaReady
-                                ? 'reCAPTCHA v3 is ready and will verify your request automatically when you submit.'
+                                ? 'You are not a robot. No checkbox is required.'
                                 : 'Preparing Google reCAPTCHA v3 background protection...'}
                             </span>
                           </div>
@@ -1782,7 +1783,9 @@ export function RegisterPage() {
                 <p className="text-sky-300 text-xs md:text-sm leading-relaxed max-w-sm mx-auto opacity-90">
                   {registrationSuccessMessage || (
                     ticketEmailSent
-                      ? 'Open the email to find your active festival pass, QR code, and direct ticket link for event entry.'
+                      ? hasDirectTicketUrl
+                        ? 'Open the email to find your active festival pass and QR code, or use the ticket button below anytime.'
+                        : 'Open the email to find your active festival pass, QR code, and direct ticket link for event entry.'
                       : 'Use the direct ticket link below to open your active festival pass immediately.'
                   )}
                 </p>
@@ -1796,7 +1799,7 @@ export function RegisterPage() {
                   </div>
                 )} */}
 
-                {!ticketEmailSent && registeredTicketUrl && (
+                {/* {hasDirectTicketUrl && (
                   <motion.a
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -1806,9 +1809,9 @@ export function RegisterPage() {
                     className="block w-full py-4 rounded-2xl bg-white text-sky-900 font-black text-sm md:text-base uppercase tracking-widest hover:bg-sky-50 transition-all shadow-lg"
                     style={{ fontFamily: '"Kanit", sans-serif' }}
                   >
-                    Open My Ticket Now
+                    {ticketEmailSent ? 'Open Ticket in Browser' : 'Open My Ticket Now'}
                   </motion.a>
-                )}
+                )} */}
 
                 <div className="hidden flex-wrap gap-2 justify-center">
                   {[

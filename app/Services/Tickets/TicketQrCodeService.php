@@ -95,6 +95,13 @@ class TicketQrCodeService
         return (new Writer($renderer))->writeString($payload);
     }
 
+    public function renderJpegBinary(string $payload, int $size = 320, int $quality = 90): string
+    {
+        $renderer = new GDLibRenderer($size, 2, 'jpeg', $quality);
+
+        return (new Writer($renderer))->writeString($payload);
+    }
+
     public function signedTicketUrl(string $ticketId): string
     {
         return URL::signedRoute('ticket.show', ['ticketId' => $ticketId]);

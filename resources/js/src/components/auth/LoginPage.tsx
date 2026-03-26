@@ -15,6 +15,8 @@ interface LoginFormData {
   rememberMe: boolean;
 }
 
+const SONGKRAN_LOGO_SRC = '/images/Songkran%20logo.png';
+
 function LotusIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 120 120" className={className} aria-hidden="true" fill="currentColor">
@@ -247,21 +249,14 @@ export function LoginPage() {
         >
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-7 text-white">
-            <motion.div
+            <motion.img
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.6, type: 'spring' }}
-              className="w-20 h-20 mx-auto mb-3 text-sky-200"
-            >
-              <LotusIcon className="w-full h-full" />
-            </motion.div>
-            <h1
-              className="text-4xl font-black tracking-tight"
-              style={{ fontFamily: '"Kanit", sans-serif' }}
-            >
-              SONGKRAN
-            </h1>
-            <p className="text-sky-200 text-sm tracking-[0.3em] mt-1">MUSIC FESTIVAL 2026</p>
+              src={SONGKRAN_LOGO_SRC}
+              alt="Songkran Music Festival 2026"
+              className="mx-auto mb-2 w-[220px] max-w-full h-auto"
+            />
           </div>
 
           {/* Form card */}
@@ -284,23 +279,14 @@ export function LoginPage() {
 
               <div className="relative">
                 {/* Logo top */}
-                <div className="flex items-center gap-3 mb-5">
-                  <motion.div
+                <div className="mb-6 flex justify-center">
+                  <motion.img
                     animate={{ rotate: [0, 8, -8, 0] }}
                     transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                    className="w-10 h-10 text-sky-200"
-                  >
-                    <LotusIcon className="w-full h-full" />
-                  </motion.div>
-                  <div>
-                    <p
-                      className="text-white font-black text-xl leading-tight tracking-wide"
-                      style={{ fontFamily: '"Kanit", sans-serif' }}
-                    >
-                      SONGKRAN
-                    </p>
-                    <p className="text-sky-200 text-[10px] tracking-[0.25em] leading-none">MUSIC FESTIVAL 2026</p>
-                  </div>
+                    src={SONGKRAN_LOGO_SRC}
+                    alt="Songkran Music Festival 2026"
+                    className="w-[240px] max-w-full h-auto"
+                  />
                 </div>
 
                 <h2

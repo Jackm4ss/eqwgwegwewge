@@ -2,9 +2,17 @@
     $embedAsset = static function (?string $path) use ($message): ?string {
         return ($path && is_file($path)) ? $message->embed($path) : null;
     };
+    $publicImageUrl = static function (string $filename): string {
+        $baseUrl = rtrim((string) config('app.url'), '/');
+        $resolvedBaseUrl = $baseUrl !== '' ? $baseUrl : rtrim(url('/'), '/');
 
-    $backgroundUrl = 'https://i.ibb.co/BHPT4KN9/BACKGROUND.jpg';
+        return $resolvedBaseUrl . '/images/' . rawurlencode($filename);
+    };
+
+    $backgroundCid = $embedAsset($templateAssets['background'] ?? null);
+    $backgroundSrc = $backgroundCid ?: $publicImageUrl('BACKGROUND.jpg');
     $logoCid = $embedAsset($templateAssets['logo'] ?? null);
+    $logoSrc = $logoCid ?: $publicImageUrl('Songkran logo.png');
     $venueSponsorCid = $embedAsset($templateAssets['venueSponsor'] ?? null);
     $sponsorEmbassyCid = $embedAsset($templateAssets['sponsorEmbassy'] ?? null);
     $sponsorDitpCid = $embedAsset($templateAssets['sponsorDitp'] ?? null);
@@ -13,6 +21,14 @@
     $sponsorSnakeBrandCid = $embedAsset($templateAssets['sponsorSnakeBrand'] ?? null);
     $mediaWobCid = $embedAsset($templateAssets['mediaWob'] ?? null);
     $mediaNoodouCid = $embedAsset($templateAssets['mediaNoodou'] ?? null);
+    $venueSponsorSrc = $venueSponsorCid ?: $publicImageUrl('123.png');
+    $sponsorEmbassySrc = $sponsorEmbassyCid ?: $publicImageUrl('Royal_Thai_Embassy_Seal.svg.png');
+    $sponsorDitpSrc = $sponsorDitpCid ?: $publicImageUrl('ditp.jpeg');
+    $sponsorAmazingThailandSrc = $sponsorAmazingThailandCid ?: $publicImageUrl('amazing thailand.png');
+    $sponsorSinghaSrc = $sponsorSinghaCid ?: $publicImageUrl('singha-seeklogo.png');
+    $sponsorSnakeBrandSrc = $sponsorSnakeBrandCid ?: $publicImageUrl('Snake-Brand-Logo.png');
+    $mediaWobSrc = $mediaWobCid ?: $publicImageUrl('wob.png');
+    $mediaNoodouSrc = $mediaNoodouCid ?: $publicImageUrl('noodou.png');
 
     $identityNumber = trim((string) ($user['identity_number'] ?? ''));
     $identityDisplay = $identityNumber !== '' ? $identityNumber : '-';
@@ -29,401 +45,551 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <style>
-        * {
-            box-sizing: border-box;
+        body,
+        table,
+        td,
+        p,
+        a {
+            font-family: 'Outfit', Arial, sans-serif;
+        }
+
+        body {
             margin: 0;
             padding: 0;
-        }
-
-        body,
-        html {
-            width: 100%;
-            height: 100%;
-            font-family: 'Outfit', Arial, sans-serif;
             background-color: #e5f5f9;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
         }
 
-        .ticket-wrapper {
-            margin: 0 auto;
+        table {
+            border-collapse: collapse;
+            border-spacing: 0;
+        }
+
+        img {
+            border: 0;
+            outline: none;
+            text-decoration: none;
+            display: block;
+            max-width: 100%;
+        }
+
+        .shell {
             width: 100%;
             max-width: 600px;
-            background-image: url('{{ $backgroundUrl }}');
-            background-size: 100% calc(100% + 2cm);
-            background-position: center bottom;
-            background-repeat: no-repeat;
+            margin: 0 auto;
+        }
+
+        .ticket-surface {
             background-color: #038cb2;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            color: #ffffff;
-            text-align: center;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+            background-image: url('{{ $backgroundSrc }}');
+            background-repeat: no-repeat;
+            background-position: center bottom;
+            background-size: cover;
         }
 
-        .top-section {
-            padding: 20px 20px 0;
+        .top-pad {
+            padding: 22px 20px 0;
         }
 
-        .bottom-section {
-            padding: 30px 20px 120px;
-        }
-
-        .middle-gap {
-            flex-grow: 1;
-            min-height: 250px;
+        .bottom-pad {
+            padding: 32px 20px 28px;
         }
 
         .logo {
             width: 100%;
-            max-width: 500px;
-            height: auto;
-            margin-bottom: 0;
-            filter: drop-shadow(0 10px 20px rgba(0, 150, 200, 0.4));
+            max-width: 380px;
+            margin: 0 auto 8px;
         }
 
-        .event-info {
-            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.4);
-            letter-spacing: 0.5px;
-            margin-top: -15px;
+        .event-block {
+            color: #ffffff;
+            text-align: center;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.35);
         }
 
         .event-time {
-            font-size: 1.5rem;
+            font-size: 18px;
+            line-height: 24px;
             font-weight: 800;
-            margin-bottom: 5px;
+            margin: 0;
         }
 
         .event-date {
-            font-size: 3rem;
+            font-size: 54px;
+            line-height: 54px;
             font-weight: 900;
-            line-height: 1;
-            margin-bottom: 5px;
             letter-spacing: 1px;
+            margin: 8px 0 6px;
         }
 
         .event-venue {
-            font-size: 1.1rem;
+            font-size: 14px;
+            line-height: 22px;
             font-weight: 800;
-            margin: 10px 0 5px;
+            margin: 0;
         }
 
         .event-subtitle {
-            font-size: 0.9rem;
-            font-weight: 700;
-            margin-top: 5px;
+            font-size: 10px;
+            line-height: 18px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
+            margin: 6px 0 0;
+        }
+
+        .qr-wrap {
+            padding-top: 0;
         }
 
         .qr-card {
-            background-color: #ffffff;
-            width: 180px;
-            height: 180px;
-            margin: 25px auto 0;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
+            width: 186px;
+            border-radius: 14px;
+            background: #ffffff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
         }
 
-        .qr-card img {
-            display: block;
-            width: 160px;
-            height: 160px;
-            object-fit: contain;
+        .qr-card td {
+            padding: 13px;
         }
 
-        .glass-card {
-            background-color: rgba(255, 255, 255, 0.4);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
+        .identity-card,
+        .footer-card {
+            background: rgba(255, 255, 255, 0.36);
+            border: 1px solid rgba(255, 255, 255, 0.32);
             border-radius: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .identity-card td {
+            padding: 30px 35px 28px;
+        }
+
+        .identity-name {
             color: #000000;
-            margin: 25px auto 0;
-        }
-
-        #ticket-info-card {
-            margin-top: 30px;
-            padding: 30px 35px;
-            width: fit-content;
-            min-width: 260px;
-            max-width: 85%;
-            min-height: 80px;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-
-        .ticket-user-name {
-            font-size: 1.4rem;
+            font-size: 17px;
+            line-height: 24px;
             font-weight: 800;
-            margin-bottom: 5px;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.03em;
             text-transform: uppercase;
+            margin: 0 0 4px;
         }
 
-        .ticket-user-passport {
-            font-size: 1.1rem;
+        .identity-number {
+            color: rgba(0, 0, 0, 0.9);
+            font-size: 14px;
+            line-height: 20px;
             font-weight: 600;
-            opacity: 0.9;
+            margin: 0;
         }
 
-        .message-box {
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
-            margin-bottom: 30px;
-        }
-
-        .msg-title {
-            font-size: 1.6rem;
+        .message-title {
+            color: #ffffff;
+            font-size: 20px;
+            line-height: 28px;
             font-weight: 800;
-            margin-bottom: 12px;
+            text-align: center;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
+            margin: 0 0 10px;
         }
 
-        .msg-text {
-            font-size: 0.95rem;
+        .message-copy {
+            color: #ffffff;
+            font-size: 14px;
+            line-height: 22px;
             font-weight: 700;
-            line-height: 1.5;
-            max-width: 520px;
+            text-align: center;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
+            margin: 0;
+        }
+
+        .button-table {
             margin: 0 auto;
         }
 
-        #bottom-info-card {
-            width: 100%;
-            max-width: 95%;
-            padding: 15px 10px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-evenly;
-            align-items: flex-start;
-            gap: 10px;
-            margin-bottom: 0;
-        }
-
-        .footer-col {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .col-title {
-            font-size: 0.55rem;
-            font-weight: 800;
-            color: #000000;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-
-        .logo-row {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .logo-organiser-text {
-            font-size: 0.95rem;
-            font-family: sans-serif;
-            font-weight: 500;
-            letter-spacing: -0.5px;
-            padding-top: 5px;
-        }
-
-        .logo-1utama {
-            height: 24px;
-            width: auto;
-            object-fit: contain;
-        }
-
-        .logo-sponsor {
-            height: 24px;
-            width: auto;
-            object-fit: contain;
-        }
-
-        .logo-sponsor-ditp {
-            height: 18px;
-            width: auto;
-            object-fit: contain;
-            background: white;
-            padding: 2px;
-            border-radius: 2px;
-        }
-
-        .logo-sponsor-amazing {
-            height: 22px;
-            width: auto;
-            object-fit: contain;
-        }
-
-        .logo-media {
-            height: 30px;
-            width: 30px;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-
-        .fallback-link {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 48px;
-            padding: 0 22px;
+        .button-link {
+            display: inline-block;
+            padding: 14px 28px;
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.95);
-            color: #0369a1;
-            font-size: 0.95rem;
+            color: #0956c8;
+            font-size: 15px;
+            line-height: 20px;
             font-weight: 800;
             text-decoration: none;
             box-shadow: 0 12px 24px rgba(2, 132, 199, 0.24);
         }
 
-        @media (max-width: 480px) {
+        .footer-card td {
+            padding: 16px 10px;
+        }
+
+        .footer-heading {
+            color: #000000;
+            font-size: 9px;
+            line-height: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin: 0 0 6px;
+        }
+
+        .footer-text {
+            color: #000000;
+            font-size: 14px;
+            line-height: 22px;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .logo-inline {
+            display: inline-block;
+            vertical-align: middle;
+            margin: 2px 3px;
+        }
+
+        .logo-venue {
+            max-height: 24px;
+            width: auto;
+        }
+
+        .logo-sponsor {
+            max-height: 24px;
+            width: auto;
+        }
+
+        .logo-sponsor-ditp {
+            max-height: 18px;
+            width: auto;
+            background: #ffffff;
+            padding: 2px;
+            border-radius: 2px;
+        }
+
+        .logo-sponsor-amazing {
+            max-height: 22px;
+            width: auto;
+        }
+
+        .logo-media {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+        }
+
+        .spacer-24 {
+            height: 24px;
+            line-height: 24px;
+            font-size: 24px;
+        }
+
+        @media screen and (max-width: 600px) {
+            .shell {
+                width: 100% !important;
+            }
+
+            .top-pad,
+            .bottom-pad {
+                padding-left: 14px !important;
+                padding-right: 14px !important;
+            }
+
+            .logo {
+                max-width: 300px !important;
+            }
+
             .event-date {
-                font-size: 2.2rem;
+                font-size: 42px !important;
+                line-height: 42px !important;
             }
 
             .event-venue {
-                font-size: 0.95rem;
+                font-size: 13px !important;
+                line-height: 20px !important;
             }
 
-            .msg-title {
-                font-size: 1.3rem;
+            .identity-card td {
+                padding: 24px 20px !important;
             }
 
-            .msg-text {
-                font-size: 0.85rem;
+            .stack-col,
+            .stack-col td {
+                display: block !important;
+                width: 100% !important;
+                max-width: 100% !important;
             }
 
-            #bottom-info-card {
-                flex-direction: column;
-                gap: 15px;
-                border-radius: 15px;
+            .footer-cell {
+                padding-bottom: 14px !important;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
             }
 
-            .footer-col {
-                width: 100%;
-                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-                padding-bottom: 15px;
-            }
-
-            .footer-col:last-child {
-                border-bottom: none;
-                padding-bottom: 0;
+            .footer-cell-last {
+                padding-bottom: 0 !important;
+                border-bottom: 0 !important;
             }
         }
     </style>
 </head>
 
 <body>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+        style="width:100%; background-color:#e5f5f9;">
+        <tr>
+            <td align="center" style="padding:24px 0;">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="shell"
+                    style="width:100%; max-width:600px; margin:0 auto;">
+                    <tr>
+                        <td class="ticket-surface" background="{{ $backgroundSrc }}" bgcolor="#038cb2"
+                            style="background-color:#038cb2; background-image:url('{{ $backgroundSrc }}'); background-repeat:no-repeat; background-position:center bottom; background-size:cover;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="center" class="top-pad" style="padding:22px 20px 0;">
+                                        @if($logoSrc)
+                                            <img src="{{ $logoSrc }}" alt="Songkran Festival Logo" width="380" class="logo"
+                                                style="width:100%; max-width:380px; margin:0 auto 8px; display:block;">
+                                        @else
+                                            <div
+                                                style="font-size:28px; line-height:34px; font-weight:900; letter-spacing:0.04em; text-transform:uppercase; color:#ffffff; text-align:center; margin:0 auto 10px;">
+                                                Songkran Festival
+                                            </div>
+                                        @endif
 
-    <div style="margin:0; padding:24px 0; background-color:#e5f5f9;">
-        <div class="ticket-wrapper"
-            style="background-image:url('{{ $backgroundUrl }}'); background-size:100% calc(100% + 2cm); background-position:center bottom; background-repeat:no-repeat; background-color:#038cb2;">
-            <div class="top-section">
-                @if($logoCid)
-                    <img src="{{ $logoCid }}" alt="Songkran Festival Logo" class="logo">
-                @else
-                    <div
-                        style="font-size:28px; font-weight:900; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:20px;">
-                        Songkran Festival
-                    </div>
-                @endif
+                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                            border="0">
+                                            <tr>
+                                                <td class="event-block"
+                                                    style="color:#ffffff; text-align:center; text-shadow:1px 1px 4px rgba(0,0,0,0.35);">
+                                                    <p class="event-time"
+                                                        style="font-size:18px; line-height:24px; font-weight:800; margin:0;">
+                                                        12PM-12AM
+                                                    </p>
+                                                    <p class="event-date"
+                                                        style="font-size:54px; line-height:54px; font-weight:900; letter-spacing:1px; margin:8px 0 6px;">
+                                                        9 - 19 APRIL
+                                                    </p>
+                                                    <p class="event-venue"
+                                                        style="font-size:14px; line-height:22px; font-weight:800; margin:0;">
+                                                        @GF FORECOURT OUTDOOR CARPARK, 1 UTAMA
+                                                    </p>
+                                                    <p class="event-subtitle"
+                                                        style="font-size:10px; line-height:18px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; margin:6px 0 0;">
+                                                        MALAYSIA'S PREMIER SONGKRAN FESTIVAL
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
 
-                <div class="event-info">
-                    <p class="event-time">12PM-12AM</p>
-                    <p class="event-date">9 - 19 APRIL</p>
-                    <p class="event-venue">@GF FORECOURT OUTDOOR CARPARK, 1 UTAMA</p>
-                    <p class="event-subtitle">MALAYSIA'S PREMIER SONGKRAN FESTIVAL</p>
-                </div>
+                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                            border="0">
+                                            <tr>
+                                                <td align="center"
+                                                    style="height:40px; line-height:40px; font-size:40px;">&nbsp;</td>
+                                            </tr>
+                                        </table>
 
-                <div id="qrcode-container" class="qr-card">
-                    <img src="{{ $message->embedData($qrPngBinary, 'ticket-qrcode.png', 'image/png') }}"
-                        alt="Songkran Festival ticket QR code">
-                </div>
+                                        <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+                                            class="qr-wrap" style="margin:0 auto;">
+                                            <tr>
+                                                <td class="qr-card"
+                                                    style="width:186px; border-radius:14px; background:#ffffff; box-shadow:0 8px 24px rgba(0,0,0,0.22);">
+                                                    <table role="presentation" cellpadding="0" cellspacing="0"
+                                                        border="0" width="186">
+                                                        <tr>
+                                                            <td align="center" style="padding:13px;">
+                                                                <img src="{{ $message->embedData($qrPngBinary, 'ticket-qrcode.png', 'image/png') }}"
+                                                                    alt="Songkran Festival ticket QR code" width="160"
+                                                                    style="width:160px; height:160px; display:block;">
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
 
-                <div id="ticket-info-card" class="glass-card">
-                    <div id="ticket-user-name" class="ticket-user-name">{{ mb_strtoupper($fullName) }}</div>
-                    <div id="ticket-user-passport" class="ticket-user-passport">{{ $identityDisplay }}</div>
-                </div>
-            </div>
+                                        <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+                                            width="85%" style="width:85%; max-width:320px; margin:28px auto 0;">
+                                            <tr>
+                                                <td class="identity-card"
+                                                    style="background:rgba(255,255,255,0.36); border:1px solid rgba(255,255,255,0.32); border-radius:20px; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+                                                    <table role="presentation" width="100%" cellpadding="0"
+                                                        cellspacing="0" border="0">
+                                                        <tr>
+                                                            <td align="center" style="padding:30px 35px 28px;">
+                                                                <p class="identity-name"
+                                                                    style="color:#000000; font-size:17px; line-height:24px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; margin:0 0 4px;">
+                                                                    {{ mb_strtoupper($fullName) }}
+                                                                </p>
+                                                                <p class="identity-number"
+                                                                    style="color:rgba(0,0,0,0.9); font-size:14px; line-height:20px; font-weight:600; margin:0;">
+                                                                    {{ $identityDisplay }}
+                                                                </p>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
 
+                                <tr>
+                                    <td class="bottom-pad" style="padding:32px 20px 28px;">
+                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                            border="0">
+                                            <tr>
+                                                <td align="center">
+                                                    <p class="message-title"
+                                                        style="color:#ffffff; font-size:20px; line-height:28px; font-weight:800; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.45); margin:0 0 10px;">
+                                                        Thank you for your registration.
+                                                    </p>
+                                                    <p class="message-copy"
+                                                        style="color:#ffffff; font-size:14px; line-height:22px; font-weight:700; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.45); margin:0;">
+                                                        Please present your QR code and registered valid ID / passport
+                                                        at the gate.<br>
+                                                        QR only required to scan once per day
+                                                    </p>
+                                                </td>
+                                            </tr>
 
-            <div class="bottom-section">
-                <div class="message-box">
-                    <div class="msg-title">Thank you for your registration.</div>
-                    <div class="msg-text">
-                        Please present your QR code and registered valid ID / passport at the gate.<br>
-                        QR only required to scan once per day
-                    </div>
-                </div>
+                                            <tr>
+                                                <td class="spacer-24" align="center"
+                                                    style="height:24px; line-height:24px; font-size:24px;">&nbsp;</td>
+                                            </tr>
 
-                <div style="margin:0 0 24px; color:#ffffff;">
-                    <!-- <div style="font-size:14px; line-height:1.6; font-weight:700; margin-bottom:8px;">Ticket Code</div>
-                    <div style="font-size:22px; line-height:1.5; font-weight:900; letter-spacing:0.06em;">
-                        {{ $ticket['ticket_code'] }}
-                    </div> -->
-                    <div style="margin-top:16px;">
-                        <a href="{{ $ticketDownloadUrl }}" class="fallback-link">Download Ticket</a>
-                    </div>
-                </div>
+                                            <tr>
+                                                <td align="center">
+                                                    <table role="presentation" cellpadding="0" cellspacing="0"
+                                                        border="0" class="button-table" style="margin:0 auto;">
+                                                        <tr>
+                                                            <td align="center" bgcolor="#FFFFFF"
+                                                                style="border-radius:999px; background:rgba(255,255,255,0.95); box-shadow:0 12px 24px rgba(2,132,199,0.24);">
+                                                                <a href="{{ $ticketUrl }}" target="_blank"
+                                                                    rel="noopener noreferrer" class="button-link"
+                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background:rgba(255,255,255,0.95); color:#0956c8; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
+                                                                    Open Ticket
+                                                                </a>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
 
-                <div id="bottom-info-card" class="glass-card">
-                    <div class="footer-col" style="flex: 1; min-width: 70px;">
-                        <div class="col-title">ORGANISER</div>
-                        <div class="logo-organiser-text">eq solutions</div>
-                    </div>
+                                            <tr>
+                                                <td class="spacer-24" align="center"
+                                                    style="height:24px; line-height:24px; font-size:24px;">&nbsp;</td>
+                                            </tr>
 
-                    <div class="footer-col" style="flex: 1; min-width: 70px;">
-                        <div class="col-title">VENUE SPONSOR</div>
-                        @if($venueSponsorCid)
-                            <img src="{{ $venueSponsorCid }}" alt="1 Utama" class="logo-1utama">
-                        @endif
-                    </div>
-
-                    <div class="footer-col" style="flex: 3; min-width: 180px;">
-                        <div class="col-title">SPONSORS</div>
-                        <div class="logo-row">
-                            @if($sponsorEmbassyCid)
-                                <img src="{{ $sponsorEmbassyCid }}" alt="Royal Thai Embassy" class="logo-sponsor">
-                            @endif
-                            @if($sponsorDitpCid)
-                                <img src="{{ $sponsorDitpCid }}" alt="DITP" class="logo-sponsor-ditp">
-                            @endif
-                            @if($sponsorAmazingThailandCid)
-                                <img src="{{ $sponsorAmazingThailandCid }}" alt="Amazing Thailand"
-                                    class="logo-sponsor-amazing">
-                            @endif
-                            @if($sponsorSinghaCid)
-                                <img src="{{ $sponsorSinghaCid }}" alt="Singha" class="logo-sponsor">
-                            @endif
-                            @if($sponsorSnakeBrandCid)
-                                <img src="{{ $sponsorSnakeBrandCid }}" alt="Snake Brand" class="logo-sponsor">
-                            @endif
-                        </div>
-                    </div>
-
-                    <div class="footer-col" style="flex: 1.5; min-width: 90px;">
-                        <div class="col-title">MEDIA PARTNERS</div>
-                        <div class="logo-row" style="gap: 8px;">
-                            @if($mediaWobCid)
-                                <img src="{{ $mediaWobCid }}" alt="WOB" class="logo-media">
-                            @endif
-                            @if($mediaNoodouCid)
-                                <img src="{{ $mediaNoodouCid }}" alt="NOODOU" class="logo-media">
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
+                                            <tr>
+                                                <td>
+                                                    <table role="presentation" width="100%" cellpadding="0"
+                                                        cellspacing="0" border="0" class="footer-card"
+                                                        style="width:100%; background:rgba(255,255,255,0.36); border:1px solid rgba(255,255,255,0.32); border-radius:20px; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+                                                        <tr>
+                                                            <td style="padding:16px 10px;">
+                                                                <table role="presentation" width="100%" cellpadding="0"
+                                                                    cellspacing="0" border="0">
+                                                                    <tr>
+                                                                        <td width="18%" align="center" valign="top"
+                                                                            class="stack-col footer-cell"
+                                                                            style="width:18%; padding:0 6px;">
+                                                                            <p class="footer-heading"
+                                                                                style="color:#000000; font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; margin:0 0 6px;">
+                                                                                Organiser
+                                                                            </p>
+                                                                            <p class="footer-text"
+                                                                                style="color:#000000; font-size:14px; line-height:22px; font-weight:500; margin:0;">
+                                                                                eq solutions
+                                                                            </p>
+                                                                        </td>
+                                                                        <td width="18%" align="center" valign="top"
+                                                                            class="stack-col footer-cell"
+                                                                            style="width:18%; padding:0 6px;">
+                                                                            <p class="footer-heading"
+                                                                                style="color:#000000; font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; margin:0 0 6px;">
+                                                                                Venue Sponsor
+                                                                            </p>
+                                                                            @if($venueSponsorSrc)
+                                                                                <img src="{{ $venueSponsorSrc }}"
+                                                                                    alt="1 Utama"
+                                                                                    class="logo-inline logo-venue"
+                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 3px; max-height:24px; width:auto;">
+                                                                            @endif
+                                                                        </td>
+                                                                        <td width="42%" align="center" valign="top"
+                                                                            class="stack-col footer-cell"
+                                                                            style="width:42%; padding:0 6px;">
+                                                                            <p class="footer-heading"
+                                                                                style="color:#000000; font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; margin:0 0 6px;">
+                                                                                Sponsors
+                                                                            </p>
+                                                                            @if($sponsorEmbassySrc)
+                                                                                <img src="{{ $sponsorEmbassySrc }}"
+                                                                                    alt="Royal Thai Embassy"
+                                                                                    class="logo-inline logo-sponsor"
+                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 3px; max-height:24px; width:auto;">
+                                                                            @endif
+                                                                            @if($sponsorDitpSrc)
+                                                                                <img src="{{ $sponsorDitpSrc }}" alt="DITP"
+                                                                                    class="logo-inline logo-sponsor-ditp"
+                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 3px; max-height:18px; width:auto; background:#ffffff; padding:2px; border-radius:2px;">
+                                                                            @endif
+                                                                            @if($sponsorAmazingThailandSrc)
+                                                                                <img src="{{ $sponsorAmazingThailandSrc }}"
+                                                                                    alt="Amazing Thailand"
+                                                                                    class="logo-inline logo-sponsor-amazing"
+                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 3px; max-height:22px; width:auto;">
+                                                                            @endif
+                                                                            @if($sponsorSinghaSrc)
+                                                                                <img src="{{ $sponsorSinghaSrc }}"
+                                                                                    alt="Singha"
+                                                                                    class="logo-inline logo-sponsor"
+                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 3px; max-height:24px; width:auto;">
+                                                                            @endif
+                                                                            @if($sponsorSnakeBrandSrc)
+                                                                                <img src="{{ $sponsorSnakeBrandSrc }}"
+                                                                                    alt="Snake Brand"
+                                                                                    class="logo-inline logo-sponsor"
+                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 3px; max-height:24px; width:auto;">
+                                                                            @endif
+                                                                        </td>
+                                                                        <td width="22%" align="center" valign="top"
+                                                                            class="stack-col footer-cell footer-cell-last"
+                                                                            style="width:22%; padding:0 6px;">
+                                                                            <p class="footer-heading"
+                                                                                style="color:#000000; font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; margin:0 0 6px;">
+                                                                                Media Partners
+                                                                            </p>
+                                                                            @if($mediaWobSrc)
+                                                                                <img src="{{ $mediaWobSrc }}" alt="WOB"
+                                                                                    class="logo-inline logo-media"
+                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 4px; width:30px; height:30px; border-radius:50%;">
+                                                                            @endif
+                                                                            @if($mediaNoodouSrc)
+                                                                                <img src="{{ $mediaNoodouSrc }}"
+                                                                                    alt="NOODOU"
+                                                                                    class="logo-inline logo-media"
+                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 4px; width:30px; height:30px; border-radius:50%;">
+                                                                            @endif
+                                                                        </td>
+                                                                    </tr>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 
 </html>
