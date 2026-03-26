@@ -13,6 +13,8 @@ class RegistrationService
 {
     public function __construct(
         private readonly UserRepositoryInterface $users,
+        private readonly TicketDeliveryService $ticketDelivery,
+        private readonly \App\Services\Tickets\TicketQrCodeService $ticketQrCodeService,
     ) {
     }
 
@@ -32,9 +34,9 @@ class RegistrationService
                 'phone_number' => $this->normalizePhoneNumber((string) $data['phone_number']),
                 'country' => $country,
                 'identity_country' => $country,
-                'account_status' => 'pending_verification',
-                'verification_status' => 'unverified',
-                'email_verified_at' => null,
+                'account_status' => 'active',
+                'verification_status' => 'verified',
+                'email_verified_at' => now()->toISOString(),
                 'ticket_id' => null,
                 'ticket_ready_email_sent_at' => null,
                 'agreed_terms_at' => now()->toISOString(),
@@ -58,9 +60,17 @@ class RegistrationService
             ]);
         }
 
-        $this->sendVerification($user);
+        $result = $this->users->activateAndIssueTicket(
+            (string) $user['user_id'],
+            $this->ticketQrCodeService->makeTicketAttributes((string) $user['user_id']),
+        );
+        $result['user'] = $this->ticketDelivery->sendIfNeeded(
+            (string) $user['user_id'],
+            $result['user'],
+            $result['ticket'],
+        );
 
-        return $user;
+        return $result['user'];
     }
 
     public function resendVerification(string $email): void

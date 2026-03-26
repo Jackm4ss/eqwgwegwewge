@@ -17,8 +17,8 @@ class RegisterController extends Controller
             $service->register($request->validated(), (string) $request->ip());
 
             return response()->json([
-                'message' => 'Registration successful. Verification email has been sent.',
-                'status' => 'pending_verification',
+                'message' => 'Registration successful. Your QR ticket has been sent to your email.',
+                'status' => 'ticket_ready',
             ], 201);
         } catch (ValidationException $exception) {
             throw $exception;

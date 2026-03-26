@@ -3,15 +3,14 @@
 namespace App\Services\Auth;
 
 use App\Contracts\UserRepositoryInterface;
-use App\Mail\TicketReadyMail;
 use App\Services\Tickets\TicketQrCodeService;
-use Illuminate\Support\Facades\Mail;
 
 class VerificationService
 {
     public function __construct(
         private readonly UserRepositoryInterface $users,
         private readonly TicketQrCodeService $ticketQrCodeService,
+        private readonly TicketDeliveryService $ticketDelivery,
     ) {
     }
 
@@ -32,32 +31,8 @@ class VerificationService
             $this->ticketQrCodeService->makeTicketAttributes($id),
         );
 
-        $this->sendTicketEmailIfNeeded($id, $result);
+        $result['user'] = $this->ticketDelivery->sendIfNeeded($id, $result['user'], $result['ticket']);
 
         return $result;
-    }
-
-    private function sendTicketEmailIfNeeded(string $userId, array &$result): void
-    {
-        $ticketReadyEmailSentAt = $result['user']['ticket_ready_email_sent_at'] ?? null;
-
-        if (! empty($ticketReadyEmailSentAt)) {
-            return;
-        }
-
-        $ticket = $result['ticket'];
-        $ticketUrl = $this->ticketQrCodeService->signedTicketUrl((string) $ticket['ticket_id']);
-        $qrPngBinary = $this->ticketQrCodeService->renderPngBinary(
-            $this->ticketQrCodeService->payloadForTicket($ticket),
-            240,
-        );
-
-        Mail::to($result['user']['email'])->send(
-            new TicketReadyMail($result['user'], $ticket, $ticketUrl, $qrPngBinary)
-        );
-
-        $result['user'] = $this->users->update($userId, [
-            'ticket_ready_email_sent_at' => now()->toISOString(),
-        ]);
     }
 }
