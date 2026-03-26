@@ -44,6 +44,7 @@ function ScribbleUnderline({ color = "#2FA7D8", width = 160 }: { color?: string;
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const SG: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
+const TW: React.CSSProperties = { fontFamily: "'Tilt Warp', system-ui, sans-serif" };
 
 export function HeroSection() {
   const ref = useRef<HTMLElement>(null);
@@ -69,287 +70,320 @@ export function HeroSection() {
   };
 
   return (
-<section
-  ref={ref}
-  className="relative h-screen overflow-hidden"
-  style={{ background: "#0a0f14" }}
-  onMouseMove={handleMouse}
->
-  {/* BG IMAGE */}
-  <motion.div className="absolute inset-0" style={{ y: bgY }}>
-    <img
-      src="/images/BACKGROUND.jpg"
-      className="w-full h-full object-cover"
-      style={{
-        opacity: 1,
-        filter: "brightness(1.05) contrast(1.05)"
-      }}
-    />
-
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        background:
-          "linear-gradient(180deg, rgba(7,8,16,0.42) 0%, rgba(7,8,16,0.18) 38%, rgba(7,8,16,0.28) 68%, rgba(7,8,16,0.46) 100%)"
-      }}
-    />
-
-    {/* OPTIONAL: glow tipis biar ga flat */}
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        background:
-          "radial-gradient(ellipse at 60% 40%, rgba(24,199,204,0.04) 0%, transparent 85%)"
-      }}
-    />
-  </motion.div>
-
-  {/* ❌ MATIIN UNDERWATER (INI PENYEBAB UTAMA GELAP/KABUT) */}
-  {/* <UnderwaterBackground /> */}
-
-  {/* PARALLAX GLOW SUPER HALUS */}
-  <motion.div
-    className="absolute inset-0 pointer-events-none"
-    style={{ x: px2, y: py2 }}
-  >
-    <div
-      className="absolute top-[25%] right-[15%] w-20 h-20 rounded-full"
-      style={{
-        background:
-          "radial-gradient(circle, rgba(24,199,204,0.08) 0%, transparent 80%)"
-      }}
-    />
-
-    <div
-      className="absolute bottom-[25%] left-[10%] w-24 h-24 rounded-full"
-      style={{
-        background:
-          "radial-gradient(circle, rgba(47,167,216,0.06) 0%, transparent 80%)"
-      }}
-    />
-  </motion.div>
-
-
-      {/* Content */}
+    <section
+      ref={ref}
+      className="relative h-screen overflow-hidden"
+      style={{ background: "#0a0f14" }}
+      onMouseMove={handleMouse}
+    >
+      {/* BG IMAGE */}
       <motion.div
-        className="absolute inset-0 flex flex-col justify-center"
+        className="absolute left-0 right-0"
+        style={{ top: "-50vh", bottom: 0, y: bgY }}
+      >
+        <img
+          src="/images/BACKGROUND.jpg"
+          className="w-full h-full"
+          style={{
+            objectFit: "cover",
+            objectPosition: "center top",
+            opacity: 1,
+            filter: "brightness(1.05) contrast(1.05)"
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            inset: 0
+          }}
+        />
+
+        {/* OPTIONAL: glow tipis biar ga flat */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "radial-gradient(ellipse at 60% 40%, rgba(24,199,204,0.04) 0%, transparent 85%)"
+          }}
+        />
+      </motion.div>
+
+      {/* ❌ MATIIN UNDERWATER (INI PENYEBAB UTAMA GELAP/KABUT) */}
+      {/* <UnderwaterBackground /> */}
+
+      {/* PARALLAX GLOW SUPER HALUS */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        style={{ x: px2, y: py2 }}
+      >
+        <div
+          className="absolute top-[25%] right-[15%] w-20 h-20 rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(24,199,204,0.08) 0%, transparent 80%)"
+          }}
+        />
+
+        <div
+          className="absolute bottom-[25%] left-[10%] w-24 h-24 rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(47,167,216,0.06) 0%, transparent 80%)"
+          }}
+        />
+      </motion.div>
+
+
+      {/* Content — full-screen centered */}
+      <motion.div
+        className="absolute inset-0 flex flex-col items-center justify-center"
         style={{ y: contentY, opacity: fade }}
       >
-        {/* Top badge (pill shape, in flow to prevent overlap) */}
-        <motion.div
-          className="absolute top-24 md:top-28 lg:top-32 left-0 right-0 px-4 md:px-8 lg:px-14 flex items-center z-10"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.8, type: "spring", stiffness: 100 }}
-        >
-          <div className="inline-flex items-center gap-2 md:gap-3 px-3 py-1.5 md:px-5 md:py-2.5 rounded-full border border-[#2FA7D8]/30 bg-[#2FA7D8]/10 backdrop-blur-md shadow-[0_4px_20px_rgba(47,167,216,0.15)] relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#070810]/45 via-[#070810]/18 to-[#070810]/35" />
-            {/* Subtle glass reflection */}
-            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
-            <div className="relative z-10 flex items-center gap-2">
-              <img src="https://flagcdn.com/th.svg" alt="Thailand" className="w-3 md:w-4 h-auto rounded-[2px]" />
-              <span className="text-[0.55rem] md:text-[0.7rem]" style={{ ...SG, letterSpacing: "0.15em", color: "#EDE8DC", textTransform: "uppercase", fontWeight: 600 }}>
-                Thailand × Malaysia
-              </span>
-              <img src="https://flagcdn.com/my.svg" alt="Malaysia" className="w-3 md:w-4 h-auto rounded-[2px]" />
-            </div>
+
+        {/* CENTER: Songkran Logo + Islands */}
+        <div className="flex flex-col items-center w-full px-4" style={{ gap: "8px" }}>
+
+          {/* Songkran Festival Logo — dengan STEAM di belakang */}
+          <div className="relative flex items-center justify-center" style={{ width: "100vw", height: "clamp(120px, 22vh, 300px)" }}>
+
+            {/* STEAM — tepat di belakang logo, lebih besar */}
+            <motion.img
+              src="/images/STEAM.png"
+              alt=""
+              aria-hidden="true"
+              style={{
+                x: px,
+                y: py,
+                position: "absolute",
+                width: "120vw",
+                height: "clamp(160px, 26vh, 350px)",
+
+                zIndex: 0,
+                opacity: 0.92,
+              }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 0.92, scale: 1 }}
+              transition={{ duration: 1.1, ease: "easeOut" }}
+            />
+
+            {/* Songkran Logo — di depan STEAM */}
+            <motion.img
+              src="/images/Songkran logo.png"
+              alt="Songkran Festival"
+              style={{
+                x: px,
+                y: py,
+                filter: "drop-shadow(0 0 28px rgba(47,167,216,0.55))",
+                position: "relative",
+                width: "90vw",
+                height: "clamp(130px, 24vh, 280px)",
+                objectFit: "contain",
+                zIndex: 1,
+              }}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: "easeOut" }}
+            />
           </div>
-        </motion.div>
 
-        {/* SONGKRAN + FESTIVAL IMAGE */}
-        <div className="w-full flex flex-col items-center justify-center px-4 md:px-8 lg:px-14 gap-2">
-
-          {/* SONGKRAN */}
+          {/* Islands Stage Illustration */}
           <motion.img
-            src="/images/Songkran.png"
-            className="w-full max-w-[900px] md:max-w-[1000px] lg:max-w-[1100px]"
-            style={{
-              x: px,
-              y: py,
-              filter: "drop-shadow(0 0 20px rgba(47,167,216,0.5))"
-            }}
-            initial={{ opacity: 0, y: 80 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1 }}
-          />
-
-          {/* FESTIVAL */}
-          <motion.img
-            src="/images/Festival.png"
-            className="w-full max-w-[900px] md:max-w-[1000px] lg:max-w-[1100px]"
+            src="/images/islands.png"
+            alt="Festival Stage"
             style={{
               x: px2,
               y: py2,
-              filter: "drop-shadow(0 0 20px rgba(47,167,216,0.5))"
+              filter: "drop-shadow(0 0 24px rgba(47,167,216,0.35))",
+              width: "100vw",
+              height: "clamp(180px, 32vh, 400px)",
+              objectFit: "contain",
             }}
-            initial={{ opacity: 0, y: 80 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.2 }}
+            transition={{ duration: 1, delay: 0.15, ease: "easeOut" }}
           />
 
-          {/* 2026 */}
+          {/* Event Info Block */}
           <motion.div
-            className="flex flex-col items-center mt-3"
-            initial={{ opacity: 0, y: 20 }}
+            className="flex flex-col items-center text-center px-4 md:px-0"
+            style={{ gap: "4px", maxWidth: "100%", width: "100%" }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
+            transition={{ duration: 0.85, delay: 0.45, ease: "easeOut" }}
           >
-            <span
-              style={{
-                ...SYNE,
-                fontWeight: 800,
-                fontSize: "clamp(1.5rem, 4vw, 2.2rem)",
-                color: "#2FA7D8",
-              }}
-            >
-              2026
+            {/* Time — H1 size */}
+            <span style={{
+              ...TW,
+              fontSize: "clamp(1.4rem, 6vw, 3.2rem)",
+              color: "#ffffff",
+              lineHeight: 1.05,
+              letterSpacing: "0.01em",
+              WebkitTextStroke: "1.5px rgba(0,0,0,0.55)",
+              textShadow: "2px 2px 0px rgba(0,0,0,0.35), 0 0 20px rgba(63,215,245,0.2)",
+            }}>
+              12PM-12AM
             </span>
 
-            <div style={{ width: "100px" }}>
-              <ScribbleUnderline width={100} />
-            </div>
+            {/* Date — H1 besar */}
+            <span style={{
+              ...TW,
+              fontSize: "clamp(1.8rem, 8vw, 4rem)",
+              color: "#ffffff",
+              lineHeight: 1,
+              letterSpacing: "0.01em",
+              WebkitTextStroke: "1.5px rgba(0,0,0,0.55)",
+              textShadow: "2px 2px 0px rgba(0,0,0,0.35), 0 0 20px rgba(63,215,245,0.2)",
+            }}>
+              9-19 APRIL
+            </span>
+
+            {/* Divider */}
+            <div style={{ width: 60, height: 1.5, background: "rgba(255,255,255,0.35)", margin: "8px 0" }} />
+
+            {/* Location */}
+            <span style={{
+              ...TW,
+              fontSize: "clamp(0.95rem, 3.5vw, 1.8rem)",
+              color: "#ffffff",
+              letterSpacing: "0.03em",
+              lineHeight: 1.3,
+              WebkitTextStroke: "0.8px rgba(0,0,0,0.45)",
+              textShadow: "1px 1px 0px rgba(0,0,0,0.3)",
+              maxWidth: "600px"
+            }}>
+              @GF Forecourt Outdoor Carpark, 1 Utama
+            </span>
+
+            {/* Tagline */}
+            <span style={{
+              ...TW,
+              fontSize: "clamp(0.85rem, 3vw, 1.6rem)",
+              color: "rgba(255,255,255,0.9)",
+              letterSpacing: "0.03em",
+              marginTop: "2px",
+              WebkitTextStroke: "0.8px rgba(0,0,0,0.4)",
+              textShadow: "1px 1px 0px rgba(0,0,0,0.3)",
+              maxWidth: "500px"
+            }}>
+              Malaysia's Premier Songkran Festival
+            </span>
           </motion.div>
 
         </div>
 
-        {/* Bottom bar */}
-        <motion.div
-          className="px-4 md:px-8 lg:px-14 mt-6 md:mt-8 flex flex-wrap items-center gap-4 md:gap-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.1, duration: 0.8 }}
-        >
-          {[
-            { label: "APR 9–19, 2026" },
-            { label: "12PM – 12AM DAILY" },
-            { label: "ONE UTAMA, MALAYSIA" },
-            { label: "FREE ENTRY", highlight: true },
-          ].map(({ label, highlight }) => (
-            <span
-              key={label}
-              className="inline-flex items-center rounded-full px-3 py-1.5 md:px-4 md:py-2"
-              style={{
-                ...SG,
-                fontSize: "0.75rem",
-                letterSpacing: "0.12em",
-                color: highlight ? "#66D2FF" : "#F7F3EC",
-                fontWeight: highlight ? 700 : 500,
-                background: highlight ? "rgba(7,8,16,0.72)" : "rgba(7,8,16,0.78)",
-                border: highlight ? "1px solid rgba(47,167,216,0.38)" : "1px solid rgba(255,255,255,0.08)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-                textShadow: "0 1px 8px rgba(7,8,16,0.9)",
-              }}
-            >
-              {label}
-            </span>
-          ))}
-        </motion.div>
 
         {/* CTA Register Button */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 1.2, duration: 0.5, type: "spring" }}
-          className="px-4 md:px-8 lg:px-14 mt-6 md:mt-8 relative z-20"
+          className="px-4 md:px-8 lg:px-14 mt-6 md:mb-8 relative z-20"
         >
           <button
             onClick={() => window.location.href = '/register'}
             className="group relative overflow-hidden rounded-full px-8 py-3.5 md:px-10 md:py-4 transition-all hover:scale-105 active:scale-95"
-            style={{ background: "#2FA7D8", boxShadow: "0 0 20px rgba(244,160,51,0.3)" }}
+            style={{
+              background: "#3FD7F5",
+              boxShadow: "0 0 24px rgba(63,215,245,0.4), 0 0 8px rgba(63,215,245,0.2)",
+            }}
           >
-            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-            <span style={{ ...SG, fontWeight: 700, fontSize: "0.9rem", letterSpacing: "0.1em", color: "#050508", position: "relative", zIndex: 10 }}>
+            {/* Hover: darken overlay */}
+            <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ease-out" />
+            {/* Pressed: deeper darken */}
+            <div className="absolute inset-0 bg-black/20 opacity-0 group-active:opacity-100 transition-opacity duration-100 ease-out" />
+            <span style={{ ...TW, fontSize: "1rem", letterSpacing: "0.12em", color: "#ffffff", position: "relative", zIndex: 10 }}>
               REGISTER NOW
             </span>
           </button>
         </motion.div>
       </motion.div>
 
-      {/* Countdown / Happening Now — bottom right */}
-      <motion.div
-        className="absolute bottom-10 right-6 md:right-12"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.4 }}
-      >
-        {live ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.85, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "backOut" }}
-            style={{
-              background: "rgba(7,8,16,0.65)",
-              border: "1px solid rgba(47,167,216,0.25)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              borderRadius: "16px",
-              padding: "12px 18px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "flex-end",
-              gap: "6px",
-              boxShadow: "0 4px 24px rgba(47,167,216,0.1), inset 0 1px 0 rgba(255,255,255,0.05)",
-            }}
-          >
+      {/* Countdown / Happening Now — bottom right (hidden for now) */}
+      {false && (
+        <motion.div
+          className="absolute bottom-10 right-6 md:right-12"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.4 }}
+        >
+          {live ? (
             <motion.div
-              animate={{ opacity: [1, 0.5, 1] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-              style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              initial={{ opacity: 0, scale: 0.85, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "backOut" }}
+              style={{
+                background: "rgba(7,8,16,0.65)",
+                border: "1px solid rgba(47,167,216,0.25)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                borderRadius: "16px",
+                padding: "12px 18px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-end",
+                gap: "6px",
+                boxShadow: "0 4px 24px rgba(47,167,216,0.1), inset 0 1px 0 rgba(255,255,255,0.05)",
+              }}
             >
-              <motion.span
-                animate={{ boxShadow: ["0 0 6px #2FA7D8", "0 0 14px #2FA7D8", "0 0 6px #2FA7D8"] }}
+              <motion.div
+                animate={{ opacity: [1, 0.5, 1] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: "#2FA7D8",
-                  display: "inline-block",
-                  flexShrink: 0,
-                }}
-              />
-              <span style={{
-                ...SYNE,
-                fontWeight: 700,
-                fontSize: "0.85rem",
-                color: "#2FA7D8",
-                letterSpacing: "0.15em",
-              }}>
-                HAPPENING NOW
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
+                <motion.span
+                  animate={{ boxShadow: ["0 0 6px #2FA7D8", "0 0 14px #2FA7D8", "0 0 6px #2FA7D8"] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "#2FA7D8",
+                    display: "inline-block",
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{
+                  ...SYNE,
+                  fontWeight: 700,
+                  fontSize: "0.85rem",
+                  color: "#2FA7D8",
+                  letterSpacing: "0.15em",
+                }}>
+                  HAPPENING NOW
+                </span>
+              </motion.div>
+              <span style={{ ...SG, fontSize: "0.58rem", letterSpacing: "0.2em", color: "rgba(237,232,220,0.85)", textTransform: "uppercase" }}>
+                APR 9–19 · ONE UTAMA
               </span>
             </motion.div>
-            <span style={{ ...SG, fontSize: "0.58rem", letterSpacing: "0.2em", color: "rgba(237,232,220,0.85)", textTransform: "uppercase" }}>
-              APR 9–19 · ONE UTAMA
-            </span>
-          </motion.div>
-        ) : (
-          <>
-            <div style={{ ...SG, fontSize: "0.6rem", letterSpacing: "0.3em", color: "rgba(237,232,220,0.85)", textTransform: "uppercase", textAlign: "right", marginBottom: "10px" }}>
-              UNTIL SONGKRAN
-            </div>
-            <div className="flex gap-4 md:gap-6">
-              {[
-                { v: days, l: "DAYS" },
-                { v: hours, l: "HRS" },
-                { v: minutes, l: "MIN" },
-                { v: seconds, l: "SEC" },
-              ].map(({ v, l }) => (
-                <div key={l} className="text-right">
-                  <div style={{ ...SYNE, fontWeight: 700, fontSize: "clamp(1.8rem,3.5vw,2.8rem)", color: "#ffffffff", lineHeight: 1 }}>
-                    {String(v).padStart(2, "0")}
+          ) : (
+            <>
+              <div style={{ ...SG, fontSize: "0.6rem", letterSpacing: "0.3em", color: "rgba(237,232,220,0.85)", textTransform: "uppercase", textAlign: "right", marginBottom: "10px" }}>
+                UNTIL SONGKRAN
+              </div>
+              <div className="flex gap-4 md:gap-6">
+                {[
+                  { v: days, l: "DAYS" },
+                  { v: hours, l: "HRS" },
+                  { v: minutes, l: "MIN" },
+                  { v: seconds, l: "SEC" },
+                ].map(({ v, l }) => (
+                  <div key={l} className="text-right">
+                    <div style={{ ...SYNE, fontWeight: 700, fontSize: "clamp(1.8rem,3.5vw,2.8rem)", color: "#ffffffff", lineHeight: 1 }}>
+                      {String(v).padStart(2, "0")}
+                    </div>
+                    <div style={{ ...SG, fontSize: "0.55rem", letterSpacing: "0.2em", color: "rgba(237,232,220,0.85)", marginTop: 4 }}>
+                      {l}
+                    </div>
                   </div>
-                  <div style={{ ...SG, fontSize: "0.55rem", letterSpacing: "0.2em", color: "rgba(237,232,220,0.85)", marginTop: 4 }}>
-                    {l}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </motion.div>
+                ))}
+              </div>
+            </>
+          )}
+        </motion.div>
+      )}
 
       {/* Scroll indicator — bottom left */}
     </section>

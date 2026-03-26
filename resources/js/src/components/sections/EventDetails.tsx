@@ -221,25 +221,28 @@ export function EventDetails() {
                   (Old Wing) · Malaysia
                 </p>
 
-                <button
+                <a
+                  href="https://maps.app.goo.gl/MUU1nHAw2zrs2cZ96"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center gap-1.5 mt-3 group"
                   style={{
                     ...TILT,
                     fontSize: "0.72rem",
                     color: "#111111",
                     letterSpacing: "0.03em",
-                    background: "none",
-                    border: "none",
+                    textDecoration: "none",
                     cursor: "pointer",
-                    padding: 0,
                   }}
                 >
-                  <span>Get Directions</span>
+                  <span className="group-hover:text-[#2FA7D8] transition-colors duration-300 border-b border-transparent group-hover:border-[#2FA7D8]">
+                    Get Directions
+                  </span>
                   <ArrowUpRight
                     size={12}
-                    className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
+                    className="group-hover:text-[#2FA7D8] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-300"
                   />
-                </button>
+                </a>
               </SpotlightCard>
 
               <SpotlightCard
@@ -342,50 +345,60 @@ export function EventDetails() {
                   </div>
                 </SpotlightCard>
 
-                <SpotlightCard
-                  spotlightColor="rgba(255,255,255,0.18)"
-                  className="flex-1"
-                  style={{
-                    background: "rgba(255,255,255,0.34)",
-                    border: "1px solid rgba(255,255,255,0.42)",
-                    boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
-                  }}
+                <a 
+                  href="https://www.eqsolutions.com.my/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="flex-1 group cursor-pointer no-underline block"
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <Building2 size={13} style={{ color: "#111111" }} />
-                    <span
-                      className="tracking-[0.16em] uppercase text-xs"
-                      style={{ ...TILT, color: "rgba(0,0,0,0.58)" }}
+                  <SpotlightCard
+                    spotlightColor="rgba(255,255,255,0.18)"
+                    className="h-full group-hover:border-[#2FA7D8] group-hover:-translate-y-1 transition-all duration-300"
+                    style={{
+                      background: "rgba(255,255,255,0.34)",
+                      border: "1px solid rgba(255,255,255,0.42)",
+                      boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Building2 size={13} style={{ color: "#111111" }} className="group-hover:text-[#2FA7D8] transition-colors duration-300" />
+                      <span
+                        className="tracking-[0.16em] uppercase text-xs group-hover:text-[#2FA7D8] transition-colors duration-300"
+                        style={{ ...TILT, color: "rgba(0,0,0,0.58)" }}
+                      >
+                        Organised By
+                      </span>
+                    </div>
+
+                    <p
+                      className="group-hover:text-[#2FA7D8] transition-colors duration-300"
+                      style={{
+                        ...TILT,
+                        fontSize: "0.95rem",
+                        color: "#111111",
+                        lineHeight: 1.2,
+                        marginBottom: "0.3rem",
+                      }}
                     >
-                      Organised By
-                    </span>
-                  </div>
+                      EQ Solutions
+                      <ArrowUpRight strokeWidth={3} size={14} className="inline-block ml-1 opacity-0 -translate-x-2 translate-y-2 group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 text-[#2FA7D8] transition-all duration-300" />
+                    </p>
 
-                  <p
-                    style={{
-                      ...TILT,
-                      fontSize: "0.95rem",
-                      color: "#111111",
-                      lineHeight: 1.2,
-                      marginBottom: "0.3rem",
-                    }}
-                  >
-                    EQ Solutions
-                  </p>
-
-                  <p
-                    style={{
-                      ...TILT,
-                      fontSize: "0.64rem",
-                      color: "rgba(0,0,0,0.52)",
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    Bringing cultures together,
-                    <br />
-                    one festival at a time.
-                  </p>
-                </SpotlightCard>
+                    <p
+                      style={{
+                        ...TILT,
+                        fontSize: "0.64rem",
+                        color: "rgba(0,0,0,0.52)",
+                        lineHeight: 1.45,
+                      }}
+                      className="group-hover:text-[rgba(0,0,0,0.7)] transition-colors duration-300"
+                    >
+                      Bringing cultures together,
+                      <br />
+                      one festival at a time.
+                    </p>
+                  </SpotlightCard>
+                </a>
               </div>
             </div>
           </div>

@@ -1,11 +1,12 @@
-import { useState, memo } from "react";
+import { useState, memo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, Info, Music, Sparkles, Calendar, Image as ImageIcon, HelpCircle, ChevronRight, ArrowUpRight } from "lucide-react";
 
 const S: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
 
 const ScrollbarStyles = memo(() => (
-  <style dangerouslySetInnerHTML={{ __html: `
+  <style dangerouslySetInnerHTML={{
+    __html: `
     .custom-scrollbar::-webkit-scrollbar {
       width: 4px;
     }
@@ -73,6 +74,25 @@ const NavLink = memo(({ l, onClick, isMobile = false }: { l: any, onClick: (id: 
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  // Tampil ketika section #about sudah menyentuh/melewati viewport atas
+  useEffect(() => {
+    const target = document.querySelector("#about");
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // boundingClientRect.top <= 0 artinya kita sudah scroll melewati tepi atas #about
+        // intersecting artinya #about sedang kelihatan di viewport
+        setVisible(entry.isIntersecting || entry.boundingClientRect.top < 0);
+      },
+      { threshold: 0, rootMargin: "0px 0px 0px 0px" }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, []);
 
   const go = (id: string) => {
     setTimeout(() => setOpen(false), 400);
@@ -105,50 +125,64 @@ export function Navbar() {
   return (
     <>
       <ScrollbarStyles />
-      <motion.nav
-        initial={{ y: -80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.5, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed top-0 left-0 right-0 z-[200] px-4 lg:px-8 pt-4"
-        style={{ transform: "translateZ(0)" }}
-      >
-        <div className="rounded-2xl bg-[#070810]/85 border border-white/6 shadow-2xl shadow-black/50 transition-all duration-500 lg:backdrop-blur-xl">
-          <div className="flex items-center justify-between px-5 py-3">
-            <button
-              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              className="flex items-center gap-2 group"
-            >
-              <span style={{ ...S, fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "1.1rem", letterSpacing: "0.15em", color: "#EDE8DC" }}>
-                SONGKRAN
-              </span>
-            </button>
 
-            <div className="hidden lg:flex items-center gap-7">
-              {links.map((l) => (
-                <NavLink key={l.id} l={l} onClick={go} />
-              ))}
-            </div>
+      <AnimatePresence>
+        {visible && (
+          <motion.nav
+            key="navbar"
+            initial={{ y: -90, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -90, opacity: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="hidden md:block fixed top-0 left-0 right-0 z-[200] px-4 lg:px-8 pt-4"
+            style={{ transform: "translateZ(0)" }}
+          >
+            <div className="rounded-2xl bg-[#070810]/85 border border-white/6 shadow-2xl shadow-black/50 transition-all duration-500 lg:backdrop-blur-xl">
+              <div className="flex items-center justify-between px-5 py-3">
+                <button
+                  onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                  className="flex items-center gap-2 group"
+                >
+                  <img
+                    src="/images/Songkran logo.png"
+                    alt="Songkran Festival"
+                    style={{
+                      width: "120px",
+                      height: "auto",
+                      objectFit: "contain",
+                      filter: "drop-shadow(0 0 8px rgba(63,215,245,0.4))",
+                    }}
+                  />
+                </button>
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => window.location.href = '/register'}
-                className="hidden lg:flex items-center gap-2 rounded-full px-5 py-2 text-[#050508] transition-all hover:scale-105 active:scale-95 group"
-                style={{ ...S, background: "#2FA7D8", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.04em" }}
-              >
-                Free Entry
-                <ArrowUpRight size={15} className="transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
-              </button>
-              <button
-                onClick={() => setOpen(!open)}
-                className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10"
-                style={{ color: "rgba(237,232,220,0.8)" }}
-              >
-                {open ? <X size={20} /> : <Menu size={20} />}
-              </button>
+                <div className="hidden lg:flex items-center gap-7">
+                  {links.map((l) => (
+                    <NavLink key={l.id} l={l} onClick={go} />
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => window.location.href = '/register'}
+                    className="hidden lg:flex items-center gap-2 rounded-full px-5 py-2 text-[#050508] transition-all hover:scale-105 active:scale-95 group"
+                    style={{ ...S, background: "#2FA7D8", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.04em" }}
+                  >
+                    Free Entry
+                    <ArrowUpRight size={15} className="transition-transform duration-300 group-hover:translate-x-1 group-hover:-translate-y-1" />
+                  </button>
+                  <button
+                    onClick={() => setOpen(!open)}
+                    className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10"
+                    style={{ color: "rgba(237,232,220,0.8)" }}
+                  >
+                    {open ? <X size={20} /> : <Menu size={20} />}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </motion.nav>
+          </motion.nav>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {open && (

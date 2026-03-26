@@ -54,7 +54,7 @@ const activities: Activity[] = [
     description: "With Thai Ambassador",
     schedule: "Fri, 10th April",
     image:
-      "https://images.unsplash.com/photo-1658051592420-8459926a5a82?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvcGVuaW5nJTIwY2VyZW1vbnklMjBmZXN0aXZhbCUyMGNlbGVicmF0aW9uJTIwY3Jvd2R8ZW58MXx8fHwxNzczNzA0NDc3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      "/images/foto-4.png",
     size: "wide",
   },
   {
@@ -65,7 +65,7 @@ const activities: Activity[] = [
     description: "Every evening throughout all 11 nights",
     schedule: "Nightly, 9th–19th",
     image:
-      "https://images.unsplash.com/photo-1757439160077-dd5d62a4d851?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsaXZlJTIwYmFuZCUyMGNvbmNlcnQlMjBuaWdodCUyMHN0YWdlJTIwcGVyZm9ybWFuY2V8ZW58MXx8fHwxNzczNzA0NDc4fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      "/images/foto-2.png",
   },
   {
     id: 3,
@@ -75,7 +75,7 @@ const activities: Activity[] = [
     description: "Dance under the stars every night",
     schedule: "Every Night",
     image:
-      "https://images.unsplash.com/photo-1758179764880-7513421d202a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxESiUyMHBlcmZvcm1hbmNlJTIwbmlnaHRjbHViJTIwbmVvbiUyMGxpZ2h0c3xlbnwxfHx8fDE3NzM2MjQwNjN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      "/images/foto-3.png",
   },
   {
     id: 4,
@@ -85,8 +85,7 @@ const activities: Activity[] = [
     description: "Iconic Songkran splashes — joyful, symbolic, unforgettable",
     schedule: "5PM+ Daily",
     image:
-      "https://images.unsplash.com/photo-1693670984742-c008c239daf2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3YXRlciUyMHNwbGFzaCUyMGZlc3RpdmFsJTIwZnVuJTIwY3Jvd2QlMjBzdW1tZXJ8ZW58MXx8fHwxNzczNzA0NDgzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
-    size: "wide",
+      "/images/foto-1.png", size: "wide",
   },
   {
     id: 5,
@@ -96,7 +95,7 @@ const activities: Activity[] = [
     description: "Thai-inspired looks by our youngest stars",
     schedule: "11th April",
     image:
-      "https://images.unsplash.com/photo-1607196475666-3cff9708edd5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxraWRzJTIwZmFzaGlvbiUyMHNob3clMjBydW53YXklMjBjaGlsZHJlbnxlbnwxfHx8fDE3NzM3MDQ0Nzl8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      "/images/foto-5.png",
   },
   {
     id: 6,
@@ -106,7 +105,7 @@ const activities: Activity[] = [
     description: "A mystery guest that will light up the stage",
     schedule: "11th April (TBC)",
     image:
-      "https://images.unsplash.com/photo-1764874299006-bf4266427ec9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjZWxlYnJpdHklMjBndWVzdCUyMGFwcGVhcmFuY2UlMjBzcG90bGlnaHQlMjBzdGFnZXxlbnwxfHx8fDE3NzM3MDQ0Nzl8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      "/images/foto-6.png",
   },
   {
     id: 7,
@@ -116,7 +115,7 @@ const activities: Activity[] = [
     description: "Interactive competitions for all ages",
     schedule: "Daily, 9th–19th",
     image:
-      "https://images.unsplash.com/photo-1758775632590-bfc2946a37d7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3YXRlciUyMHNwb3J0cyUyMGdhbWVzJTIwY29tcGV0aXRpb24lMjBvdXRkb29yfGVufDF8fHx8MTc3MzcwNDQ3OXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      "/images/foto-7.png",
   },
   {
     id: 8,
@@ -167,9 +166,8 @@ function TiltCard({ activity }: { activity: Activity }) {
       }}
       whileHover={{ scale: 1.02, y: -4, zIndex: 10 }}
       transition={{ duration: 0.28, ease: "easeOut" }}
-      className={`relative flex-shrink-0 rounded-[24px] overflow-hidden cursor-pointer group ${
-        isWide ? "w-[420px] md:w-[480px]" : "w-[300px] md:w-[340px]"
-      } h-[380px] select-none`}
+      className={`relative flex-shrink-0 rounded-[24px] overflow-hidden cursor-pointer group ${isWide ? "w-[420px] md:w-[480px]" : "w-[300px] md:w-[340px]"
+        } h-[380px] select-none`}
     >
       <div
         className="absolute inset-0 transition-transform duration-700 ease-out"
@@ -181,16 +179,14 @@ function TiltCard({ activity }: { activity: Activity }) {
           src={activity.image}
           alt={activity.title}
           onLoad={() => setImgLoaded(true)}
-          className={`w-full h-full object-cover transition-all duration-500 ${
-            isHovered ? "grayscale-0 brightness-100" : "grayscale-[15%] brightness-90"
-          } ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+          className={`w-full h-full object-cover transition-all duration-500 ${isHovered ? "grayscale-0 brightness-100" : "grayscale-[15%] brightness-90"
+            } ${imgLoaded ? "opacity-100" : "opacity-0"}`}
         />
       </div>
 
       <div
-        className={`absolute inset-0 transition-opacity duration-500 ${
-          isHovered ? "opacity-90" : "opacity-80"
-        }`}
+        className={`absolute inset-0 transition-opacity duration-500 ${isHovered ? "opacity-90" : "opacity-80"
+          }`}
         style={{
           background:
             "linear-gradient(to top, rgba(240,248,255,0.96) 0%, rgba(240,248,255,0.6) 48%, rgba(240,248,255,0.16) 100%)",
@@ -576,9 +572,8 @@ export function FestivalActivities() {
                 disabled={!canScrollLeft}
                 className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
                 style={{
-                  border: `1.5px solid ${
-                    canScrollLeft ? "rgba(0,0,0,0.24)" : "rgba(0,0,0,0.08)"
-                  }`,
+                  border: `1.5px solid ${canScrollLeft ? "rgba(0,0,0,0.24)" : "rgba(0,0,0,0.08)"
+                    }`,
                   background: canScrollLeft ? "rgba(255,255,255,0.34)" : "rgba(255,255,255,0.16)",
                   color: canScrollLeft ? "#111111" : "rgba(0,0,0,0.22)",
                   cursor: canScrollLeft ? "pointer" : "not-allowed",
@@ -595,9 +590,8 @@ export function FestivalActivities() {
                 disabled={!canScrollRight}
                 className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300"
                 style={{
-                  border: `1.5px solid ${
-                    canScrollRight ? "rgba(0,0,0,0.24)" : "rgba(0,0,0,0.08)"
-                  }`,
+                  border: `1.5px solid ${canScrollRight ? "rgba(0,0,0,0.24)" : "rgba(0,0,0,0.08)"
+                    }`,
                   background: canScrollRight ? "rgba(255,255,255,0.34)" : "rgba(255,255,255,0.16)",
                   color: canScrollRight ? "#111111" : "rgba(0,0,0,0.22)",
                   cursor: canScrollRight ? "pointer" : "not-allowed",

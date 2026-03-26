@@ -1,15 +1,12 @@
 import { useRef, useCallback } from "react";
 import { motion, useInView } from "motion/react";
-import aboutImg from "@/assets/images/about-songkran.jpg";
-import img2 from "@/assets/images/crowd.png";
-import img3 from "@/assets/images/stage.png";
 import { Stack } from "../ui/Stack";
 import { WaterAnimation } from "../auth/WaterAnimation";
 
 const images = [
-  { id: 1, src: aboutImg },
-  { id: 2, src: img2 },
-  { id: 3, src: img3 },
+  { id: 1, src: "/images/foto-3.png" },
+  { id: 2, src: "/images/foto-4.png" },
+  { id: 3, src: "/images/foto-5.png" },
 ];
 
 function LotusIcon({ className }: { className?: string }) {

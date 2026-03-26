@@ -6,31 +6,31 @@ const TILT: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 const faqs = [
   {
     q: "Is the event free to attend?",
-    a: "Yes! Songkran Festival 2026 is completely FREE ENTRY for everyone. Simply show up at the Forecourt, One Utama (Old Wing) and enjoy all the festivities.",
+    a: "Yes! Songkran Festival Malaysia 2026 is a free-entry event, open to everyone. Participants are required to register via our website in advance, or may register on-site by scanning the QR code provided at the event entrance.",
   },
   {
     q: "When and where is the festival?",
-    a: "April 9 to 19, 2026 — daily from 12 PM to 12 AM (midnight) at Forecourt, One Utama Shopping Centre (Old Wing), Petaling Jaya, Malaysia.",
+    a: "The festival will take place at 1 Utama Shopping Centre (GF Forecourt Carpark) from 9th to 19th April 2026, operating daily from 12:00 PM to 12:00 AM.",
   },
   {
     q: "What should I wear to the water play?",
-    a: "We recommend clothes you don't mind getting soaked! Thai-inspired colourful outfits are highly encouraged. Bring a change of clothes and a towel.",
+    a: "We recommend wearing light, comfortable clothing that you don’t mind getting wet. Non-slip footwear is highly encouraged, and don’t forget to bring waterproof protection for your belongings.",
   },
   {
     q: "Is it suitable for families and children?",
-    a: "Absolutely. Songkran Festival 2026 is a family-friendly event with activities for all ages — including a Kids Fashion Show, water play, games, and more.",
+    a: "Absolutely! The festival is family-friendly and suitable for visitors of all ages. We encourage parents to supervise children, especially in water play areas.",
   },
   {
     q: "Will there be food and drinks?",
-    a: "Yes! Authentic Thai street food stalls and beverages are available throughout the festival grounds, open daily from 12 PM onwards.",
+    a: "Yes! There will be a wide variety of food and beverage vendors, offering everything from local favourites to authentic Thai cuisine and refreshing drinks.",
   },
   {
     q: "Who is organising this festival?",
-    a: "The festival is proudly organised by EQ Solutions, dedicated to bringing iconic cultural celebrations to life in Malaysia.",
+    a: "This event is proudly organised by EQ Solutions, in close collaboration with the Royal Thai Embassy and 1 Utama Shopping Centre, bringing together a vibrant cultural celebration for the public.",
   },
   {
     q: "Are activities confirmed?",
-    a: "Some activities, including guest appearances, are tentative and subject to change. Follow our official channels for the latest updates.",
+    a: "Yes, a range of exciting activities are planned, including water play zones, live performances, games, and cultural showcases.",
   },
 ];
 
