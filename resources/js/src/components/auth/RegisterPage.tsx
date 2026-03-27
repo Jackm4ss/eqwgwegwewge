@@ -635,15 +635,14 @@ const LEGAL_DIALOG_CONTENT: Record<LegalDialogType, {
     description: '',
     paragraphs: [
       `1. Ticket and Entry Requirements
-Age Restriction: Minor under 13 Years old neednto benaccompany by adult or guardian. 
+Age Restriction: Minor under 13 Years old need to be accompanied by adult or guardian.
 Valid QR code and Original ID cards or passports must be presented at the venue.
 Name Matching: QR Ticket must be registered to the attendee's full name, matching their official ID.
-Re-entry on the same day do not require QR scanning provided valid uv stamp of the day still visible.`,
+Re-entry on the same day does not require QR scanning provided if valid UV stamp of the day is still visible.`,
       `2. Prohibited Items
 To ensure safety, the following are generally prohibited:
 Weapons, sharp objects, and fireworks.
 Drugs and illegal substances.
-Professional cameras (DSLR/mirrorless) and selfie sticks (unless under 30cm).
 External food and drinks.`,
       `3. Safety & Behavioral Guidelines
 Water Fight Safety: Do not aim high-pressure water guns at faces or eyes.
