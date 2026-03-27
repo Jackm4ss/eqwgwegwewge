@@ -134,6 +134,23 @@ class VerificationFlowTest extends TestCase
             ->assertSee($user['email']);
     }
 
+    public function test_signed_ticket_qr_route_renders_png(): void
+    {
+        Mail::fake();
+
+        $this->postJson('/api/register', $this->validPayload())->assertCreated();
+        $user = $this->repository->firstUser();
+
+        $this->get($this->verificationUrl($user['user_id'], $user['email']))->assertRedirect();
+        $ticket = $this->repository->findTicketByUserId($user['user_id']);
+
+        $signedTicketQrUrl = app(TicketQrCodeService::class)->signedTicketQrUrl($ticket['ticket_id']);
+
+        $this->get($signedTicketQrUrl)
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png');
+    }
+
     private function verificationUrl(string $userId, string $email): string
     {
         return URL::temporarySignedRoute(

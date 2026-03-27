@@ -46,6 +46,7 @@ interface RegisterResponse {
   status?: 'ticket_ready' | 'ticket_ready_email_pending';
   email_sent?: boolean;
   ticket_url?: string;
+  ticket_qr_url?: string;
   ticket_code?: string;
   errors?: Record<string, string[]>;
 }
@@ -173,6 +174,8 @@ const PRIORITY_SORTED_COUNTRIES = PRIORITY_COUNTRIES
 const OTHER_SORTED_COUNTRIES = SORTED_COUNTRIES.filter(
   (country) => !PRIORITY_COUNTRIES.includes(country.code as (typeof PRIORITY_COUNTRIES)[number]),
 );
+
+const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
 
 function normalizePhoneCountryCode(value: string) {
   const digits = value.replace(/\D/g, '');
@@ -628,12 +631,30 @@ const LEGAL_DIALOG_CONTENT: Record<LegalDialogType, {
   paragraphs: string[];
 }> = {
   terms: {
-    title: 'CARLSBERG MALAYSIA CONTEST/PROMOTION STANDARD TERMS AND CONDITIONS',
+    title: 'Terms & Conditions',
     description: '',
     paragraphs: [
-      'Carlsberg Malaysia\'s Contest/Promotion will be governed by these standard terms and conditions and the Contest/Promotion terms and conditions (collectively "these Terms and Conditions"). Each Participant agrees that he/she has read and understood these Terms and Conditions and by their participation in the Contest/Promotion, each Participant agrees to be bound by these Terms and Conditions.',
-      'The Organiser of the Contest/Promotion is Carlsberg Marketing Sdn Bhd ("Carlsberg").',
-      'The Contest/Promotion is only open to all non-muslim Malaysian citizens or Permanent Resident of the Age of Eligibility as stated in the Contest/Promotion terms and conditions. Unless otherwise prescribed in the Contest/Promotion terms and conditions, to enter the Contest/Promotion, Participants must be a non-muslim, age twenty one (21) years and above as at the commencement date of the Contest/Promotion.',
+      `1. Ticket and Entry Requirements
+Age Restriction: Minor under 13 Years old neednto benaccompany by adult or guardian. 
+Valid QR code and Original ID cards or passports must be presented at the venue.
+Name Matching: QR Ticket must be registered to the attendee's full name, matching their official ID.
+Re-entry on the same day do not require QR scanning provided valid uv stamp of the day still visible.`,
+      `2. Prohibited Items
+To ensure safety, the following are generally prohibited:
+Weapons, sharp objects, and fireworks.
+Drugs and illegal substances.
+Professional cameras (DSLR/mirrorless) and selfie sticks (unless under 30cm).
+External food and drinks.`,
+      `3. Safety & Behavioral Guidelines
+Water Fight Safety: Do not aim high-pressure water guns at faces or eyes.
+Cultural Respect: Do not splash food vendor, crew on duty, the elderly, or young children.
+
+Liability: Organizers are not responsible for lost or stolen personal property.`,
+      `4. Event & Weather Policy
+Rain or Shine: Events proceed regardless of weather unless conditions are deemed dangerous, in which case the organizer may amend the event.
+Changes: Organizers reserve the right to change schedules, lineups, or terms without prior notice.`,
+      `5. Media Rights
+By entering the event, you consent to being photographed or recorded, with the content being used for promotional purposes`
     ],
   },
   privacy: {
@@ -657,6 +678,7 @@ export function RegisterPage() {
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState('');
   const [registeredTicketUrl, setRegisteredTicketUrl] = useState('');
+  const [registeredTicketQrUrl, setRegisteredTicketQrUrl] = useState('');
   const [registeredTicketCode, setRegisteredTicketCode] = useState('');
   const [ticketEmailSent, setTicketEmailSent] = useState(true);
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
@@ -872,6 +894,7 @@ export function RegisterPage() {
     setRegisteredEmail('');
     setRegistrationSuccessMessage('');
     setRegisteredTicketUrl('');
+    setRegisteredTicketQrUrl('');
     setRegisteredTicketCode('');
     setTicketEmailSent(true);
     reset(); // Clear form values
@@ -975,6 +998,7 @@ export function RegisterPage() {
       setRegisteredEmail(data.email);
       setRegistrationSuccessMessage(result.message || '');
       setRegisteredTicketUrl(result.ticket_url || '');
+      setRegisteredTicketQrUrl(result.ticket_qr_url || '');
       setRegisteredTicketCode(result.ticket_code || '');
       setTicketEmailSent(result.email_sent !== false);
       setIsSuccess(true);
@@ -1024,6 +1048,7 @@ export function RegisterPage() {
   const isMalaysianRegistrant = countryVal === 'MY';
   const isForeignRegistrant = countryVal !== '' && countryVal !== 'MY';
   const hasDirectTicketUrl = registeredTicketUrl.trim() !== '';
+  const hasTicketQrUrl = registeredTicketQrUrl.trim() !== '';
   const availableIdentityTypes = isMalaysianRegistrant
     ? IDENTITY_TYPES
     : IDENTITY_TYPES.filter(option => option.value === 'passport');
@@ -1715,7 +1740,7 @@ export function RegisterPage() {
             <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
               <div className="flex flex-col gap-4 text-sm leading-7 text-slate-600">
                 {activeLegalDialog.paragraphs.map((paragraph, index) => (
-                  <p key={`${legalDialog}-${index}`}>{paragraph}</p>
+                  <p key={`${legalDialog}-${index}`} className="whitespace-pre-wrap">{paragraph}</p>
                 ))}
               </div>
             </div>
@@ -1759,11 +1784,27 @@ export function RegisterPage() {
 
               {/* ICON */}
               <motion.div
-                animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.05, 1] }}
+                animate={{ y: [0, -6, 0], scale: [1, 1.02, 1] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="w-20 h-20 md:w-28 md:h-28 mx-auto mb-6 text-sky-300"
+                className="mx-auto mb-6 flex flex-col items-center gap-4"
               >
-                <LotusIcon className="w-full h-full drop-shadow-[0_0_15px_rgba(125,211,252,0.4)]" />
+                <div className="flex items-center justify-center rounded-[2rem] border border-white/15 bg-white/10 px-6 py-4 shadow-[0_18px_55px_rgba(12,74,110,0.28)] backdrop-blur-sm">
+                  <img
+                    src={SONGKRAN_LOGO_URL}
+                    alt="Songkran Festival 2026 logo"
+                    className="h-16 w-auto md:h-24"
+                  />
+                </div>
+
+                {hasTicketQrUrl && (
+                  <div className="rounded-[2rem] border border-white/15 bg-white p-3 shadow-[0_20px_60px_rgba(12,74,110,0.32)]">
+                    <img
+                      src={registeredTicketQrUrl}
+                      alt="Registered participant QR code"
+                      className="h-40 w-40 rounded-2xl object-contain md:h-52 md:w-52"
+                    />
+                  </div>
+                )}
               </motion.div>
 
               <div className="space-y-6">
@@ -1793,16 +1834,15 @@ export function RegisterPage() {
                   )}
                 </p>
 
-                {/* {registeredTicketCode && (
+                {registeredTicketCode && (
                   <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur-sm">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-200/80">Ticket Code</p>
-                    <p className="mt-2 break-all text-base font-black text-white md:text-lg" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                      {registeredTicketCode}
+                    <p className="text-base font-black text-white md:text-lg" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                      Valid from: 9-19 April 2026
                     </p>
                   </div>
-                )} */}
+                )}
 
-                {/* {hasDirectTicketUrl && (
+                {hasDirectTicketUrl && (
                   <motion.a
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -1814,7 +1854,7 @@ export function RegisterPage() {
                   >
                     {ticketEmailSent ? 'Open Ticket in Browser' : 'Open My Ticket Now'}
                   </motion.a>
-                )} */}
+                )}
 
                 <div className="hidden flex-wrap gap-2 justify-center">
                   {[

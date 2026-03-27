@@ -112,6 +112,11 @@ class TicketQrCodeService
         return URL::signedRoute('ticket.download', ['ticketId' => $ticketId]);
     }
 
+    public function signedTicketQrUrl(string $ticketId): string
+    {
+        return URL::signedRoute('ticket.qr', ['ticketId' => $ticketId]);
+    }
+
     public function signTicketCode(string $ticketCode): string
     {
         $key = $this->resolveAppKey();

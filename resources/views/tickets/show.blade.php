@@ -252,38 +252,38 @@
             object-fit: contain;
         }
 
-    .logo-media {
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        object-fit: cover;
-    }
+        .logo-media {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
 
-    .ticket-download-wrap {
-        margin: 0 0 24px;
-        color: #ffffff;
-    }
+        .ticket-download-wrap {
+            margin: 0 0 24px;
+            color: #ffffff;
+        }
 
-    .ticket-download-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 48px;
-        padding: 0 22px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.95);
-        color: #0369a1;
-        font-size: 0.95rem;
-        font-weight: 800;
-        text-decoration: none;
-        box-shadow: 0 12px 24px rgba(2, 132, 199, 0.24);
-    }
+        .ticket-download-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 0 22px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #0369a1;
+            font-size: 0.95rem;
+            font-weight: 800;
+            text-decoration: none;
+            box-shadow: 0 12px 24px rgba(2, 132, 199, 0.24);
+        }
 
-    .ticket-download-button:hover {
-        color: #075985;
-        text-decoration: none;
-        transform: translateY(-1px);
-    }
+        .ticket-download-button:hover {
+            color: #075985;
+            text-decoration: none;
+            transform: translateY(-1px);
+        }
 
         @media (max-width: 480px) {
             .ticket-page-shell {
@@ -337,7 +337,7 @@
 
                 <div class="event-info">
                     <p class="event-time">12PM-12AM</p>
-                    <p class="event-date">9 - 19 APRIL</p>
+                    <p class="event-date">9-19 APRIL</p>
                     <p class="event-venue">@GF FORECOURT OUTDOOR CARPARK, 1 UTAMA</p>
                     <p class="event-subtitle">MALAYSIA'S PREMIER SONGKRAN FESTIVAL</p>
                 </div>
@@ -352,20 +352,20 @@
                 </div>
             </div>
 
-        <div class="bottom-section">
-            <div class="message-box">
-                <div class="msg-title">Thank you for your registration.</div>
-                <div class="msg-text">
-                    Please present your QR code and registered valid ID / passport at the gate.<br>
-                    This code remains valid for the duration of the event, though scanning is required upon each day.
+            <div class="bottom-section">
+                <div class="message-box">
+                    <div class="msg-title">Thank you for your registration.</div>
+                    <div class="msg-text">
+                        Please present your QR code and registered valid ID / passport at the gate.<br>
+                        This code remains valid for the duration of the event, though scanning is required upon each day.
+                    </div>
                 </div>
-            </div>
 
-            <div class="ticket-download-wrap">
-                <a href="{{ $qrDownloadUrl }}" class="ticket-download-button">Download Ticket</a>
-            </div>
+                <div class="ticket-download-wrap">
+                    <a href="{{ $qrDownloadUrl }}" class="ticket-download-button">Download Ticket</a>
+                </div>
 
-            <div id="bottom-info-card" class="glass-card">
+                <div id="bottom-info-card" class="glass-card">
                     <div class="footer-col" style="flex: 1; min-width: 70px;">
                         <div class="col-title">ORGANISER</div>
                         <div class="logo-organiser-text">eq solutions</div>

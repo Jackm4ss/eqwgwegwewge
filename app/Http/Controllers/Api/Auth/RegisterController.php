@@ -24,6 +24,7 @@ class RegisterController extends Controller
                 'status' => $emailSent ? 'ticket_ready' : 'ticket_ready_email_pending',
                 'email_sent' => $emailSent,
                 'ticket_url' => (string) data_get($result, 'delivery.ticket_url', ''),
+                'ticket_qr_url' => (string) data_get($result, 'delivery.ticket_qr_url', ''),
                 'ticket_code' => (string) data_get($result, 'ticket.ticket_code', ''),
             ], 201);
         } catch (ValidationException $exception) {

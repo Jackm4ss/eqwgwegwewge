@@ -367,7 +367,7 @@
                                                     </p>
                                                     <p class="event-date"
                                                         style="font-size:54px; line-height:54px; font-weight:900; letter-spacing:1px; margin:8px 0 6px;">
-                                                        9 - 19 APRIL
+                                                        9-19 APRIL
                                                     </p>
                                                     <p class="event-venue"
                                                         style="font-size:14px; line-height:22px; font-weight:800; margin:0;">

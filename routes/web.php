@@ -64,6 +64,10 @@ Route::get('/ticket/{ticketId}/download', [TicketPageController::class, 'downloa
     ->middleware('signed')
     ->name('ticket.download');
 
+Route::get('/ticket/{ticketId}/qr', [TicketPageController::class, 'qr'])
+    ->middleware('signed')
+    ->name('ticket.qr');
+
 $adminPath = config('admin.path', 'admin');
 
 Route::prefix($adminPath)

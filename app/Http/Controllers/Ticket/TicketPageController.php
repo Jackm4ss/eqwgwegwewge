@@ -86,4 +86,26 @@ class TicketPageController extends Controller
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
+
+    public function qr(
+        string $ticketId,
+        UserRepositoryInterface $users,
+        TicketQrCodeService $ticketQrCodeService,
+    ) {
+        $ticket = $users->findTicketById($ticketId);
+        abort_if(! $ticket, 404);
+
+        $qrPng = $ticketQrCodeService->renderPngBinary(
+            $ticketQrCodeService->payloadForTicket($ticket),
+            320,
+        );
+
+        $filename = 'songkran-ticket-'.strtolower((string) ($ticket['ticket_code'] ?? $ticketId)).'.png';
+
+        return response($qrPng, 200, [
+            'Content-Type' => 'image/png',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+            'Cache-Control' => 'private, no-store, max-age=0',
+        ]);
+    }
 }

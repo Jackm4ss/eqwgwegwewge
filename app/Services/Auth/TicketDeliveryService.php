@@ -20,6 +20,7 @@ class TicketDeliveryService
     {
         $ticketReadyEmailSentAt = $user['ticket_ready_email_sent_at'] ?? null;
         $ticketUrl = $this->ticketQrCodeService->signedTicketUrl((string) $ticket['ticket_id']);
+        $ticketQrUrl = $this->ticketQrCodeService->signedTicketQrUrl((string) $ticket['ticket_id']);
 
         if (! empty($ticketReadyEmailSentAt)) {
             return [
@@ -28,6 +29,7 @@ class TicketDeliveryService
                     'status' => 'already_sent',
                     'email_sent' => true,
                     'ticket_url' => $ticketUrl,
+                    'ticket_qr_url' => $ticketQrUrl,
                 ],
             ];
         }
@@ -55,6 +57,7 @@ class TicketDeliveryService
                     'status' => 'failed',
                     'email_sent' => false,
                     'ticket_url' => $ticketUrl,
+                    'ticket_qr_url' => $ticketQrUrl,
                 ],
             ];
         }
@@ -69,6 +72,7 @@ class TicketDeliveryService
                 'status' => 'sent',
                 'email_sent' => true,
                 'ticket_url' => $ticketUrl,
+                'ticket_qr_url' => $ticketQrUrl,
             ],
         ];
     }

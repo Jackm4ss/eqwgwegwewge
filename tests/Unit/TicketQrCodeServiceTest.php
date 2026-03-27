@@ -29,4 +29,14 @@ class TicketQrCodeServiceTest extends TestCase
         $this->assertStringContainsString('<svg', $svg);
         $this->assertStringContainsString('</svg>', $svg);
     }
+
+    public function test_signed_ticket_qr_url_targets_qr_route(): void
+    {
+        $service = app(TicketQrCodeService::class);
+
+        $url = $service->signedTicketQrUrl('01TESTULID');
+
+        $this->assertStringContainsString('/ticket/01TESTULID/qr', $url);
+        $this->assertStringContainsString('signature=', $url);
+    }
 }
