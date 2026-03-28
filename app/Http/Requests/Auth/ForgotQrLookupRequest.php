@@ -51,7 +51,7 @@ class ForgotQrLookupRequest extends FormRequest
             if ($recaptchaToken === '') {
                 $validator->errors()->add(
                     'recaptcha_token',
-                    'Mohon selesaikan verifikasi reCAPTCHA.'
+                    'Please complete the reCAPTCHA verification.'
                 );
 
                 return;
@@ -62,7 +62,7 @@ class ForgotQrLookupRequest extends FormRequest
             if (! $isVerified) {
                 $validator->errors()->add(
                     'recaptcha_token',
-                    'Verifikasi reCAPTCHA gagal. Silakan coba lagi.'
+                    'reCAPTCHA verification failed. Please try again.'
                 );
             }
         });
@@ -107,36 +107,36 @@ class ForgotQrLookupRequest extends FormRequest
     private function validateEmailSearch(Validator $validator): void
     {
         if ((string) $this->input('email') === '') {
-            $validator->errors()->add('email', 'Email wajib diisi.');
+            $validator->errors()->add('email', 'Email is required.');
         }
     }
 
     private function validatePhoneSearch(Validator $validator): void
     {
         if ((string) $this->input('phone_country_code') === '') {
-            $validator->errors()->add('phone_country_code', 'Kode negara wajib diisi.');
+            $validator->errors()->add('phone_country_code', 'Country code is required.');
         }
 
         if ((string) $this->input('phone_national_number') === '') {
-            $validator->errors()->add('phone_national_number', 'Nomor HP wajib diisi.');
+            $validator->errors()->add('phone_national_number', 'Phone number is required.');
         }
     }
 
     private function validatePassportSearch(Validator $validator): void
     {
         if ((string) $this->input('country') === '') {
-            $validator->errors()->add('country', 'Country wajib dipilih.');
+            $validator->errors()->add('country', 'Country is required.');
         }
 
         if ((string) $this->input('identity_number') === '') {
-            $validator->errors()->add('identity_number', 'Passport number wajib diisi.');
+            $validator->errors()->add('identity_number', 'Passport Number is required.');
         }
     }
 
     private function validateIcSearch(Validator $validator): void
     {
         if ((string) $this->input('identity_number') === '') {
-            $validator->errors()->add('identity_number', 'Malaysia IC (MyKad) Number wajib diisi.');
+            $validator->errors()->add('identity_number', 'Malaysia IC (MyKad) Number is required.');
         }
     }
 

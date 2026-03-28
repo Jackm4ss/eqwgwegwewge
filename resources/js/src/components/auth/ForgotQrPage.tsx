@@ -470,7 +470,7 @@ export function ForgotQrPage() {
       }
 
       if (!json.found || !json.participant || !json.ticket_url || !json.ticket_code) {
-        setNotFoundMessage(json.message || 'Data peserta tidak ditemukan.');
+        setNotFoundMessage(json.message || 'Participant data was not found.');
         return;
       }
 
@@ -560,7 +560,9 @@ export function ForgotQrPage() {
                   <div>
                     <p className="mb-3 text-sm font-semibold text-slate-700">Choose your lookup method</p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {SEARCH_OPTIONS.map((option) => {
+                      {SEARCH_OPTIONS
+                        .filter((option) => option.value !== 'phone')
+                        .map((option) => {
                         const Icon = option.icon;
                         const active = searchType === option.value;
 
@@ -883,7 +885,7 @@ export function ForgotQrPage() {
                 <div className="space-y-6 px-6 py-6">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Email</p><p className="mt-2 break-words text-sm font-semibold text-slate-900">{result.participant.email || '-'}</p></div>
-                    <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Phone Number</p><p className="mt-2 text-sm font-semibold text-slate-900">{result.participant.phone_number || '-'}</p><p className="mt-1 text-xs text-slate-500">{result.participant.phone_country_code || '-'} / {result.participant.phone_national_number || '-'}</p></div>
+                    {/* Phone number is intentionally hidden on the forgot QR page for now. */}
                     <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Country</p><div className="mt-2 flex items-center gap-2">{resultCountryOption ? (<span className={`fi fi-${resultCountryOption.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" />) : null}<p className="text-sm font-semibold text-slate-900">{humanizeCountry(result.participant.country)}</p></div></div>
                     <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Document Type</p><p className="mt-2 text-sm font-semibold text-slate-900">{humanizeIdentityType(result.participant.identity_type)}</p></div>
                     <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4 sm:col-span-2"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Document Number</p><p className="mt-2 break-words text-sm font-semibold text-slate-900">{result.participant.identity_number || '-'}</p></div>

@@ -21,7 +21,7 @@ class ForgotQrLookupController extends Controller
 
             return response()->json([
                 'found' => false,
-                'message' => 'Terjadi gangguan. Silakan coba lagi.',
+                'message' => 'An unexpected issue occurred. Please try again.',
             ], 500);
         }
     }

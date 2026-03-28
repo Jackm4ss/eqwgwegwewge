@@ -88,7 +88,7 @@ class ForgotQrLookupService
     {
         return [
             'found' => false,
-            'message' => 'Data peserta tidak ditemukan.',
+            'message' => 'Participant data was not found.',
         ];
     }
 
