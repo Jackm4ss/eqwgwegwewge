@@ -39,8 +39,8 @@ function ScribbleUnderline({ color = "#2FA7D8", width = 160 }: { color?: string;
 }
 
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const SG: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
+const SYNE: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
+const SG: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 const TW: React.CSSProperties = { fontFamily: "'Tilt Warp', system-ui, sans-serif" };
 
 export function HeroSection() {
@@ -193,68 +193,21 @@ export function HeroSection() {
 
           {/* Event Info Block */}
           <motion.div
-            className="flex flex-col items-center text-center px-4 md:px-0"
-            style={{ gap: "4px", maxWidth: "100%", width: "100%" }}
+            className="flex w-full justify-center px-4 md:px-0"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.85, delay: 0.45, ease: "easeOut" }}
           >
-            {/* Time — H1 size */}
-            <span style={{
-              ...TW,
-              fontSize: "clamp(1.4rem, 6vw, 3.2rem)",
-              color: "#ffffff",
-              lineHeight: 1.05,
-              letterSpacing: "0.01em",
-              WebkitTextStroke: "1.5px rgba(0,0,0,0.55)",
-              textShadow: "2px 2px 0px rgba(0,0,0,0.35), 0 0 20px rgba(63,215,245,0.2)",
-            }}>
-              12PM-12AM
-            </span>
-
-            {/* Date — H1 besar */}
-            <span style={{
-              ...TW,
-              fontSize: "clamp(1.8rem, 8vw, 4rem)",
-              color: "#ffffff",
-              lineHeight: 1,
-              letterSpacing: "0.01em",
-              WebkitTextStroke: "1.5px rgba(0,0,0,0.55)",
-              textShadow: "2px 2px 0px rgba(0,0,0,0.35), 0 0 20px rgba(63,215,245,0.2)",
-            }}>
-              9-19 APRIL
-            </span>
-
-            {/* Divider */}
-            <div style={{ width: 60, height: 1.5, background: "rgba(255,255,255,0.35)", margin: "8px 0" }} />
-
-            {/* Location */}
-            <span style={{
-              ...TW,
-              fontSize: "clamp(0.95rem, 3.5vw, 1.8rem)",
-              color: "#ffffff",
-              letterSpacing: "0.03em",
-              lineHeight: 1.3,
-              WebkitTextStroke: "0.8px rgba(0,0,0,0.45)",
-              textShadow: "1px 1px 0px rgba(0,0,0,0.3)",
-              maxWidth: "600px"
-            }}>
-              @GF Forecourt Outdoor Carpark, 1 Utama
-            </span>
-
-            {/* Tagline */}
-            <span style={{
-              ...TW,
-              fontSize: "clamp(0.85rem, 3vw, 1.6rem)",
-              color: "rgba(255,255,255,0.9)",
-              letterSpacing: "0.03em",
-              marginTop: "2px",
-              WebkitTextStroke: "0.8px rgba(0,0,0,0.4)",
-              textShadow: "1px 1px 0px rgba(0,0,0,0.3)",
-              maxWidth: "500px"
-            }}>
-              Malaysia's Premier Songkran Festival
-            </span>
+            <img
+              src="/images/text.png"
+              alt="12PM-12AM, 9-19 APRIL, @GF Forecourt Outdoor Carpark, 1 Utama, Malaysia's Premier Songkran Festival"
+              className="w-full max-w-[820px]"
+              style={{
+                height: "auto",
+                objectFit: "contain",
+                filter: "drop-shadow(0 6px 20px rgba(0,0,0,0.35))",
+              }}
+            />
           </motion.div>
 
         </div>

@@ -1,14 +1,14 @@
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const SG: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
+const SYNE: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
+const SG: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 
 const items = [
-  { text: "สงกรานต์", accent: true },
+  { text: "เทศกาลสงกรานต์", accent: true },
   { text: "WATER FESTIVAL", accent: false },
   { text: "MALAYSIA 2026", accent: false },
   { text: "APR 9–19", accent: true },
   { text: "ONE UTAMA", accent: false },
   { text: "FREE ENTRY", accent: true },
-  { text: "💦 RENEWAL & BLESSINGS", accent: false },
+  { text: "SONGKRAN FESTIVAL", accent: false },
   { text: "EQ SOLUTIONS", accent: false },
 ];
 

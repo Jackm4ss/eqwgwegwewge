@@ -66,7 +66,7 @@ function ScrollIndicator() {
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={{ fontFamily: "'Tilt Warp', sans-serif" }}>
       <GrainOverlay />
       {/* <CustomCursor /> */}
       <Navbar />

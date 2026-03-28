@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const SG: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
+const SYNE: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
+const SG: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 const VENUE_SPONSOR_URL = "/images/123.png";
 const CARD_LABEL: React.CSSProperties = {
   ...SG,

@@ -6,8 +6,8 @@ import {
   UtensilsCrossed, ArrowUp, AlertTriangle, Hand
 } from "lucide-react";
 
-const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
-const SG: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
+const SYNE: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
+const SG: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 const SONGKRAN_LOGO_URL = "/images/Songkran%20logo.png";
 
 // Hand-drawn SVG scribble line
@@ -63,7 +63,7 @@ export function Footer() {
   };
 
   return (
-      <footer style={{ background: "#030305", position: "relative", overflow: "hidden" }}>
+    <footer style={{ background: "#030305", position: "relative", overflow: "hidden" }}>
       {/* Giant watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
         <img
@@ -283,7 +283,7 @@ export function Footer() {
                 <div key={idx} className="flex flex-col items-center w-[130px] md:w-[150px] group">
                   <div className="relative flex items-center justify-center w-[85px] h-[85px] md:w-[100px] md:h-[100px] rounded-full border-[3px] border-[#E60012] mb-5 overflow-hidden bg-[#030305] group-hover:bg-[#E60012]/10 transition-colors duration-300 shadow-[0_4px_15px_rgba(0,0,0,0.3)] flex-shrink-0">
                     {/* Diagonal line */}
-                    <div className="absolute w-[140%] h-[3.5px] bg-[#E60012] rotate-[-45deg] z-20 group-hover:scale-105 transition-transform duration-300" />
+                    <div className="absolute w-[140%] h-[3.5px] bg-[#E60012] rotate-[45deg] z-20 group-hover:scale-105 transition-transform duration-300" />
                     {/* Icon */}
                     <Icon size={42} className="text-[#EDE8DC] z-10 group-hover:scale-110 group-hover:text-white transition-all duration-300" strokeWidth={1.2} />
                   </div>
@@ -320,6 +320,6 @@ export function Footer() {
           */}
         </div>
       </div>
-      </footer>
+    </footer>
   );
 }

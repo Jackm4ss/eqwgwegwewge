@@ -2,7 +2,7 @@ import { useState, memo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, Info, Music, Sparkles, Calendar, Image as ImageIcon, HelpCircle, ChevronRight, ArrowUpRight } from "lucide-react";
 
-const S: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
+const S: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 
 const ScrollbarStyles = memo(() => (
   <style dangerouslySetInnerHTML={{
@@ -205,7 +205,7 @@ export function Navbar() {
               style={{ transform: "translateZ(0)" }}
             >
               <div className="flex items-center justify-between mb-8">
-                <span style={{ ...S, fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: "1.1rem", letterSpacing: "0.15em", color: "#EDE8DC" }}>
+                <span style={{ ...S, fontWeight: 800, fontSize: "1.1rem", letterSpacing: "0.15em", color: "#EDE8DC" }}>
                   MENU
                 </span>
                 <button
