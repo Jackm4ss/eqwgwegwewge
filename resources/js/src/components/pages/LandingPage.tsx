@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { motion, useScroll, AnimatePresence } from "motion/react";
+import { motion, useScroll } from "motion/react";
 import { GrainOverlay } from "../ui/GrainOverlay";
-import { CustomCursor } from "../ui/CustomCursor";
 import { Navbar } from "../sections/Navbar";
 import { HeroSection } from "../sections/HeroSection";
-import { Marquee } from "../ui/Marquee";
+import { SectionDivider } from "../ui/SectionDivider";
 import { AboutFestival } from "../sections/AboutFestival";
 import { EventDetails } from "../sections/EventDetails";
 import { FestivalActivities } from "../sections/FestivalActivities";
 import { EventSchedule } from "../sections/EventSchedule";
+import { DontsSection } from "../sections/DontsSection";
 import { FAQ } from "../sections/FAQ";
 import { SponsorSection } from "../sections/SponsorSection";
 import { Footer } from "../sections/Footer";
@@ -81,14 +81,19 @@ export function LandingPage() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        <Marquee />
+        <SectionDivider />
         <AboutFestival />
+        <SectionDivider reverse />
         <EventDetails />
-        <Marquee reverse />
+        <SectionDivider />
         <FestivalActivities />
+        <SectionDivider reverse />
         <EventSchedule />
+        <DontsSection />
+        <SectionDivider />
         <FAQ />
         <SponsorSection />
+        <SectionDivider reverse />
       </div>
 
       <Footer />

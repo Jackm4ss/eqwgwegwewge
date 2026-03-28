@@ -2,34 +2,46 @@ const SYNE: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 const SG: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 
 const items = [
-  { text: "เทศกาลสงกรานต์", accent: true },
-  { text: "WATER FESTIVAL", accent: false },
   { text: "MALAYSIA 2026", accent: false },
-  { text: "APR 9–19", accent: true },
+  { text: "APR 9-19", accent: true },
   { text: "FREE ENTRY", accent: true },
   { text: "SONGKRAN FESTIVAL", accent: false },
   { text: "EQ SOLUTIONS", accent: false },
+  { text: "THAI SONGKRAN", accent: true },
 ];
 
-export function Marquee({ reverse = false }: { reverse?: boolean }) {
+export function SectionDivider({ reverse = false }: { reverse?: boolean }) {
   const track = [...items, ...items, ...items];
 
   return (
     <>
       <style>{`
-        @keyframes marquee-fwd {
+        @keyframes section-divider-fwd {
           from { transform: translateX(0); }
           to { transform: translateX(-33.333%); }
         }
-        @keyframes marquee-rev {
+        @keyframes section-divider-rev {
           from { transform: translateX(-33.333%); }
           to { transform: translateX(0); }
         }
-        .marquee-track-fwd { animation: marquee-fwd 28s linear infinite; }
-        .marquee-track-rev { animation: marquee-rev 28s linear infinite; }
+        .section-divider-track-fwd { animation: section-divider-fwd 28s linear infinite; }
+        .section-divider-track-rev { animation: section-divider-rev 28s linear infinite; }
       `}</style>
-      <div className="overflow-hidden py-4" style={{ background: "#0a0a14", borderTop: "1px solid rgba(237,232,220,0.06)", borderBottom: "1px solid rgba(237,232,220,0.06)" }}>
-        <div className={`flex whitespace-nowrap ${reverse ? "marquee-track-rev" : "marquee-track-fwd"}`}>
+      <div
+        className="overflow-hidden py-3"
+        style={{
+          background: "rgba(10,10,20,0.96)",
+          borderTop: "1px solid rgba(237,232,220,0.07)",
+          borderBottom: "1px solid rgba(237,232,220,0.07)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+        }}
+      >
+        <div
+          className={`flex whitespace-nowrap ${
+            reverse ? "section-divider-track-rev" : "section-divider-track-fwd"
+          }`}
+        >
           {track.map((item, i) => (
             <span key={i} className="inline-flex items-center gap-6 px-8">
               <span
@@ -44,7 +56,10 @@ export function Marquee({ reverse = false }: { reverse?: boolean }) {
               >
                 {item.text}
               </span>
-              <span style={{ color: "rgba(237,232,220,0.12)", fontSize: "0.5rem" }}>◆</span>
+              <span
+                className="inline-block h-[4px] w-[4px] rounded-full"
+                style={{ background: "rgba(237,232,220,0.14)" }}
+              />
             </span>
           ))}
         </div>

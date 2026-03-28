@@ -1,47 +1,52 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence, useInView } from "motion/react";
-import { Crown, Music, Waves, Mic2, Gamepad2, Star, Drama } from "lucide-react";
+import { Crown, Music, Waves, Mic2, Star, Drama } from "lucide-react";
+import { SECTION_BACKGROUND } from "./sectionContrastTheme";
 
 const TILT: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
+
+const TITLE_HIGHLIGHT_TEXT_STYLE: React.CSSProperties = {
+  color: "#35d8f7",
+  textShadow: "4px 5px 0 rgba(31, 52, 71, 0.34), 0 4px 10px rgba(31, 52, 71, 0.14)",
+};
 
 type Ev = { time: string; name: string; icon: React.ElementType; color: string; special?: boolean };
 type Day = { date: string; dayLabel: string; shortDate: string; events: Ev[] };
 
 const schedule: Day[] = [
   {
-    date: "Thursday, April 9",
+    date: "April 9th",
     dayLabel: "Opening Day",
     shortDate: "09",
     events: [
-      { time: "12:00 PM", name: "Festival Opens", icon: Star, color: "#2FA7D8", special: true },
-      { time: "5:00 PM", name: "Water Play Begins", icon: Waves, color: "#18C7CC" },
-      { time: "All Day", name: "Games & Water Sports", icon: Gamepad2, color: "#4ade80" },
-      { time: "Evening", name: "Live Band Session", icon: Music, color: "#c084fc" },
-      { time: "Late Night", name: "DJ Performance", icon: Mic2, color: "#f472b6" },
+      { time: "12PM", name: "Festival Opens", icon: Star, color: "#2FA7D8" },
+      { time: "5PM", name: "Water Play", icon: Waves, color: "#18C7CC" },
+      { time: "5PM", name: "Live Band", icon: Music, color: "#c084fc" },
+      { time: "9PM", name: "DJ Performance", icon: Mic2, color: "#f472b6" },
     ],
   },
   {
-    date: "Friday, April 10",
-    dayLabel: "Opening Ceremony",
+    date: "April 10th",
+    dayLabel: "Grand Opening",
     shortDate: "10",
     events: [
-      { time: "TBC Evening", name: "Grand Opening Ceremony", icon: Crown, color: "#2FA7D8", special: true },
-      { time: "Ceremony", name: "With the Thai Ambassador", icon: Star, color: "#2FA7D8", special: true },
-      { time: "5:00 PM", name: "Water Play", icon: Waves, color: "#18C7CC" },
-      { time: "Evening", name: "Live Band Session", icon: Music, color: "#c084fc" },
-      { time: "Night", name: "DJ Performance", icon: Mic2, color: "#f472b6" },
+      { time: "12PM", name: "Festival Opens", icon: Star, color: "#2FA7D8" },
+      { time: "5:30PM", name: "Grand Opening", icon: Crown, color: "#2FA7D8", special: true },
+      { time: "5PM", name: "Water Play", icon: Waves, color: "#18C7CC" },
+      { time: "5PM", name: "Live Band", icon: Music, color: "#c084fc" },
+      { time: "9PM", name: "DJ Performance", icon: Mic2, color: "#f472b6" },
     ],
   },
   {
-    date: "Saturday, April 11",
-    dayLabel: "Special Day",
+    date: "April 11th",
+    dayLabel: "Special Programme",
     shortDate: "11",
     events: [
-      { time: "TBC", name: "Kids Fashion Show", icon: Drama, color: "#f472b6", special: true },
-      { time: "TBC", name: "Guest Appearance", icon: Star, color: "#2FA7D8", special: true },
-      { time: "5:00 PM", name: "Water Play", icon: Waves, color: "#18C7CC" },
-      { time: "Evening", name: "Live Band Session", icon: Music, color: "#c084fc" },
-      { time: "Night", name: "DJ Performance", icon: Mic2, color: "#f472b6" },
+      { time: "12PM", name: "Festival Opens", icon: Star, color: "#2FA7D8" },
+      { time: "TBC", name: "Thai Kids Fashion Show", icon: Drama, color: "#f472b6", special: true },
+      { time: "5PM", name: "Water Play", icon: Waves, color: "#18C7CC" },
+      { time: "5PM", name: "Live Band", icon: Music, color: "#c084fc" },
+      { time: "9PM", name: "DJ Performance", icon: Mic2, color: "#f472b6" },
     ],
   },
   {
@@ -49,11 +54,10 @@ const schedule: Day[] = [
     dayLabel: "Daily Programme",
     shortDate: "12–19",
     events: [
-      { time: "12:00 PM", name: "Festival Opens Daily", icon: Star, color: "#2FA7D8" },
-      { time: "5:00 PM", name: "Water Play", icon: Waves, color: "#18C7CC" },
-      { time: "All Day", name: "Games & Water Sports", icon: Gamepad2, color: "#4ade80" },
-      { time: "Evening", name: "Live Band Session", icon: Music, color: "#c084fc" },
-      { time: "Night", name: "DJ Performance", icon: Mic2, color: "#f472b6" },
+      { time: "12PM", name: "Festival Opens", icon: Star, color: "#2FA7D8" },
+      { time: "5PM", name: "Water Play", icon: Waves, color: "#18C7CC" },
+      { time: "5PM", name: "Live Band", icon: Music, color: "#c084fc" },
+      { time: "9PM", name: "DJ Performance", icon: Mic2, color: "#f472b6" },
     ],
   },
 ];
@@ -62,9 +66,13 @@ export function EventSchedule() {
   const [active, setActive] = useState(0);
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, amount: 0.15 });
+  const getDisplayDate = (day: Day) =>
+    day.dayLabel === "Daily Programme" ? "April 12th - 19th" : day.date;
+  const getDisplayShortDate = (day: Day) =>
+    day.dayLabel === "Daily Programme" ? "12-19" : day.shortDate;
 
   return (
-    <section id="schedule" className="py-24 md:py-36 relative overflow-hidden">
+    <section id="schedule" className="py-24 md:py-36 relative overflow-hidden" style={SECTION_BACKGROUND}>
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -117,7 +125,7 @@ export function EventSchedule() {
                   style={{
                     ...TILT,
                     fontSize: "clamp(2.3rem,5.5vw,4.2rem)",
-                    color: "#111111",
+                    ...TITLE_HIGHLIGHT_TEXT_STYLE,
                     lineHeight: 1,
                     letterSpacing: "0.01em",
                   }}
@@ -148,7 +156,7 @@ export function EventSchedule() {
             <div className="lg:col-span-4 flex lg:flex-col gap-3 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0">
               {schedule.map((day, i) => (
                 <motion.button
-                  key={day.shortDate}
+                  key={`${day.dayLabel}-${i}`}
                   initial={{ opacity: 0, x: -20 }}
                   animate={inView ? { opacity: 1, x: 0 } : {}}
                   transition={{ delay: i * 0.08, duration: 0.6 }}
@@ -161,13 +169,6 @@ export function EventSchedule() {
                     boxShadow: active === i ? "0 10px 24px rgba(0,0,0,0.08)" : "none",
                   }}
                 >
-                  {active === i && (
-                    <motion.div
-                      layoutId="dayHighlight"
-                      className="absolute left-0 top-0 bottom-0 w-1 rounded-r"
-                      style={{ background: "rgba(0,0,0,0.65)" }}
-                    />
-                  )}
 
                   <p
                     style={{
@@ -179,7 +180,7 @@ export function EventSchedule() {
                       marginBottom: 4,
                     }}
                   >
-                    APR {day.shortDate}
+                    APR {getDisplayShortDate(day)}
                   </p>
 
                   <p
@@ -200,7 +201,7 @@ export function EventSchedule() {
                       marginTop: 4,
                     }}
                   >
-                    {day.date}
+                    {getDisplayDate(day)}
                   </p>
                 </motion.button>
               ))}
@@ -254,7 +255,7 @@ export function EventSchedule() {
                             fontSize: "1rem",
                           }}
                         >
-                          {schedule[active].shortDate}
+                          {getDisplayShortDate(schedule[active])}
                         </span>
                       </div>
 
@@ -307,22 +308,7 @@ export function EventSchedule() {
                               }}
                             >
                               {ev.name}
-                              {ev.special && (
-                                <span
-                                  style={{
-                                    marginLeft: 8,
-                                    fontSize: "0.56rem",
-                                    letterSpacing: "0.08em",
-                                    background: "rgba(0,0,0,0.08)",
-                                    color: "#111111",
-                                    padding: "2px 7px",
-                                    borderRadius: 999,
-                                    border: "1px solid rgba(0,0,0,0.10)",
-                                  }}
-                                >
-                                  HIGHLIGHT
-                                </span>
-                              )}
+
                             </p>
 
                             <span
@@ -346,11 +332,12 @@ export function EventSchedule() {
               {/* Legend */}
               <div className="flex flex-wrap gap-5 mt-5 px-1">
                 {[
+                  { icon: Star, label: "Festival Opens", color: "#2FA7D8" },
+                  { icon: Crown, label: "Grand Opening", color: "#2FA7D8" },
+                  { icon: Drama, label: "Thai Kids Show", color: "#f472b6" },
                   { icon: Waves, label: "Water Play", color: "#18C7CC" },
                   { icon: Music, label: "Live Band", color: "#c084fc" },
-                  { icon: Mic2, label: "DJ Night", color: "#f472b6" },
-                  { icon: Gamepad2, label: "Games", color: "#4ade80" },
-                  { icon: Star, label: "Special", color: "#2FA7D8" },
+                  { icon: Mic2, label: "DJ Performance", color: "#f472b6" },
                 ].map(({ icon: I, label, color }) => (
                   <div key={label} className="flex items-center gap-1.5">
                     <I size={11} style={{ color }} />

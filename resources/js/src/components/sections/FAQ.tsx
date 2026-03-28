@@ -1,7 +1,36 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { SECTION_BACKGROUND } from "./sectionContrastTheme";
 
-const TILT: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
+const TILT: CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
+
+const TITLE_HIGHLIGHT_TEXT_STYLE: CSSProperties = {
+  color: "#35d8f7",
+  textShadow: "2px 3px 0 rgba(31, 52, 71, 0.22), 0 3px 8px rgba(31, 52, 71, 0.10)",
+};
+
+const LABEL_TEXT_STYLE: CSSProperties = {
+  color: "rgba(0,0,0,0.68)",
+};
+
+const QUESTION_TEXT_STYLE: CSSProperties = {
+  color: "#35d8f7",
+  fontSize: "1.2rem",
+};
+
+const ANSWER_TEXT_STYLE: CSSProperties = {
+  color: "rgba(0,0,0,0.68)",
+};
+
+const PANEL_STYLE: CSSProperties = {
+  background:
+    "linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px), rgba(186, 230, 253, 0.78)",
+  backgroundSize: "26px 26px, 26px 26px, auto",
+  border: "1px solid rgba(255,255,255,0.42)",
+  boxShadow: "0 18px 60px rgba(0,0,0,0.10)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+};
 
 type FAQItem = {
   q: string;
@@ -14,10 +43,10 @@ const faqs: FAQItem[] = [
     q: "Ticket and Entry Requirements",
     list: true,
     a: [
-      "Age Restriction: Minors under 13 years old need to be accompanied by an adult or guardian.",
-      "Valid QR code and original ID cards or passports must be presented at the venue.",
-      "Name Matching: QR ticket must be registered to the attendee's full name, matching their official ID.",
-      "Re-entry on the same day does not require QR scanning, provided the valid UV stamp of the day is still visible.",
+      "Age Restriction: Minor under 13 Years old need to be accompanied by an adult or guardian.",
+      "Valid QR code and Original ID cards or passports must be presented at the venue.",
+      "Name Matching: QR Ticket must be registered to the attendee's full name, matching their official ID.",
+      "Re-entry on the same day does not require QR scanning provided if the valid UV stamp of the day is still visible.",
     ],
   },
   {
@@ -27,7 +56,6 @@ const faqs: FAQItem[] = [
       "To ensure safety, the following are generally prohibited:",
       "Weapons, sharp objects, and fireworks.",
       "Drugs and illegal substances.",
-      "Professional cameras (DSLR/mirrorless) and selfie sticks unless under 30 cm.",
       "External food and drinks.",
     ],
   },
@@ -37,6 +65,7 @@ const faqs: FAQItem[] = [
     a: [
       "Water Fight Safety: Do not aim high-pressure water guns at faces or eyes.",
       "Cultural Respect: Do not splash food vendors, crew on duty, the elderly, or young children.",
+      "Public Decency: No pushing, punching or any physical aggression. including foul language, E.G Spitting or actions that are considered disrespectful",
       "Liability: Organizers are not responsible for lost or stolen personal property.",
     ],
   },
@@ -51,7 +80,19 @@ const faqs: FAQItem[] = [
   {
     q: "Media Rights",
     a: [
-      "By entering the event, you consent to being photographed or recorded, with the content being used for promotional purposes.",
+      "By entering the event, you consent to being photographed or recorded, with the content being used for promotional purposes",
+    ],
+  },
+  {
+    q: "Who is organising this festival?",
+    a: [
+      "This event is proudly organised by EQ Solutions, in close collaboration with the Royal Thai Embassy and 1 Utama Shopping Centre, bringing together a vibrant cultural celebration for the public.",
+    ],
+  },
+  {
+    q: "Are activities confirmed?",
+    a: [
+      "Yes, a range of exciting activities are planned, including water play zones, live performances, games, and cultural showcases.",
     ],
   },
   {
@@ -63,7 +104,7 @@ const faqs: FAQItem[] = [
   {
     q: "What if I lose my QR code?",
     a: [
-      "No worries. You can retrieve your registration QR code from your confirmation email, or re-register on-site by scanning the registration QR displayed at the entrance.",
+      "No worries! You can retrieve your registration QR code from your confirmation email, or re-register on-site by scanning the registration QR displayed at the entrance.",
     ],
   },
   {
@@ -75,7 +116,7 @@ const faqs: FAQItem[] = [
   {
     q: "Are there lockers or storage spaces for belongings?",
     a: [
-      "There are locker and storage spaces prepared. However, visitors are encouraged to bring minimal belongings. The organiser is not responsible for any loss or damage to personal items.",
+      "There are locker and storage spaces prepared however, visitors are encouraged to bring minimal belongings. The organiser is not responsible for any loss or damage to personal items.",
     ],
   },
   {
@@ -98,14 +139,12 @@ const faqs: FAQItem[] = [
   },
   {
     q: "Is first aid available on-site?",
-    a: [
-      "Yes, a first aid station will be available throughout the event for any medical assistance.",
-    ],
+    a: ["Yes, a first aid station will be available throughout the event for any medical assistance."],
   },
   {
     q: "Can I bring my own water guns or buckets?",
     a: [
-      "Yes. You are welcome to bring your own water guns. However, buckets, high-pressure devices, or unsafe equipment are not permitted.",
+      "Yes! You are welcome to bring your own water guns. However, buckets, high-pressure devices, or unsafe equipment are not permitted.",
     ],
   },
   {
@@ -120,10 +159,14 @@ export function FAQ() {
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-0 md:py-36 relative overflow-hidden">
+    <section
+      id="faq"
+      className="relative overflow-hidden py-20 md:py-36"
+      style={SECTION_BACKGROUND}
+    >
       <div
-        className="absolute pointer-events-none select-none"
-        style={{ bottom: "-4%", right: "-2%", opacity: 0.05 }}
+        className="pointer-events-none absolute select-none"
+        style={{ bottom: "-4%", right: "-2%", opacity: 0.04 }}
       >
         <span
           style={{
@@ -137,34 +180,23 @@ export function FAQ() {
         </span>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 md:px-12 lg:px-16 relative z-10">
-        <div
-          className="rounded-[32px] md:rounded-[40px] p-6 md:p-10 lg:p-14"
-          style={{
-            background:
-              "linear-gradient(rgba(255,255,255,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.16) 1px, transparent 1px), rgba(186, 230, 253, 0.72)",
-            backgroundSize: "26px 26px, 26px 26px, auto",
-            border: "1px solid rgba(255,255,255,0.45)",
-            boxShadow: "0 18px 60px rgba(0,0,0,0.10)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-          }}
-        >
-          <div className="grid md:grid-cols-2 gap-12 items-end mb-16 md:mb-20">
+      <div className="relative z-10 mx-auto max-w-5xl px-6 md:px-12 lg:px-16">
+        <div className="rounded-[32px] p-6 md:rounded-[40px] md:p-10 lg:p-14" style={PANEL_STYLE}>
+          <div className="mb-16 grid items-end gap-12 md:mb-20 md:grid-cols-2">
             <div>
               <motion.div
-                className="flex items-center gap-3 mb-8"
+                className="mb-8 flex items-center gap-3"
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
               >
-                <div className="w-8 h-px bg-black/50" />
+                <div className="h-px w-8 bg-black/50" />
                 <span
                   style={{
                     ...TILT,
                     fontSize: "0.72rem",
                     letterSpacing: "0.18em",
-                    color: "rgba(0,0,0,0.72)",
+                    ...LABEL_TEXT_STYLE,
                     textTransform: "uppercase",
                   }}
                 >
@@ -181,7 +213,7 @@ export function FAQ() {
                   style={{
                     ...TILT,
                     fontSize: "clamp(2.3rem,5.5vw,4.8rem)",
-                    color: "#111111",
+                    ...TITLE_HIGHLIGHT_TEXT_STYLE,
                     lineHeight: 1,
                     letterSpacing: "0.01em",
                   }}
@@ -199,7 +231,7 @@ export function FAQ() {
               style={{
                 ...TILT,
                 fontSize: "0.8rem",
-                color: "rgba(0,0,0,0.58)",
+                ...LABEL_TEXT_STYLE,
                 lineHeight: 1.8,
               }}
             >
@@ -214,24 +246,26 @@ export function FAQ() {
                 initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.3 }}
-                transition={{ delay: i * 0.06, duration: 0.6 }}
-                className="rounded-2xl overflow-hidden"
+                transition={{ delay: i * 0.04, duration: 0.6 }}
+                className="overflow-hidden rounded-2xl"
                 style={{
-                  background: open === i ? "rgba(255,255,255,0.34)" : "rgba(255,255,255,0.20)",
-                  border: `1px solid ${open === i ? "rgba(0,0,0,0.14)" : "rgba(255,255,255,0.26)"}`,
+                  background: open === i ? "rgba(255,255,255,0.42)" : "rgba(255,255,255,0.28)",
+                  border: `1px solid ${
+                    open === i ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.30)"
+                  }`,
                   boxShadow: open === i ? "0 10px 28px rgba(0,0,0,0.08)" : "none",
                 }}
               >
                 <button
                   onClick={() => setOpen(open === i ? null : i)}
-                  className="w-full flex items-start justify-between gap-6 py-6 px-5 md:px-6 text-left group"
+                  className="group flex w-full items-start justify-between gap-6 px-5 py-6 text-left md:px-6"
                 >
                   <div className="flex items-start gap-5">
                     <span
                       style={{
                         ...TILT,
                         fontSize: "0.72rem",
-                        color: open === i ? "#111111" : "rgba(0,0,0,0.42)",
+                        color: open === i ? "rgba(0,0,0,0.72)" : "rgba(0,0,0,0.42)",
                         letterSpacing: "0.08em",
                         minWidth: 28,
                         paddingTop: 2,
@@ -245,7 +279,7 @@ export function FAQ() {
                       style={{
                         ...TILT,
                         fontSize: "clamp(0.92rem,1.4vw,1.08rem)",
-                        color: open === i ? "#111111" : "rgba(0,0,0,0.74)",
+                        ...QUESTION_TEXT_STYLE,
                         lineHeight: 1.45,
                         transition: "color 0.3s",
                       }}
@@ -257,7 +291,7 @@ export function FAQ() {
                   <motion.div
                     animate={{ rotate: open === i ? 45 : 0 }}
                     transition={{ duration: 0.25 }}
-                    className="flex-shrink-0 mt-0.5"
+                    className="mt-0.5 flex-shrink-0"
                     style={{
                       color: open === i ? "#111111" : "rgba(0,0,0,0.42)",
                       fontSize: "1.3rem",
@@ -281,7 +315,7 @@ export function FAQ() {
                         style={{
                           ...TILT,
                           fontSize: "0.76rem",
-                          color: "rgba(0,0,0,0.60)",
+                          ...ANSWER_TEXT_STYLE,
                           lineHeight: 1.8,
                           paddingLeft: 52,
                           paddingRight: 24,
@@ -289,7 +323,7 @@ export function FAQ() {
                         }}
                       >
                         <div className="space-y-3">
-                          {faq.a.map((line, lineIndex) => (
+                          {faq.a.map((line, lineIndex) =>
                             faq.list ? (
                               <div key={`${faq.q}-${lineIndex}`} className="flex gap-3">
                                 <span className="pt-1 text-[0.9em] leading-none text-black/45">-</span>
@@ -298,7 +332,7 @@ export function FAQ() {
                             ) : (
                               <p key={`${faq.q}-${lineIndex}`}>{line}</p>
                             )
-                          ))}
+                          )}
                         </div>
                       </div>
                     </motion.div>

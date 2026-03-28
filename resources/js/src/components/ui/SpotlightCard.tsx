@@ -40,7 +40,7 @@ export function SpotlightCard({
       style={{
         background: "rgba(20,22,28,0.4)",
         backdropFilter: "blur(12px)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        border: "none",
         ...style
       }}
     >
