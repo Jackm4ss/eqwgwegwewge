@@ -51,6 +51,11 @@ interface RegisterResponse {
   errors?: Record<string, string[]>;
 }
 
+interface RegisteredTicketPreviewData {
+  fullName: string;
+  identityNumber: string;
+}
+
 const FORM_FIELDS: Array<keyof FormData> = [
   'full_name',
   'email',
@@ -175,8 +180,180 @@ const OTHER_SORTED_COUNTRIES = SORTED_COUNTRIES.filter(
   (country) => !PRIORITY_COUNTRIES.includes(country.code as (typeof PRIORITY_COUNTRIES)[number]),
 );
 
+const TICKET_BACKGROUND_URL = '/images/BACKGROUND.jpg';
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
+const VENUE_SPONSOR_URL = '/images/123.png';
+const SPONSOR_EMBASSY_URL = '/images/Royal_Thai_Embassy_Seal.svg.png';
+const SPONSOR_DITP_URL = '/images/ditp.jpeg';
+const SPONSOR_AMAZING_THAILAND_URL = '/images/amazing%20thailand.png';
+const SPONSOR_SINGHA_URL = '/images/singha-seeklogo.png';
+const SPONSOR_SNAKE_BRAND_URL = '/images/Snake-Brand-Logo.png';
+const MEDIA_WOB_URL = '/images/wob.png';
+const MEDIA_NOODOU_URL = '/images/noodou.png';
+const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/yWaPZYTBoHXgpXKn8';
 const ENABLE_LEGACY_SUCCESS_SCREEN = true;
+
+function MapsPinIcon() {
+  return (
+    <svg
+      className="h-[30px] w-[30px] shrink-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        fill="#4285F4"
+        d="M12 2C8.13 2 5 5.13 5 9c0 4.91 5.37 11.62 6.08 12.49a1.18 1.18 0 0 0 1.84 0C13.63 20.62 19 13.91 19 9c0-3.87-3.13-7-7-7Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 2a6.96 6.96 0 0 0-5.17 2.29l4.24 4.24A2.5 2.5 0 0 1 14.5 12l4.21 4.21C18.9 13.91 19 11.15 19 9c0-3.87-3.13-7-7-7Z"
+      />
+      <path
+        fill="#FBBC04"
+        d="M7.04 4.06A6.97 6.97 0 0 0 5 9c0 4.91 5.37 11.62 6.08 12.49.49.61 1.27.61 1.84 0 .29-.36 1.42-1.78 2.63-3.63L7.04 9.35A2.49 2.49 0 0 1 7.04 4.06Z"
+      />
+      <circle cx="12" cy="9" r="3.2" fill="#EA4335" />
+    </svg>
+  );
+}
+
+function TicketPreviewCard({
+  fullName,
+  identityNumber,
+  qrUrl,
+  ticketCode,
+  ticketUrl,
+}: RegisteredTicketPreviewData & {
+  qrUrl: string;
+  ticketCode: string;
+  ticketUrl: string;
+}) {
+  const identityDisplay = identityNumber.trim() || '-';
+  const hasTicketLink = ticketUrl.trim() !== '';
+  const hasQrUrl = qrUrl.trim() !== '';
+
+  return (
+    <div
+      className="mx-auto flex w-full max-w-[600px] flex-col overflow-hidden rounded-[28px] text-center text-white shadow-[0_30px_70px_rgba(4,88,120,0.28)]"
+      style={{
+        backgroundImage: `url(${TICKET_BACKGROUND_URL})`,
+        backgroundSize: '100% calc(100% + 2cm)',
+        backgroundPosition: 'center bottom',
+        backgroundRepeat: 'no-repeat',
+        backgroundColor: '#038cb2',
+      }}
+    >
+      <div className="px-5 pt-5">
+        <img
+          src={SONGKRAN_LOGO_URL}
+          alt="Songkran Festival Logo"
+          className="mx-auto mb-0 w-full max-w-[500px] drop-shadow-[0_10px_20px_rgba(0,150,200,0.4)]"
+          decoding="async"
+        />
+
+        <div className="-mt-[15px] tracking-[0.5px] [text-shadow:1px_1px_4px_rgba(0,0,0,0.4)]">
+          <p className="mb-1 text-2xl font-extrabold md:text-[1.5rem]">12PM-12AM</p>
+          <p className="mb-1 text-[2.2rem] font-black leading-none tracking-[1px] md:text-[3rem]">9-19 APRIL</p>
+          <p className="my-[10px] text-[0.95rem] font-extrabold md:text-[1.1rem]">@GF FORECOURT OUTDOOR CARPARK, 1 UTAMA</p>
+          <p className="mt-[5px] text-[0.9rem] font-bold uppercase">MALAYSIA'S PREMIER SONGKRAN FESTIVAL</p>
+        </div>
+
+        <div className="mx-auto mt-[25px] flex h-[180px] w-[180px] items-center justify-center overflow-hidden rounded-[12px] bg-white shadow-[0_4px_15px_rgba(0,0,0,0.2)]">
+          {hasQrUrl ? (
+            <img
+              src={qrUrl}
+              alt="Registered participant QR code"
+              className="block h-[160px] w-[160px] object-contain"
+            />
+          ) : (
+            <div className="px-5 text-center text-sm font-extrabold uppercase tracking-[0.18em] text-sky-700">
+              {ticketCode.trim() !== '' ? ticketCode : 'Ticket QR'}
+            </div>
+          )}
+        </div>
+
+        <div className="my-5 mb-6 text-white">
+          {hasTicketLink ? (
+            <a
+              href={ticketUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-[22px] text-[0.95rem] font-extrabold text-sky-700 no-underline shadow-[0_12px_24px_rgba(2,132,199,0.24)] transition-transform duration-200 hover:-translate-y-px hover:bg-sky-50 hover:text-sky-800"
+            >
+              Open Ticket in Browser
+            </a>
+          ) : (
+            <span className="inline-flex min-h-12 items-center justify-center rounded-full bg-white/90 px-[22px] text-[0.95rem] font-extrabold text-sky-700 shadow-[0_12px_24px_rgba(2,132,199,0.18)]">
+              Ticket Link Unavailable
+            </span>
+          )}
+        </div>
+
+        <div className="mx-auto mt-[30px] min-h-20 w-fit min-w-[260px] max-w-[85%] rounded-[20px] border border-white/25 bg-white/40 px-[35px] py-[30px] text-center text-black shadow-[0_4px_15px_rgba(0,0,0,0.05)] backdrop-blur-[8px]">
+          <div className="mb-[5px] break-words text-[1.4rem] font-extrabold uppercase tracking-[0.5px]">
+            {fullName.trim() || 'GUEST'}
+          </div>
+          <div className="break-words text-[1.4rem] font-semibold opacity-90">{identityDisplay}</div>
+        </div>
+      </div>
+
+      <div className="mx-auto my-[22px] mb-5 text-[0.82rem] font-extrabold uppercase tracking-[0.04em] [text-shadow:1px_1px_3px_rgba(0,0,0,0.45)]">
+        Ticket valid from 9-19 April 2026
+      </div>
+
+      <div className="px-5 pb-7 pt-[10px]">
+        <div className="mb-[30px] [text-shadow:1px_1px_3px_rgba(0,0,0,0.5)]">
+          <div className="mb-3 text-[1.3rem] font-extrabold md:text-[1.6rem]">Thank you for your registration.</div>
+          <div className="mx-auto max-w-[520px] text-[0.85rem] font-bold leading-[1.5] md:text-[0.95rem]">
+            Please present your QR code and registered valid ID / passport at the gate.
+            <br />
+            This code remains valid for the duration of the event, though scanning is required upon each day.
+          </div>
+          <a
+            href={MAPS_LOCATION_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex items-center justify-center gap-2.5 text-[1.25rem] font-extrabold text-white no-underline [text-shadow:1px_1px_3px_rgba(0,0,0,0.45)] md:text-[1.6rem]"
+          >
+            <MapsPinIcon />
+            <span>Maps to Location</span>
+          </a>
+        </div>
+
+        <div className="mx-auto flex w-full max-w-[95%] flex-wrap items-start justify-evenly gap-2.5 rounded-[18px] border border-white/25 bg-white/40 px-[10px] py-[15px] text-black shadow-[0_4px_15px_rgba(0,0,0,0.05)] backdrop-blur-[8px]">
+          <div className="flex min-w-[70px] flex-1 flex-col items-center justify-center">
+            <div className="mb-[5px] text-[0.55rem] font-extrabold uppercase">Organiser</div>
+            <div className="pt-[5px] text-[0.95rem] font-medium tracking-[-0.5px]">eq solutions</div>
+          </div>
+
+          <div className="flex min-w-[70px] flex-1 flex-col items-center justify-center">
+            <div className="mb-[5px] text-[0.55rem] font-extrabold uppercase">Venue Sponsor</div>
+            <img src={VENUE_SPONSOR_URL} alt="1 Utama" className="h-6 w-auto object-contain" decoding="async" />
+          </div>
+
+          <div className="flex min-w-[180px] flex-[3] flex-col items-center justify-center">
+            <div className="mb-[5px] text-[0.55rem] font-extrabold uppercase">Sponsors</div>
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              <img src={SPONSOR_EMBASSY_URL} alt="Royal Thai Embassy" className="h-6 w-auto object-contain" decoding="async" />
+              <img src={SPONSOR_DITP_URL} alt="DITP" className="h-[18px] w-auto rounded-[2px] bg-white p-[2px] object-contain" decoding="async" />
+              <img src={SPONSOR_AMAZING_THAILAND_URL} alt="Amazing Thailand" className="h-[22px] w-auto object-contain" decoding="async" />
+              <img src={SPONSOR_SINGHA_URL} alt="Singha" className="h-6 w-auto object-contain" decoding="async" />
+              <img src={SPONSOR_SNAKE_BRAND_URL} alt="Snake Brand" className="h-6 w-auto object-contain" decoding="async" />
+            </div>
+          </div>
+
+          <div className="flex min-w-[90px] flex-[1.5] flex-col items-center justify-center">
+            <div className="mb-[5px] text-[0.55rem] font-extrabold uppercase">Media Partners</div>
+            <div className="flex items-center justify-center gap-2">
+              <img src={MEDIA_WOB_URL} alt="WOB" className="h-[30px] w-[30px] rounded-full object-cover" decoding="async" />
+              <img src={MEDIA_NOODOU_URL} alt="NOODOU" className="h-[30px] w-[30px] rounded-full object-cover" decoding="async" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function normalizePhoneCountryCode(value: string) {
   const digits = value.replace(/\D/g, '');
@@ -680,6 +857,10 @@ export function RegisterPage() {
   const [registeredTicketUrl, setRegisteredTicketUrl] = useState('');
   const [registeredTicketQrUrl, setRegisteredTicketQrUrl] = useState('');
   const [registeredTicketCode, setRegisteredTicketCode] = useState('');
+  const [registeredTicketPreview, setRegisteredTicketPreview] = useState<RegisteredTicketPreviewData>({
+    fullName: '',
+    identityNumber: '',
+  });
   const [ticketEmailSent, setTicketEmailSent] = useState(true);
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
   const previousCountryRef = useRef('');
@@ -896,6 +1077,10 @@ export function RegisterPage() {
     setRegisteredTicketUrl('');
     setRegisteredTicketQrUrl('');
     setRegisteredTicketCode('');
+    setRegisteredTicketPreview({
+      fullName: '',
+      identityNumber: '',
+    });
     setTicketEmailSent(true);
     reset(); // Clear form values
   };
@@ -1002,15 +1187,15 @@ export function RegisterPage() {
           : 'Your QR ticket has been sent to your email.'
       );
 
-      if (ticketUrl !== '') {
-        window.open(ticketUrl, '_blank', 'noopener,noreferrer');
-      }
-
       setRegisteredEmail(data.email);
       setRegistrationSuccessMessage(successMessage);
       setRegisteredTicketUrl(ticketUrl);
       setRegisteredTicketQrUrl(result.ticket_qr_url || '');
       setRegisteredTicketCode(result.ticket_code || '');
+      setRegisteredTicketPreview({
+        fullName: data.full_name,
+        identityNumber: data.identity_number,
+      });
       setTicketEmailSent(result.email_sent !== false);
       setIsSuccess(true);
 
@@ -1472,7 +1657,7 @@ export function RegisterPage() {
                           id="phone_national_number"
                           type="tel"
                           autoComplete="tel-national"
-                          placeholder="822123450"
+                          placeholder="123456789"
                           inputMode="numeric"
                           pattern="[0-9]*"
                           maxLength={20}
@@ -1795,7 +1980,7 @@ export function RegisterPage() {
               </h2>
 
               {hasDirectTicketUrl ? (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <div className="rounded-[1.75rem] border border-white/20 bg-white/10 px-6 py-5 text-center shadow-[0_18px_55px_rgba(12,74,110,0.2)] backdrop-blur-md">
                     <p className="text-white text-xl md:text-2xl font-black leading-tight tracking-tight" style={{ fontFamily: '"Kanit", sans-serif' }}>
                       Your Ticket Is Ready
@@ -1805,149 +1990,142 @@ export function RegisterPage() {
                       <span className="font-bold text-white"> {registeredEmail || 'your email'}</span>.
                       {ticketEmailSent ? ' Please check your inbox for a copy.' : ' The email copy could not be sent right now, so please use this browser ticket.'}
                     </p>
+                    <p className="mt-3 text-xs md:text-sm leading-relaxed text-sky-200/90">
+                      {registrationSuccessMessage || (
+                        ticketEmailSent
+                          ? 'Open the email to find your active festival pass and QR code, or use the browser ticket below anytime.'
+                          : 'Your ticket is ready below. Use the browser ticket for event entry.'
+                      )}
+                    </p>
                   </div>
 
-                  <div className="overflow-hidden rounded-[2rem] border border-white/25 bg-white shadow-[0_28px_80px_rgba(12,74,110,0.28)]">
-                    <iframe
-                      src={registeredTicketUrl}
-                      title="Registered ticket preview"
-                      className="block h-[85vh] min-h-[720px] w-full border-0 bg-white"
-                    />
-                  </div>
+                  <TicketPreviewCard
+                    fullName={registeredTicketPreview.fullName}
+                    identityNumber={registeredTicketPreview.identityNumber}
+                    qrUrl={registeredTicketQrUrl}
+                    ticketCode={registeredTicketCode}
+                    ticketUrl={registeredTicketUrl}
+                  />
 
-                  <div className="flex flex-col gap-3 px-2 pb-1 sm:flex-row">
-                    <motion.a
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      href={registeredTicketUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex-1 rounded-2xl bg-white px-5 py-4 text-center text-sm font-black uppercase tracking-widest text-sky-900 shadow-lg transition-all hover:bg-sky-50 md:text-base"
-                      style={{ fontFamily: '"Kanit", sans-serif' }}
-                    >
-                      {ticketEmailSent ? 'Open Ticket in Browser' : 'Open My Ticket Now'}
-                    </motion.a>
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={handleResetForm}
+                    className="w-full rounded-2xl bg-gradient-to-r from-sky-400 to-cyan-400 px-5 py-4 text-sm font-black uppercase tracking-widest text-sky-950 shadow-lg transition-all hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] md:text-base"
+                    style={{ fontFamily: '"Kanit", sans-serif' }}
+                  >
+                    Register Another Attendee
+                  </motion.button>
+                </div>
+              ) : (
+                <>
+                  {/* ICON */}
+                  <motion.div
+                    animate={{ y: [0, -6, 0], scale: [1, 1.02, 1] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                    className="mx-auto mb-6 flex flex-col items-center gap-4"
+                  >
+                    <div className="flex items-center justify-center rounded-[2rem] border border-white/15 bg-white/10 px-6 py-4 shadow-[0_18px_55px_rgba(12,74,110,0.28)] backdrop-blur-sm">
+                      <img
+                        src={SONGKRAN_LOGO_URL}
+                        alt="Songkran Festival 2026 logo"
+                        className="h-16 w-auto md:h-24"
+                      />
+                    </div>
+
+                    {hasTicketQrUrl && (
+                      <div className="rounded-[2rem] border border-white/15 bg-white p-3 shadow-[0_20px_60px_rgba(12,74,110,0.32)]">
+                        <img
+                          src={registeredTicketQrUrl}
+                          alt="Registered participant QR code"
+                          className="h-40 w-40 rounded-2xl object-contain md:h-52 md:w-52"
+                        />
+                      </div>
+                    )}
+                  </motion.div>
+
+                  <div className="space-y-6">
+                    <div>
+                      <CheckCircle2 className="w-10 h-10 md:w-14 md:h-14 text-emerald-400 mx-auto mb-4" />
+                      <h2 id="success-title" className="text-white text-2xl md:text-4xl font-black leading-tight tracking-tight mb-3" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                        Registration Successful!<br className="hidden sm:block" /> {ticketEmailSent ? 'Check Your Ticket Email' : 'Your Ticket Is Ready'}
+                      </h2>
+                      <p className="hidden text-sky-200 text-base md:text-lg mb-1">
+                        We’ve sent a verification link to
+                      </p>
+                      <p className="text-sky-200 text-base md:text-lg mb-1">
+                        {ticketEmailSent ? 'Your QR ticket has been sent to' : 'We could not send the ticket email right now for'}
+                      </p>
+                      <p className="text-sky-100 font-bold text-xl md:text-2xl" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                        {registeredEmail || 'your email'}
+                      </p>
+                    </div>
+
+                    <p className="text-sky-300 text-xs md:text-sm leading-relaxed max-w-sm mx-auto opacity-90">
+                      {registrationSuccessMessage || (
+                        ticketEmailSent
+                          ? hasDirectTicketUrl
+                            ? 'Open the email to find your active festival pass and QR code, or use the ticket button below anytime.'
+                            : 'Open the email to find your active festival pass, QR code, and direct ticket link for event entry.'
+                          : 'Use the direct ticket link below to open your active festival pass immediately.'
+                      )}
+                    </p>
+
+                    {registeredTicketCode && (
+                      <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur-sm">
+                        <p className="text-base font-black text-white md:text-lg" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                          Valid from: 9-19 April 2026
+                        </p>
+                      </div>
+                    )}
+
+                    {hasDirectTicketUrl && (
+                      <motion.a
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        href={registeredTicketUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block w-full py-4 rounded-2xl bg-white text-sky-900 font-black text-sm md:text-base uppercase tracking-widest hover:bg-sky-50 transition-all shadow-lg"
+                        style={{ fontFamily: '"Kanit", sans-serif' }}
+                      >
+                        {ticketEmailSent ? 'Open Ticket in Browser' : 'Open My Ticket Now'}
+                      </motion.a>
+                    )}
+
+                    <div className="hidden flex-wrap gap-2 justify-center">
+                      {[
+                        { text: '📅 9–19 April 2026', color: 'from-sky-500/20 to-sky-400/10' },
+                        { text: '📍 Malaysia', color: 'from-cyan-500/20 to-cyan-400/10' },
+                        { text: '🎵 50+ Artists', color: 'from-indigo-500/20 to-indigo-400/10' }
+                      ].map((item, idx) => (
+                        <span key={idx} className={`bg-gradient-to-br ${item.color} border border-white/10 text-sky-100 text-[10px] md:text-xs px-4 py-2 rounded-full font-semibold tracking-wide backdrop-blur-sm`}>
+                          {item.text}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {[
+                        { text: '9-19 April 2026', color: 'from-sky-500/20 to-sky-400/10' },
+                        { text: 'Malaysia', color: 'from-cyan-500/20 to-cyan-400/10' },
+                        { text: '50+ Artists', color: 'from-indigo-500/20 to-indigo-400/10' }
+                      ].map((item, idx) => (
+                        <span key={`clean-${idx}`} className={`bg-gradient-to-br ${item.color} border border-white/10 text-sky-100 text-[10px] md:text-xs px-4 py-2 rounded-full font-semibold tracking-wide backdrop-blur-sm`}>
+                          {item.text}
+                        </span>
+                      ))}
+                    </div>
 
                     <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={handleResetForm}
-                      className="flex-1 rounded-2xl bg-gradient-to-r from-sky-400 to-cyan-400 px-5 py-4 text-sm font-black uppercase tracking-widest text-sky-950 shadow-lg transition-all hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] md:text-base"
+                      className="w-full py-4 rounded-2xl bg-gradient-to-r from-sky-400 to-cyan-400 text-sky-950 font-black text-sm md:text-base uppercase tracking-widest hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] transition-all shadow-lg"
                       style={{ fontFamily: '"Kanit", sans-serif' }}
                     >
                       Register Another Attendee
                     </motion.button>
                   </div>
-                </div>
-              ) : (
-                <>
-              {/* ICON */}
-              <motion.div
-                animate={{ y: [0, -6, 0], scale: [1, 1.02, 1] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="mx-auto mb-6 flex flex-col items-center gap-4"
-              >
-                <div className="flex items-center justify-center rounded-[2rem] border border-white/15 bg-white/10 px-6 py-4 shadow-[0_18px_55px_rgba(12,74,110,0.28)] backdrop-blur-sm">
-                  <img
-                    src={SONGKRAN_LOGO_URL}
-                    alt="Songkran Festival 2026 logo"
-                    className="h-16 w-auto md:h-24"
-                  />
-                </div>
-
-                {hasTicketQrUrl && (
-                  <div className="rounded-[2rem] border border-white/15 bg-white p-3 shadow-[0_20px_60px_rgba(12,74,110,0.32)]">
-                    <img
-                      src={registeredTicketQrUrl}
-                      alt="Registered participant QR code"
-                      className="h-40 w-40 rounded-2xl object-contain md:h-52 md:w-52"
-                    />
-                  </div>
-                )}
-              </motion.div>
-
-              <div className="space-y-6">
-                <div>
-                  <CheckCircle2 className="w-10 h-10 md:w-14 md:h-14 text-emerald-400 mx-auto mb-4" />
-                  <h2 id="success-title" className="text-white text-2xl md:text-4xl font-black leading-tight tracking-tight mb-3" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                    Registration Successful!<br className="hidden sm:block" /> {ticketEmailSent ? 'Check Your Ticket Email' : 'Your Ticket Is Ready'}
-                  </h2>
-                  <p className="hidden text-sky-200 text-base md:text-lg mb-1">
-                    We’ve sent a verification link to
-                  </p>
-                  <p className="text-sky-200 text-base md:text-lg mb-1">
-                    {ticketEmailSent ? 'Your QR ticket has been sent to' : 'We could not send the ticket email right now for'}
-                  </p>
-                  <p className="text-sky-100 font-bold text-xl md:text-2xl" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                    {registeredEmail || 'your email'}
-                  </p>
-                </div>
-
-                <p className="text-sky-300 text-xs md:text-sm leading-relaxed max-w-sm mx-auto opacity-90">
-                  {registrationSuccessMessage || (
-                    ticketEmailSent
-                      ? hasDirectTicketUrl
-                        ? 'Open the email to find your active festival pass and QR code, or use the ticket button below anytime.'
-                        : 'Open the email to find your active festival pass, QR code, and direct ticket link for event entry.'
-                      : 'Use the direct ticket link below to open your active festival pass immediately.'
-                  )}
-                </p>
-
-                {registeredTicketCode && (
-                  <div className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 backdrop-blur-sm">
-                    <p className="text-base font-black text-white md:text-lg" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                      Valid from: 9-19 April 2026
-                    </p>
-                  </div>
-                )}
-
-                {hasDirectTicketUrl && (
-                  <motion.a
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    href={registeredTicketUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block w-full py-4 rounded-2xl bg-white text-sky-900 font-black text-sm md:text-base uppercase tracking-widest hover:bg-sky-50 transition-all shadow-lg"
-                    style={{ fontFamily: '"Kanit", sans-serif' }}
-                  >
-                    {ticketEmailSent ? 'Open Ticket in Browser' : 'Open My Ticket Now'}
-                  </motion.a>
-                )}
-
-                <div className="hidden flex-wrap gap-2 justify-center">
-                  {[
-                    { text: '📅 9–19 April 2026', color: 'from-sky-500/20 to-sky-400/10' },
-                    { text: '📍 Malaysia', color: 'from-cyan-500/20 to-cyan-400/10' },
-                    { text: '🎵 50+ Artists', color: 'from-indigo-500/20 to-indigo-400/10' }
-                  ].map((item, idx) => (
-                    <span key={idx} className={`bg-gradient-to-br ${item.color} border border-white/10 text-sky-100 text-[10px] md:text-xs px-4 py-2 rounded-full font-semibold tracking-wide backdrop-blur-sm`}>
-                      {item.text}
-                    </span>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {[
-                    { text: '9-19 April 2026', color: 'from-sky-500/20 to-sky-400/10' },
-                    { text: 'Malaysia', color: 'from-cyan-500/20 to-cyan-400/10' },
-                    { text: '50+ Artists', color: 'from-indigo-500/20 to-indigo-400/10' }
-                  ].map((item, idx) => (
-                    <span key={`clean-${idx}`} className={`bg-gradient-to-br ${item.color} border border-white/10 text-sky-100 text-[10px] md:text-xs px-4 py-2 rounded-full font-semibold tracking-wide backdrop-blur-sm`}>
-                      {item.text}
-                    </span>
-                  ))}
-                </div>
-
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleResetForm}
-                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-sky-400 to-cyan-400 text-sky-950 font-black text-sm md:text-base uppercase tracking-widest hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] transition-all shadow-lg"
-                  style={{ fontFamily: '"Kanit", sans-serif' }}
-                >
-                  Register Another Attendee
-                </motion.button>
-              </div>
                 </>
               )}
             </motion.div>
