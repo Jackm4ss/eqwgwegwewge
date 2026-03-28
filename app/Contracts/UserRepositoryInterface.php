@@ -8,6 +8,8 @@ interface UserRepositoryInterface
 
     public function findByEmail(string $email): ?array;
 
+    public function findByPhoneNumber(string $phoneNumber): ?array;
+
     public function findById(string $id): ?array;
 
     public function findByIdentityDocument(string $identityType, string $identityCountry, string $identityNumber): ?array;

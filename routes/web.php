@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Ticket\TicketPageController;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Services\Auth\RegistrationService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -21,12 +22,20 @@ Route::get('/', function () {
 });
 
 Route::get('/login', function () {
+    if (Auth::guard('admin')->check()) {
+        return redirect()->route('admin.dashboard');
+    }
+
     return view('welcome');
 })->name('login');
 
 Route::get('/register', function () {
     return view('welcome');
 })->name('register.form');
+
+Route::get('/forgot-qr', function () {
+    return view('welcome');
+})->name('forgot-qr.form');
 
 Route::post('/register', function (RegisterRequest $request, RegistrationService $service) {
     try {

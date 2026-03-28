@@ -115,6 +115,37 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
         return $this->findById((string) $index['user_id']);
     }
 
+    public function findByPhoneNumber(string $phoneNumber): ?array
+    {
+        $normalizedPhoneNumber = $this->normalizePhoneNumber($phoneNumber);
+
+        if ($normalizedPhoneNumber === '') {
+            return null;
+        }
+
+        $documents = $this->api()->runQuery([
+            'from' => [
+                ['collectionId' => (string) config('firebase.users_collection', 'users')],
+            ],
+            'where' => [
+                'fieldFilter' => [
+                    'field' => ['fieldPath' => 'phone_number'],
+                    'op' => 'EQUAL',
+                    'value' => ['stringValue' => $normalizedPhoneNumber],
+                ],
+            ],
+            'limit' => 1,
+        ]);
+
+        if ($documents === []) {
+            return null;
+        }
+
+        return $this->timestamps->normalizeFromStorage(
+            $this->api()->decodeDocument($documents[0])
+        );
+    }
+
     public function findByIdentityDocument(string $identityType, string $identityCountry, string $identityNumber): ?array
     {
         $indexDocument = $this->api()->getDocument(
@@ -350,6 +381,13 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
     private function normalizeCountry(string $country): string
     {
         return strtoupper(trim($country));
+    }
+
+    private function normalizePhoneNumber(string $phoneNumber): string
+    {
+        $digits = preg_replace('/\D+/', '', $phoneNumber) ?? '';
+
+        return $digits === '' ? '' : '+'.$digits;
     }
 
     private function identityLookupKey(string $identityType, string $identityCountry, string $identityNumber): string

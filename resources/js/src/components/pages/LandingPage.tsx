@@ -10,6 +10,7 @@ import { EventDetails } from "../sections/EventDetails";
 import { FestivalActivities } from "../sections/FestivalActivities";
 import { EventSchedule } from "../sections/EventSchedule";
 import { FAQ } from "../sections/FAQ";
+import { SponsorSection } from "../sections/SponsorSection";
 import { Footer } from "../sections/Footer";
 
 // Komponen Global Scroll Indicator (Panah Bawah -> Mentok Bawah jadi Panah Atas)
@@ -87,6 +88,7 @@ export function LandingPage() {
         <FestivalActivities />
         <EventSchedule />
         <FAQ />
+        <SponsorSection />
       </div>
 
       <Footer />

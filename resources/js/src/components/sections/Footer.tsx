@@ -8,6 +8,7 @@ import {
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const SG: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
+const SONGKRAN_LOGO_URL = "/images/Songkran%20logo.png";
 
 // Hand-drawn SVG scribble line
 function ScribbleLine({ width = 200 }: { width?: number }) {
@@ -62,14 +63,16 @@ export function Footer() {
   };
 
   return (
-    <footer style={{ background: "#030305", position: "relative", overflow: "hidden" }}>
+      <footer style={{ background: "#030305", position: "relative", overflow: "hidden" }}>
       {/* Giant watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-        <span
-          style={{ ...SYNE, fontWeight: 800, fontSize: "clamp(40px,10vw,260px)", color: "rgba(237,232,220,0.018)", letterSpacing: "-0.02em", userSelect: "none", whiteSpace: "nowrap", lineHeight: 1 }}
-        >
-          SONGKRAN
-        </span>
+        <img
+          src={SONGKRAN_LOGO_URL}
+          alt=""
+          aria-hidden="true"
+          className="w-[min(72vw,520px)] max-w-none select-none opacity-[0.04]"
+          style={{ userSelect: "none", filter: "grayscale(1) brightness(1.9)" }}
+        />
       </div>
 
       {/* Top divider with gold gradient */}
@@ -166,7 +169,11 @@ export function Footer() {
           {/* Brand */}
           <div>
             <div className="mb-5">
-              <span style={{ ...SYNE, fontWeight: 800, fontSize: "1.2rem", letterSpacing: "0.15em", color: "#EDE8DC" }}>SONGKRAN</span>
+              <img
+                src={SONGKRAN_LOGO_URL}
+                alt="Songkran Festival"
+                className="h-12 w-auto"
+              />
             </div>
             <p style={{ ...SG, fontSize: "0.82rem", color: "rgba(237,232,220,0.3)", lineHeight: 1.8, marginBottom: 20 }}>
               Thailand's iconic water festival — brought to Malaysia for celebrating culture, renewal, and togetherness.
@@ -260,75 +267,6 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Sponsors Section */}
-      <div className="relative py-8 px-6 md:px-12 lg:px-16">
-        <div className="max-w-7xl mx-auto text-center">
-          <p
-            style={{
-              ...SYNE,
-              fontWeight: 700,
-              fontSize: "0.7rem",
-              letterSpacing: "0.2em",
-              color: "rgba(237,232,220,0.3)",
-              textTransform: "uppercase",
-              marginBottom: 16,
-            }}
-          >
-            Our Sponsors
-          </p>
-          <div className="flex flex-wrap justify-center gap-6">
-            <img
-              src="/images/amazing thailand.png"
-              alt="Amazing Thailand Sponsor"
-              className="w-32 h-32 object-contain"
-            />
-            <img
-              src="/images/ditp.jpeg"
-              alt="DITP Sponsor"
-              className="w-32 h-32 object-contain"
-            />
-
-            <img
-              src="/images/singha-seeklogo.png"
-              alt="Singha Sponsor"
-              className="w-32 h-32 object-contain"
-            />
-
-            <img
-              src="/images/Snake-Brand-Logo.png"
-              alt="Snake Brand Sponsor"
-              className="w-32 h-32 object-contain"
-            />
-            <img
-              src="/images/noodou.png"
-              alt="Noodou Sponsor"
-              className="w-32 h-32 object-contain"
-            />
-
-            <img
-              src="/images/123.png"
-              alt="EQ Sponsor"
-              className="w-32 h-32 object-contain"
-            />
-            <img
-              src="/images/eq.png"
-              alt="EQ Solution Sponsor"
-              className="w-32 h-32 object-contain"
-            />
-            <img
-              src="/images/Royal_Thai_Embassy_Seal.svg.png"
-              alt="Royal Thai Embassy Sponsor"
-              className="w-32 h-32 object-contain"
-            />
-            <img
-              src="/images/wob.png"
-              alt="WOB Sponsor"
-              className="w-32 h-32 object-contain"
-            />
-          </div>
-        </div>
-      </div>
-
       {/* DON'T Section */}
       <div className="relative py-16 px-6 md:px-12 lg:px-16" style={{ borderTop: "1px solid rgba(237,232,220,0.05)" }}>
         <div className="max-w-6xl mx-auto flex flex-col items-center mt-4">
@@ -382,6 +320,6 @@ export function Footer() {
           */}
         </div>
       </div>
-    </footer>
+      </footer>
   );
 }

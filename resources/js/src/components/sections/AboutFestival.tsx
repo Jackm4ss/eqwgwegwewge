@@ -45,27 +45,29 @@ function RevealText({ children, delay = 0 }: { children: React.ReactNode; delay?
 
 function HandCircle() {
   return (
-    <svg
-      viewBox="0 0 100 48"
-      fill="none"
-      style={{ position: "absolute", top: -10, left: -14, width: 128, height: 60, pointerEvents: "none" }}
-    >
-      <motion.ellipse
-        cx="50"
-        cy="24"
-        rx="46"
-        ry="20"
-        stroke="rgba(0,0,0,0.55)"
-        strokeWidth="1.5"
-        strokeLinecap="round"
+    <>
+      {/* Temporarily disabled: viewBox="0 0 100 48" */}
+      <svg
         fill="none"
-        style={{ strokeDasharray: "none" }}
-        initial={{ pathLength: 0, opacity: 0 }}
-        whileInView={{ pathLength: 1, opacity: 1 }}
-        viewport={{ once: true }}
-        transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
-      />
-    </svg>
+        style={{ position: "absolute", top: -10, left: -14, width: 128, height: 60, pointerEvents: "none" }}
+      >
+        <motion.ellipse
+          cx="50"
+          cy="24"
+          rx="46"
+          ry="20"
+          stroke="rgba(0,0,0,0.55)"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          fill="none"
+          style={{ strokeDasharray: "none" }}
+          initial={{ pathLength: 0, opacity: 0 }}
+          whileInView={{ pathLength: 1, opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.5, ease: "easeOut", delay: 0.5 }}
+        />
+      </svg>
+    </>
   );
 }
 

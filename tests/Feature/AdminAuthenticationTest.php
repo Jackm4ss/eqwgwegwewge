@@ -70,6 +70,16 @@ class AdminAuthenticationTest extends TestCase
         $response->assertRedirect('/login');
     }
 
+    public function test_authenticated_admin_is_redirected_away_from_public_login_page(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get('/login');
+
+        $response->assertRedirect(route('admin.dashboard'));
+    }
+
     public function test_admin_dashboard_renders_date_filters_and_selected_range_summary(): void
     {
         $admin = Admin::query()->firstOrFail();

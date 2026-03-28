@@ -384,7 +384,7 @@ export function EventDetails() {
                       <ArrowUpRight strokeWidth={3} size={14} className="inline-block ml-1 opacity-0 -translate-x-2 translate-y-2 group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 text-[#2FA7D8] transition-all duration-300" />
                     </p>
 
-                    <p
+                    {/* <p
                       style={{
                         ...TILT,
                         fontSize: "0.64rem",
@@ -396,7 +396,7 @@ export function EventDetails() {
                       Bringing cultures together,
                       <br />
                       one festival at a time.
-                    </p>
+                    </p> */}
                   </SpotlightCard>
                 </a>
               </div>

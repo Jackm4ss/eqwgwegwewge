@@ -120,7 +120,7 @@ export function FAQ() {
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-24 md:py-36 relative overflow-hidden">
+    <section id="faq" className="py-0 md:py-36 relative overflow-hidden">
       <div
         className="absolute pointer-events-none select-none"
         style={{ bottom: "-4%", right: "-2%", opacity: 0.05 }}

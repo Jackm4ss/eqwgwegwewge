@@ -1,8 +1,5 @@
-import { useRef, useEffect, useState } from "react";
-import { motion, useScroll, useTransform, useMotionValue, useSpring } from "motion/react";
-import { UnderwaterBackground } from "../ui/UnderwaterBackground";
-
-const BG_VIDEO = "https://video.wixstatic.com/video/c338c6_cbac5475bb7e41d3a5e45bdac6812b3f/720p/mp4/file.mp4";
+import { useEffect, useState } from "react";
+import { motion, useMotionValue, useSpring } from "motion/react";
 
 // Set TARGET to the event start date
 const TARGET = new Date("2026-04-09T12:00:00+08:00");
@@ -47,12 +44,6 @@ const SG: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
 const TW: React.CSSProperties = { fontFamily: "'Tilt Warp', system-ui, sans-serif" };
 
 export function HeroSection() {
-  const ref = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "28%"]);
-  const contentY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
-  const fade = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
-
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const px = useSpring(mouseX, { stiffness: 80, damping: 30 });
@@ -71,22 +62,18 @@ export function HeroSection() {
 
   return (
     <section
-      ref={ref}
-      className="relative h-screen overflow-hidden"
+      className="relative min-h-screen overflow-hidden"
       style={{ background: "#0a0f14" }}
       onMouseMove={handleMouse}
     >
       {/* BG IMAGE */}
-      <motion.div
-        className="absolute left-0 right-0"
-        style={{ top: "-50vh", bottom: 0, y: bgY }}
-      >
+      <div className="absolute inset-0">
         <img
           src="/images/BACKGROUND.jpg"
           className="w-full h-full"
           style={{
             objectFit: "cover",
-            objectPosition: "center top",
+            objectPosition: "center center",
             opacity: 1,
             filter: "brightness(1.05) contrast(1.05)"
           }}
@@ -108,7 +95,7 @@ export function HeroSection() {
               "radial-gradient(ellipse at 60% 40%, rgba(24,199,204,0.04) 0%, transparent 85%)"
           }}
         />
-      </motion.div>
+      </div>
 
       {/* ❌ MATIIN UNDERWATER (INI PENYEBAB UTAMA GELAP/KABUT) */}
       {/* <UnderwaterBackground /> */}
@@ -138,8 +125,7 @@ export function HeroSection() {
 
       {/* Content — full-screen centered */}
       <motion.div
-        className="absolute inset-0 flex flex-col items-center justify-start md:justify-center"
-        style={{ y: contentY, opacity: fade }}
+        className="relative z-10 flex min-h-screen flex-col items-center justify-start pt-20 md:justify-center md:pt-0"
       >
 
         {/* CENTER: Songkran Logo + Islands */}

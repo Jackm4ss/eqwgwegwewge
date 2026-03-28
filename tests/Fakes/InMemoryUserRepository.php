@@ -66,6 +66,21 @@ class InMemoryUserRepository implements UserRepositoryInterface
         return $userId ? $this->findById($userId) : null;
     }
 
+    public function findByPhoneNumber(string $phoneNumber): ?array
+    {
+        $normalizedPhoneNumber = $this->normalizePhoneNumber($phoneNumber);
+
+        foreach ($this->users as $user) {
+            if ($this->normalizePhoneNumber((string) ($user['phone_number'] ?? '')) !== $normalizedPhoneNumber) {
+                continue;
+            }
+
+            return $user;
+        }
+
+        return null;
+    }
+
     public function findById(string $id): ?array
     {
         return $this->users[$id] ?? null;
@@ -185,6 +200,13 @@ class InMemoryUserRepository implements UserRepositoryInterface
     private function normalizeCountry(string $country): string
     {
         return strtoupper(trim($country));
+    }
+
+    private function normalizePhoneNumber(string $phoneNumber): string
+    {
+        $digits = preg_replace('/\D+/', '', $phoneNumber) ?? '';
+
+        return $digits === '' ? '' : '+'.$digits;
     }
 
     private function identityLookupKey(string $identityType, string $identityCountry, string $identityNumber): string
