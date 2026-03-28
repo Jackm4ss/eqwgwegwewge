@@ -204,6 +204,36 @@
             margin: 0;
         }
 
+        .ticket-validity-note {
+            color: #ffffff;
+            font-size: 13px;
+            line-height: 18px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            text-align: center;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
+            margin: 0;
+        }
+
+        .maps-location-note {
+            color: #ffffff;
+            font-size: 20px;
+            line-height: 28px;
+            font-weight: 800;
+            text-align: center;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
+            margin: 16px 0 0;
+            text-decoration: none;
+        }
+
+        .maps-location-icon {
+            width: 30px;
+            height: 30px;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
         .button-table {
             margin: 0 auto;
         }
@@ -408,6 +438,27 @@
                                             </tr>
                                         </table>
 
+                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                            border="0">
+                                            <tr>
+                                                <td align="center" style="padding:20px 0 8px;">
+                                                    <table role="presentation" cellpadding="0" cellspacing="0"
+                                                        border="0" class="button-table" style="margin:0 auto;">
+                                                        <tr>
+                                                            <td align="center" bgcolor="#FFFFFF"
+                                                                style="border-radius:999px; background:rgba(255,255,255,0.95); box-shadow:0 12px 24px rgba(2,132,199,0.24);">
+                                                                <a href="{{ $ticketUrl }}" target="_blank"
+                                                                    rel="noopener noreferrer" class="button-link"
+                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background:rgba(255,255,255,0.95); color:#0956c8; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
+                                                                    Open Ticket
+                                                                </a>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+
                                         <table role="presentation" cellpadding="0" cellspacing="0" border="0"
                                             width="85%" style="width:85%; max-width:320px; margin:28px auto 0;">
                                             <tr>
@@ -435,6 +486,15 @@
                                 </tr>
 
                                 <tr>
+                                    <td align="center" style="padding:22px 20px 12px;">
+                                        <p class="ticket-validity-note"
+                                            style="color:#ffffff; font-size:13px; line-height:18px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.45); margin:0;">
+                                            Ticket valid from 9-19 April 2026
+                                        </p>
+                                    </td>
+                                </tr>
+
+                                <tr>
                                     <td class="bottom-pad" style="padding:32px 20px 28px;">
                                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                                             border="0">
@@ -450,30 +510,29 @@
                                                         at the gate.<br>
                                                         QR only required to scan once per day
                                                     </p>
+                                                    <a href="https://maps.app.goo.gl/yWaPZYTBoHXgpXKn8"
+                                                        target="_blank" rel="noopener noreferrer"
+                                                        class="maps-location-note"
+                                                        style="color:#ffffff; font-size:20px; line-height:28px; font-weight:800; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.45); margin:16px 0 0; text-decoration:none; display:inline-block;">
+                                                        <svg class="maps-location-icon" viewBox="0 0 24 24"
+                                                            aria-hidden="true"
+                                                            style="width:30px; height:30px; vertical-align:middle; margin-right:10px;">
+                                                            <path fill="#4285F4"
+                                                                d="M12 2C8.13 2 5 5.13 5 9c0 4.91 5.37 11.62 6.08 12.49a1.18 1.18 0 0 0 1.84 0C13.63 20.62 19 13.91 19 9c0-3.87-3.13-7-7-7Z" />
+                                                            <path fill="#34A853"
+                                                                d="M12 2a6.96 6.96 0 0 0-5.17 2.29l4.24 4.24A2.5 2.5 0 0 1 14.5 12l4.21 4.21C18.9 13.91 19 11.15 19 9c0-3.87-3.13-7-7-7Z" />
+                                                            <path fill="#FBBC04"
+                                                                d="M7.04 4.06A6.97 6.97 0 0 0 5 9c0 4.91 5.37 11.62 6.08 12.49.49.61 1.27.61 1.84 0 .29-.36 1.42-1.78 2.63-3.63L7.04 9.35A2.49 2.49 0 0 1 7.04 4.06Z" />
+                                                            <circle cx="12" cy="9" r="3.2" fill="#EA4335" />
+                                                        </svg>
+                                                        <span style="vertical-align:middle;">Maps to Location</span>
+                                                    </a>
                                                 </td>
                                             </tr>
 
                                             <tr>
                                                 <td class="spacer-24" align="center"
                                                     style="height:24px; line-height:24px; font-size:24px;">&nbsp;</td>
-                                            </tr>
-
-                                            <tr>
-                                                <td align="center">
-                                                    <table role="presentation" cellpadding="0" cellspacing="0"
-                                                        border="0" class="button-table" style="margin:0 auto;">
-                                                        <tr>
-                                                            <td align="center" bgcolor="#FFFFFF"
-                                                                style="border-radius:999px; background:rgba(255,255,255,0.95); box-shadow:0 12px 24px rgba(2,132,199,0.24);">
-                                                                <a href="{{ $ticketUrl }}" target="_blank"
-                                                                    rel="noopener noreferrer" class="button-link"
-                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background:rgba(255,255,255,0.95); color:#0956c8; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
-                                                                    Open Ticket
-                                                                </a>
-                                                            </td>
-                                                        </tr>
-                                                    </table>
-                                                </td>
                                             </tr>
 
                                             <tr>

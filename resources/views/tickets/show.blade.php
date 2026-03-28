@@ -16,6 +16,7 @@
         $sponsorSnakeBrandUrl = asset('images/Snake-Brand-Logo.png');
         $mediaWobUrl = asset('images/wob.png');
         $mediaNoodouUrl = asset('images/noodou.png');
+        $mapToLocationUrl = asset('images/Map to Location.png');
     @endphp
 
     <style>
@@ -58,7 +59,7 @@
         }
 
         .bottom-section {
-            padding: 30px 20px 120px;
+            padding: 10px 20px 28px;
         }
 
         .middle-gap {
@@ -168,6 +169,15 @@
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
         }
 
+        .ticket-validity-note {
+            margin: 22px auto 20px;
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
+        }
+
         .msg-title {
             font-size: 1.6rem;
             font-weight: 800;
@@ -180,6 +190,29 @@
             font-size: 0.95rem;
             line-height: 1.5;
             font-weight: 700;
+        }
+
+        .maps-location-note {
+            margin-top: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #ffffff;
+            font-size: 1.6rem;
+            line-height: 1.2;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .maps-location-icon {
+            width: 30px;
+            height: 30px;
+            flex-shrink: 0;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
         }
 
         #bottom-info-card {
@@ -260,7 +293,7 @@
         }
 
         .ticket-download-wrap {
-            margin: 0 0 24px;
+            margin: 20px 0 24px;
             color: #ffffff;
         }
 
@@ -284,6 +317,9 @@
             text-decoration: none;
             transform: translateY(-1px);
         }
+
+
+
 
         @media (max-width: 480px) {
             .ticket-page-shell {
@@ -346,11 +382,17 @@
                     {!! $qrSvg !!}
                 </div>
 
+                <div class="ticket-download-wrap">
+                    <a href="{{ $qrDownloadUrl }}" class="ticket-download-button">Download Ticket</a>
+                </div>
+
                 <div id="ticket-info-card" class="glass-card">
                     <div id="ticket-user-name" class="ticket-user-name">{{ mb_strtoupper($fullName) }}</div>
                     <div id="ticket-user-passport" class="ticket-user-passport">{{ $identityDisplay }}</div>
                 </div>
             </div>
+
+            <div class="ticket-validity-note">Ticket valid from 9-19 April 2026</div>
 
             <div class="bottom-section">
                 <div class="message-box">
@@ -359,11 +401,22 @@
                         Please present your QR code and registered valid ID / passport at the gate.<br>
                         This code remains valid for the duration of the event, though scanning is required upon each day.
                     </div>
+                    <a href="https://maps.app.goo.gl/yWaPZYTBoHXgpXKn8" target="_blank" rel="noopener noreferrer"
+                        class="maps-location-note">
+                        <svg class="maps-location-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="#4285F4"
+                                d="M12 2C8.13 2 5 5.13 5 9c0 4.91 5.37 11.62 6.08 12.49a1.18 1.18 0 0 0 1.84 0C13.63 20.62 19 13.91 19 9c0-3.87-3.13-7-7-7Z" />
+                            <path fill="#34A853"
+                                d="M12 2a6.96 6.96 0 0 0-5.17 2.29l4.24 4.24A2.5 2.5 0 0 1 14.5 12l4.21 4.21C18.9 13.91 19 11.15 19 9c0-3.87-3.13-7-7-7Z" />
+                            <path fill="#FBBC04"
+                                d="M7.04 4.06A6.97 6.97 0 0 0 5 9c0 4.91 5.37 11.62 6.08 12.49.49.61 1.27.61 1.84 0 .29-.36 1.42-1.78 2.63-3.63L7.04 9.35A2.49 2.49 0 0 1 7.04 4.06Z" />
+                            <circle cx="12" cy="9" r="3.2" fill="#EA4335" />
+                        </svg>
+                        <span>Maps to Location</span>
+                    </a>
                 </div>
 
-                <div class="ticket-download-wrap">
-                    <a href="{{ $qrDownloadUrl }}" class="ticket-download-button">Download Ticket</a>
-                </div>
+
 
                 <div id="bottom-info-card" class="glass-card">
                     <div class="footer-col" style="flex: 1; min-width: 70px;">

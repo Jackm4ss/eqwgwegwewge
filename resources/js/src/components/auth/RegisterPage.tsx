@@ -176,6 +176,7 @@ const OTHER_SORTED_COUNTRIES = SORTED_COUNTRIES.filter(
 );
 
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
+const ENABLE_LEGACY_SUCCESS_SCREEN = true;
 
 function normalizePhoneCountryCode(value: string) {
   const digits = value.replace(/\D/g, '');
@@ -994,20 +995,28 @@ export function RegisterPage() {
         return;
       }
 
+      const ticketUrl = (result.ticket_url || '').trim();
+      const successMessage = result.message || (
+        result.email_sent === false
+          ? 'Registration completed. Your ticket is ready, but the email could not be sent right now.'
+          : 'Your QR ticket has been sent to your email.'
+      );
+
+      if (ticketUrl !== '') {
+        window.open(ticketUrl, '_blank', 'noopener,noreferrer');
+      }
+
       setRegisteredEmail(data.email);
-      setRegistrationSuccessMessage(result.message || '');
-      setRegisteredTicketUrl(result.ticket_url || '');
+      setRegistrationSuccessMessage(successMessage);
+      setRegisteredTicketUrl(ticketUrl);
       setRegisteredTicketQrUrl(result.ticket_qr_url || '');
       setRegisteredTicketCode(result.ticket_code || '');
       setTicketEmailSent(result.email_sent !== false);
       setIsSuccess(true);
-      toast.success(
-        result.message || (
-          result.email_sent === false
-            ? 'Registration completed. Your ticket is ready, but the email could not be sent right now.'
-            : 'Your QR ticket has been sent to your email.'
-        ),
-      );
+
+      if (!ENABLE_LEGACY_SUCCESS_SCREEN) {
+        toast.success(successMessage);
+      }
     } catch (error: any) {
       toast.error(error.message || 'Something went wrong while registering. Please try again.');
     } finally {
@@ -1755,9 +1764,9 @@ export function RegisterPage() {
         ) : null}
       </Dialog>
 
-      {/* SUCCESS OVERLAY */}
+      {/* Success overlay kept in place for post-submit confirmation and future fallback needs. */}
       <AnimatePresence>
-        {isSuccess && (
+        {ENABLE_LEGACY_SUCCESS_SCREEN && isSuccess && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1770,17 +1779,68 @@ export function RegisterPage() {
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white/10 border border-white/20 p-6 md:p-10 rounded-[2.5rem] shadow-2xl backdrop-blur-md scrollbar-hide text-center"
+              className={`relative w-full ${hasDirectTicketUrl ? 'max-w-[760px]' : 'max-w-lg'} max-h-[92vh] overflow-y-auto rounded-[2.5rem] shadow-2xl scrollbar-hide text-center ${hasDirectTicketUrl ? 'border-0 bg-transparent p-0' : 'border border-white/20 bg-white/10 p-6 md:p-10 backdrop-blur-md'}`}
             >
               {/* CLOSE BUTTON */}
               <button
                 onClick={handleResetForm}
-                className="absolute top-5 right-5 p-2 text-sky-200 hover:text-white hover:bg-white/10 rounded-full transition-colors z-10"
+                className="absolute top-5 right-5 z-10 rounded-full border border-slate-200/90 bg-white p-2 text-slate-900 shadow-lg transition-colors hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-sky-950"
                 aria-label="Close"
               >
                 <X className="w-6 h-6" />
               </button>
 
+              <h2 id="success-title" className="sr-only">
+                Registered ticket preview
+              </h2>
+
+              {hasDirectTicketUrl ? (
+                <div className="space-y-4">
+                  <div className="rounded-[1.75rem] border border-white/20 bg-white/10 px-6 py-5 text-center shadow-[0_18px_55px_rgba(12,74,110,0.2)] backdrop-blur-md">
+                    <p className="text-white text-xl md:text-2xl font-black leading-tight tracking-tight" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                      Your Ticket Is Ready
+                    </p>
+                    <p className="mt-2 text-sm md:text-base leading-relaxed text-sky-100">
+                      This ticket has also been sent to your email
+                      <span className="font-bold text-white"> {registeredEmail || 'your email'}</span>.
+                      {ticketEmailSent ? ' Please check your inbox for a copy.' : ' The email copy could not be sent right now, so please use this browser ticket.'}
+                    </p>
+                  </div>
+
+                  <div className="overflow-hidden rounded-[2rem] border border-white/25 bg-white shadow-[0_28px_80px_rgba(12,74,110,0.28)]">
+                    <iframe
+                      src={registeredTicketUrl}
+                      title="Registered ticket preview"
+                      className="block h-[85vh] min-h-[720px] w-full border-0 bg-white"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-3 px-2 pb-1 sm:flex-row">
+                    <motion.a
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      href={registeredTicketUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 rounded-2xl bg-white px-5 py-4 text-center text-sm font-black uppercase tracking-widest text-sky-900 shadow-lg transition-all hover:bg-sky-50 md:text-base"
+                      style={{ fontFamily: '"Kanit", sans-serif' }}
+                    >
+                      {ticketEmailSent ? 'Open Ticket in Browser' : 'Open My Ticket Now'}
+                    </motion.a>
+
+                    <motion.button
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      onClick={handleResetForm}
+                      className="flex-1 rounded-2xl bg-gradient-to-r from-sky-400 to-cyan-400 px-5 py-4 text-sm font-black uppercase tracking-widest text-sky-950 shadow-lg transition-all hover:shadow-[0_0_20px_rgba(56,189,248,0.4)] md:text-base"
+                      style={{ fontFamily: '"Kanit", sans-serif' }}
+                    >
+                      Register Another Attendee
+                    </motion.button>
+                  </div>
+                </div>
+              ) : (
+                <>
               {/* ICON */}
               <motion.div
                 animate={{ y: [0, -6, 0], scale: [1, 1.02, 1] }}
@@ -1888,6 +1948,8 @@ export function RegisterPage() {
                   Register Another Attendee
                 </motion.button>
               </div>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}
