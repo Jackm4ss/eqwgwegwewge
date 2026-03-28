@@ -59,5 +59,20 @@ class AppServiceProvider extends ServiceProvider
                 strtolower((string) $request->input('email')).'|'.$request->ip()
             );
         });
+
+        RateLimiter::for('staff-login', function (Request $request) {
+            return Limit::perMinute(10)->by(
+                strtolower((string) $request->input('email')).'|'.$request->ip()
+            );
+        });
+
+        RateLimiter::for('scanner-scan', function (Request $request) {
+            $staffId = (string) optional($request->user('staff'))->getAuthIdentifier();
+            $stationId = $request->hasSession()
+                ? (string) $request->session()->get('staff_station_id', 'no-station')
+                : 'no-station';
+
+            return Limit::perMinute(120)->by($staffId.'|'.$stationId.'|'.$request->ip());
+        });
     }
 }

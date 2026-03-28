@@ -2,6 +2,7 @@
 
 namespace App\Services\Admin;
 
+use Carbon\CarbonImmutable;
 use App\Services\Firebase\FirebaseClientFactory;
 use App\Services\Firebase\FirestoreRestApi;
 use App\Services\Firebase\FirestoreTimestampNormalizer;
@@ -42,6 +43,51 @@ class AdminFirestoreRepository
     public function allScanLogs(): array
     {
         return $this->listCollectionDocuments($this->scanLogsCollection());
+    }
+
+    public function queryScanLogs(array $filters = []): array
+    {
+        $normalizedFilters = $this->normalizeScanLogListingFilters($filters);
+
+        if (! $this->available()) {
+            return [];
+        }
+
+        return $this->usingRest()
+            ? $this->queryScanLogsUsingRest($normalizedFilters)
+            : $this->queryScanLogsUsingGrpc($normalizedFilters);
+    }
+
+    public function paginateScanLogs(array $filters, int $page, int $perPage): array
+    {
+        $page = max(1, $page);
+        $perPage = max(1, $perPage);
+        $offset = ($page - 1) * $perPage;
+        $normalizedFilters = $this->normalizeScanLogListingFilters($filters);
+
+        if (! $this->available()) {
+            return [
+                'items' => [],
+                'total' => 0,
+            ];
+        }
+
+        return $this->usingRest()
+            ? $this->paginateScanLogsUsingRest($normalizedFilters, $offset, $perPage)
+            : $this->paginateScanLogsUsingGrpc($normalizedFilters, $offset, $perPage);
+    }
+
+    public function countScanLogs(array $filters = []): int
+    {
+        $normalizedFilters = $this->normalizeScanLogListingFilters($filters);
+
+        if (! $this->available()) {
+            return 0;
+        }
+
+        return $this->usingRest()
+            ? $this->countScanLogsUsingRest($normalizedFilters)
+            : $this->countScanLogsUsingGrpc($normalizedFilters);
     }
 
     public function allAdminActivityLogs(): array
@@ -567,11 +613,18 @@ class AdminFirestoreRepository
             }
 
             $ticket = $this->timestamps->normalizeFromStorage($this->restApi->decodeDocument($ticketDocument));
+            $attendancePaths = $this->attendanceDailyPathsForTicketReset($ticket);
             $updatedTicket = $this->ticketQrCodeService->resetAttendanceAttributes($ticket);
 
-            $this->restApi->commit([
+            $writes = [
                 $this->restApi->makeSetWrite($ticketPath, $this->timestamps->prepareForStorage($updatedTicket), true),
-            ], $transaction);
+            ];
+
+            foreach ($attendancePaths as $attendancePath) {
+                $writes[] = $this->restApi->makeDeleteWrite($attendancePath);
+            }
+
+            $this->restApi->commit($writes, $transaction);
 
             $committed = true;
 
@@ -613,9 +666,14 @@ class AdminFirestoreRepository
             }
 
             $ticket = $this->timestamps->normalizeFromStorage($ticketSnapshot->data());
+            $attendancePaths = $this->attendanceDailyPathsForTicketReset($ticket);
             $updatedTicket = $this->ticketQrCodeService->resetAttendanceAttributes($ticket);
 
             $transaction->set($ticketReference, $this->timestamps->prepareForStorage($updatedTicket));
+
+            foreach ($attendancePaths as $attendancePath) {
+                $transaction->delete($this->documentReference($client, $attendancePath));
+            }
 
             return [
                 'user' => $user,
@@ -651,9 +709,11 @@ class AdminFirestoreRepository
                 $ticket = $ticketDocument !== null
                     ? $this->timestamps->normalizeFromStorage($this->restApi->decodeDocument($ticketDocument))
                     : null;
+                $attendancePaths = $ticket !== null ? $this->attendanceDailyPathsForTicketReset($ticket) : [];
             } else {
                 $ticketPath = null;
                 $ticket = null;
+                $attendancePaths = [];
             }
 
             if ($ticket === null) {
@@ -675,6 +735,10 @@ class AdminFirestoreRepository
                 $this->timestamps->prepareForStorage($ticket),
                 $ticketId !== '',
             );
+
+            foreach ($attendancePaths as $attendancePath) {
+                $writes[] = $this->restApi->makeDeleteWrite($attendancePath);
+            }
 
             $this->restApi->commit($writes, $transaction);
             $committed = true;
@@ -711,9 +775,11 @@ class AdminFirestoreRepository
                 $ticket = $ticketSnapshot->exists()
                     ? $this->timestamps->normalizeFromStorage($ticketSnapshot->data())
                     : null;
+                $attendancePaths = $ticket !== null ? $this->attendanceDailyPathsForTicketReset($ticket) : [];
             } else {
                 $ticketReference = null;
                 $ticket = null;
+                $attendancePaths = [];
             }
 
             if ($ticket === null) {
@@ -727,6 +793,10 @@ class AdminFirestoreRepository
             }
 
             $transaction->set($ticketReference, $this->timestamps->prepareForStorage($ticket));
+
+            foreach ($attendancePaths as $attendancePath) {
+                $transaction->delete($this->documentReference($client, $attendancePath));
+            }
 
             return [
                 'user' => $user,
@@ -824,6 +894,85 @@ class AdminFirestoreRepository
         }
 
         return $rows;
+    }
+
+    private function queryScanLogsUsingRest(array $filters): array
+    {
+        $documents = $this->restApi->runQuery(
+            $this->buildScanLogStructuredQuery($filters)
+        );
+
+        return array_map(function (array $document): array {
+            $decoded = $this->timestamps->normalizeFromStorage(
+                $this->restApi->decodeDocument($document)
+            );
+            $decoded['__id'] = $this->documentIdFromName((string) ($document['name'] ?? ''));
+            $decoded['__path'] = $this->documentPathFromName((string) ($document['name'] ?? ''));
+
+            return $decoded;
+        }, $documents);
+    }
+
+    private function queryScanLogsUsingGrpc(array $filters): array
+    {
+        $rows = [];
+
+        foreach ($this->buildScanLogGrpcQuery($filters)->documents() as $documentSnapshot) {
+            if (! $documentSnapshot->exists()) {
+                continue;
+            }
+
+            $decoded = $this->timestamps->normalizeFromStorage($documentSnapshot->data());
+            $decoded['__id'] = $documentSnapshot->id();
+            $decoded['__path'] = $this->scanLogsCollection().'/'.$documentSnapshot->id();
+            $rows[] = $decoded;
+        }
+
+        return $rows;
+    }
+
+    private function paginateScanLogsUsingRest(array $filters, int $offset, int $limit): array
+    {
+        $documents = $this->restApi->runQuery(
+            $this->buildScanLogStructuredQuery($filters, $limit, $offset)
+        );
+
+        return [
+            'items' => array_map(function (array $document): array {
+                $decoded = $this->timestamps->normalizeFromStorage(
+                    $this->restApi->decodeDocument($document)
+                );
+                $decoded['__id'] = $this->documentIdFromName((string) ($document['name'] ?? ''));
+                $decoded['__path'] = $this->documentPathFromName((string) ($document['name'] ?? ''));
+
+                return $decoded;
+            }, $documents),
+            'total' => $this->countScanLogsUsingRest($filters),
+        ];
+    }
+
+    private function paginateScanLogsUsingGrpc(array $filters, int $offset, int $limit): array
+    {
+        $rows = [];
+        $query = $this->buildScanLogGrpcQuery($filters)
+            ->offset($offset)
+            ->limit($limit);
+
+        foreach ($query->documents() as $documentSnapshot) {
+            if (! $documentSnapshot->exists()) {
+                continue;
+            }
+
+            $decoded = $this->timestamps->normalizeFromStorage($documentSnapshot->data());
+            $decoded['__id'] = $documentSnapshot->id();
+            $decoded['__path'] = $this->scanLogsCollection().'/'.$documentSnapshot->id();
+            $rows[] = $decoded;
+        }
+
+        return [
+            'items' => $rows,
+            'total' => $this->countScanLogsUsingGrpc($filters),
+        ];
     }
 
     private function paginateUsersUsingRest(array $filters, int $offset, int $limit): array
@@ -928,6 +1077,19 @@ class AdminFirestoreRepository
         return (int) $query->count();
     }
 
+    private function countScanLogsUsingRest(array $filters): int
+    {
+        return $this->restApi->runCountQuery(
+            $this->buildScanLogStructuredQuery($filters, withOrdering: false),
+            'count'
+        );
+    }
+
+    private function countScanLogsUsingGrpc(array $filters): int
+    {
+        return (int) $this->buildScanLogGrpcQuery($filters, withOrdering: false)->count();
+    }
+
     private function buildStructuredQuery(
         string $collection,
         array $filters,
@@ -978,6 +1140,55 @@ class AdminFirestoreRepository
         return $query;
     }
 
+    private function buildScanLogStructuredQuery(
+        array $filters,
+        ?int $limit = null,
+        ?int $offset = null,
+        bool $withOrdering = true,
+    ): array {
+        $query = [
+            'from' => [
+                ['collectionId' => $this->scanLogsCollection()],
+            ],
+        ];
+
+        $clauses = $this->buildScanLogFilters($filters);
+
+        if ($clauses !== []) {
+            $query['where'] = count($clauses) === 1
+                ? $clauses[0]
+                : [
+                    'compositeFilter' => [
+                        'op' => 'AND',
+                        'filters' => $clauses,
+                    ],
+                ];
+        }
+
+        if ($withOrdering) {
+            $query['orderBy'] = [
+                [
+                    'field' => ['fieldPath' => 'scan_date'],
+                    'direction' => 'DESCENDING',
+                ],
+                [
+                    'field' => ['fieldPath' => '__name__'],
+                    'direction' => 'DESCENDING',
+                ],
+            ];
+        }
+
+        if ($offset !== null && $offset > 0) {
+            $query['offset'] = $offset;
+        }
+
+        if ($limit !== null) {
+            $query['limit'] = $limit;
+        }
+
+        return $query;
+    }
+
     private function buildEqualityFilters(array $filters): array
     {
         $clauses = [];
@@ -993,6 +1204,69 @@ class AdminFirestoreRepository
         }
 
         return $clauses;
+    }
+
+    private function buildScanLogFilters(array $filters): array
+    {
+        $clauses = [];
+
+        if (filled($filters['from'] ?? null)) {
+            $clauses[] = $this->buildFieldFilter('scan_date', 'GREATER_THAN_OR_EQUAL', (string) $filters['from']);
+        }
+
+        if (filled($filters['to'] ?? null)) {
+            $clauses[] = $this->buildFieldFilter('scan_date', 'LESS_THAN_OR_EQUAL', (string) $filters['to']);
+        }
+
+        foreach (['result', 'user_id', 'scanner_id', 'gate_id', 'ticket_code'] as $field) {
+            if (! filled($filters[$field] ?? null)) {
+                continue;
+            }
+
+            $clauses[] = $this->buildFieldFilter($field, 'EQUAL', $filters[$field]);
+        }
+
+        return $clauses;
+    }
+
+    private function buildFieldFilter(string $field, string $operator, mixed $value): array
+    {
+        return [
+            'fieldFilter' => [
+                'field' => ['fieldPath' => $field],
+                'op' => $operator,
+                'value' => $this->encodeStructuredQueryValue($value),
+            ],
+        ];
+    }
+
+    private function buildScanLogGrpcQuery(array $filters, bool $withOrdering = true): Query
+    {
+        $query = $this->client()->collection($this->scanLogsCollection());
+
+        if (filled($filters['from'] ?? null)) {
+            $query = $query->where('scan_date', '>=', (string) $filters['from']);
+        }
+
+        if (filled($filters['to'] ?? null)) {
+            $query = $query->where('scan_date', '<=', (string) $filters['to']);
+        }
+
+        foreach (['result', 'user_id', 'scanner_id', 'gate_id', 'ticket_code'] as $field) {
+            if (! filled($filters[$field] ?? null)) {
+                continue;
+            }
+
+            $query = $query->where($field, '=', $filters[$field]);
+        }
+
+        if ($withOrdering) {
+            $query = $query
+                ->orderBy('scan_date', Query::DIR_DESCENDING)
+                ->orderBy(Query::DOCUMENT_ID, Query::DIR_DESCENDING);
+        }
+
+        return $query;
     }
 
     private function encodeStructuredQueryValue(mixed $value): array
@@ -1032,6 +1306,33 @@ class AdminFirestoreRepository
 
         if (filled($filters['attendance_status'] ?? null)) {
             $normalized['attendance_status'] = strtolower(trim((string) $filters['attendance_status']));
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeScanLogListingFilters(array $filters): array
+    {
+        $normalized = [];
+
+        if (filled($filters['from'] ?? null)) {
+            $normalized['from'] = $this->normalizeDateOnly((string) $filters['from']);
+        }
+
+        if (filled($filters['to'] ?? null)) {
+            $normalized['to'] = $this->normalizeDateOnly((string) $filters['to']);
+        }
+
+        if (filled($filters['result'] ?? null)) {
+            $normalized['result'] = strtolower(trim((string) $filters['result']));
+        }
+
+        foreach (['user_id', 'scanner_id', 'gate_id', 'ticket_code'] as $field) {
+            if (! filled($filters[$field] ?? null)) {
+                continue;
+            }
+
+            $normalized[$field] = trim((string) $filters[$field]);
         }
 
         return $normalized;
@@ -1264,6 +1565,11 @@ class AdminFirestoreRepository
         return (string) config('firebase.admin_activity_logs_collection', 'admin_activity_logs');
     }
 
+    private function attendanceDailyCollection(): string
+    {
+        return (string) config('firebase.attendance_daily_collection', 'attendance_daily');
+    }
+
     private function userPath(string $userId): string
     {
         return $this->usersCollection().'/'.$userId;
@@ -1277,6 +1583,52 @@ class AdminFirestoreRepository
     private function adminActivityLogPath(string $logId): string
     {
         return $this->adminActivityLogsCollection().'/'.$logId;
+    }
+
+    private function attendanceDailyPath(string $scanDate, string $userId): string
+    {
+        return $this->attendanceDailyCollection().'/'.$scanDate.':'.$userId;
+    }
+
+    private function attendanceDailyPathsForTicketReset(array $ticket): array
+    {
+        $userId = trim((string) ($ticket['user_id'] ?? ''));
+        if ($userId === '') {
+            return [];
+        }
+
+        $candidateDates = [];
+        $lastValidScanDate = trim((string) ($ticket['last_valid_scan_date'] ?? ''));
+
+        if ($lastValidScanDate !== '') {
+            $candidateDates[] = $lastValidScanDate;
+        }
+
+        foreach (['checked_in_at', 'last_scanned_at', 'last_valid_scan_at'] as $timestampField) {
+            $timestampValue = trim((string) ($ticket[$timestampField] ?? ''));
+
+            if ($timestampValue === '') {
+                continue;
+            }
+
+            try {
+                $candidateDates[] = CarbonImmutable::parse($timestampValue, config('app.timezone'))->toDateString();
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        $candidateDates[] = now(config('app.timezone'))->toDateString();
+
+        $candidateDates = array_values(array_unique(array_filter(array_map(
+            static fn (mixed $date): string => trim((string) $date),
+            $candidateDates,
+        ))));
+
+        return array_map(
+            fn (string $scanDate): string => $this->attendanceDailyPath($scanDate, $userId),
+            $candidateDates,
+        );
     }
 
     private function emailIndexPath(string $email): string
@@ -1346,6 +1698,16 @@ class AdminFirestoreRepository
         $digits = preg_replace('/\D+/', '', $phoneNumber) ?? '';
 
         return $digits === '' ? '' : '+'.$digits;
+    }
+
+    private function normalizeDateOnly(string $value): string
+    {
+        $trimmed = trim($value);
+        $timestamp = strtotime($trimmed);
+
+        return $timestamp === false
+            ? $trimmed
+            : date('Y-m-d', $timestamp);
     }
 
     private function documentIdFromName(string $documentName): string

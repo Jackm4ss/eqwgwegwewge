@@ -21,11 +21,27 @@ class AdminPanelService
         return $this->repository->available();
     }
 
+    public function normalizedScanLogFilters(array $filters = []): array
+    {
+        $from = trim((string) ($filters['from'] ?? ''));
+        $to = trim((string) ($filters['to'] ?? ''));
+
+        if ($from === '' && $to === '') {
+            $today = now()->toDateString();
+            $filters['from'] = $today;
+            $filters['to'] = $today;
+        }
+
+        return $filters;
+    }
+
     public function dashboardData(array $filters = []): array
     {
+        $filters = $this->normalizedScanLogFilters($filters);
+
         return $this->analytics->buildDashboard(
             $this->repository->allUsers(),
-            $this->repository->allScanLogs(),
+            $this->repository->queryScanLogs($filters),
             (int) config('admin.dashboard_days', 7),
             filters: $filters,
         );
@@ -119,8 +135,10 @@ class AdminPanelService
 
     public function attendanceData(array $filters = []): array
     {
+        $filters = $this->normalizedScanLogFilters($filters);
+
         $overview = $this->analytics->buildAttendanceOverview(
-            $this->repository->allScanLogs(),
+            $this->repository->queryScanLogs($filters),
             $filters,
         );
 
@@ -157,21 +175,29 @@ class AdminPanelService
 
     public function reports(array $filters = []): array
     {
+        $filters = $this->normalizedScanLogFilters($filters);
+
         return $this->analytics->buildReports(
             $this->repository->allUsers(),
             $this->repository->allTickets(),
-            $this->repository->allScanLogs(),
+            $this->repository->queryScanLogs($filters),
             $filters,
         );
     }
 
     public function exportRows(string $type, array $filters = []): array
     {
+        if (in_array($type, ['attendance', 'daily-report', 'overall-report'], true)) {
+            $filters = $this->normalizedScanLogFilters($filters);
+        }
+
         return $this->analytics->buildExportDataset(
             $type,
             $this->repository->allUsers(),
             $this->repository->allTickets(),
-            $this->repository->allScanLogs(),
+            in_array($type, ['attendance', 'daily-report', 'overall-report'], true)
+                ? $this->repository->queryScanLogs($filters)
+                : [],
             $this->repository->allAdminActivityLogs(),
             $filters,
         );
@@ -188,11 +214,14 @@ class AdminPanelService
             $this->repository->allUsers(),
             $this->repository->allTickets(),
         );
-        $allRows = $this->analytics->attachAttendanceProgress(
-            $allRows,
-            $this->repository->allScanLogs(),
-        );
         $filteredRows = $this->analytics->filterUserRows($allRows, $filters);
+        $filteredRows = $this->analytics->attachAttendanceProgress(
+            $filteredRows,
+            $this->repository->findScanLogsByUserIds(array_map(
+                fn (array $row): string => (string) ($row['user_id'] ?? ''),
+                $filteredRows,
+            )),
+        );
 
         return [
             'users' => $this->makePaginator(

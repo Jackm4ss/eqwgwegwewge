@@ -11,7 +11,9 @@ class AttendanceController extends Controller
 {
     public function __invoke(Request $request, AdminPanelService $adminPanel): View
     {
-        $filters = $request->only(['q', 'from', 'to', 'page', 'per_page']);
+        $filters = $adminPanel->normalizedScanLogFilters(
+            $request->only(['q', 'from', 'to', 'page', 'per_page'])
+        );
         $attendance = $adminPanel->attendanceData($filters);
         $history = $attendance['history'];
         $dailyAttendance = $attendance['daily_attendance'] ?? [];
@@ -56,7 +58,7 @@ class AttendanceController extends Controller
 
         $statusMeta = static function (mixed $value): array {
             return match (strtolower(trim((string) $value))) {
-                'success' => [
+                'success', 'valid' => [
                     'label' => 'Checked In',
                     'class' => 'bg-label-success',
                     'note' => 'The QR is valid and attendance was recorded successfully.',
@@ -65,6 +67,16 @@ class AttendanceController extends Controller
                     'label' => 'Already Scanned',
                     'class' => 'bg-label-warning',
                     'note' => 'This ticket was already used, so it is not counted twice.',
+                ],
+                'expired' => [
+                    'label' => 'Expired',
+                    'class' => 'bg-label-danger',
+                    'note' => 'The QR is no longer valid for the current event window.',
+                ],
+                'invalid' => [
+                    'label' => 'Invalid QR',
+                    'class' => 'bg-label-danger',
+                    'note' => 'The QR payload is invalid or has already been replaced.',
                 ],
                 default => [
                     'label' => 'Needs Review',

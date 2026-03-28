@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Contracts\UserRepositoryInterface;
 use App\Mail\TicketReadyMail;
-use App\Mail\VerifyRegistrationMail;
 use App\Services\Tickets\TicketQrCodeService;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Mail;
@@ -30,13 +29,11 @@ class VerificationFlowTest extends TestCase
         $this->app->instance(UserRepositoryInterface::class, $this->repository);
     }
 
-    public function test_valid_verification_activates_account_creates_ticket_and_redirects_to_signed_ticket_page(): void
+    public function test_valid_verification_activates_pending_account_creates_ticket_and_redirects_to_signed_ticket_page(): void
     {
         Mail::fake();
 
-        $this->postJson('/api/register', $this->validPayload())->assertCreated();
-        $user = $this->repository->firstUser();
-
+        $user = $this->createPendingUser();
         $verificationUrl = $this->verificationUrl($user['user_id'], $user['email']);
 
         $response = $this->get($verificationUrl);
@@ -54,10 +51,11 @@ class VerificationFlowTest extends TestCase
         $this->assertNotNull($verifiedUser['ticket_ready_email_sent_at']);
         $this->assertNotNull($ticket);
         $this->assertSame('active', $ticket['status']);
+        $this->assertSame('v2', $ticket['qr_version']);
+        $this->assertSame('esf2', $ticket['qr_format']);
         $this->assertCount(1, $this->repository->tickets);
 
-        Mail::assertSent(VerifyRegistrationMail::class, 1);
-        Mail::assertSent(TicketReadyMail::class, function (TicketReadyMail $mail) use ($user) {
+        Mail::assertQueued(TicketReadyMail::class, function (TicketReadyMail $mail) use ($user) {
             return $mail->hasTo($user['email']);
         });
     }
@@ -66,8 +64,7 @@ class VerificationFlowTest extends TestCase
     {
         Mail::fake();
 
-        $this->postJson('/api/register', $this->validPayload())->assertCreated();
-        $user = $this->repository->firstUser();
+        $user = $this->createPendingUser();
         $verificationUrl = $this->verificationUrl($user['user_id'], $user['email']);
 
         $this->get($verificationUrl)->assertRedirect();
@@ -81,17 +78,16 @@ class VerificationFlowTest extends TestCase
 
         $this->assertSame($firstTicket['ticket_id'], $secondTicket['ticket_id']);
         $this->assertCount(1, $this->repository->tickets);
-        Mail::assertSent(TicketReadyMail::class, 1);
+        Mail::assertQueued(TicketReadyMail::class, 1);
     }
 
     public function test_invalid_or_expired_verification_link_returns_forbidden(): void
     {
         Mail::fake();
 
-        $this->postJson('/api/register', $this->validPayload())->assertCreated();
-        $user = $this->repository->firstUser();
+        $user = $this->createPendingUser();
 
-        $tamperedUrl = URL::temporarySignedRoute(
+        $expiredUrl = URL::temporarySignedRoute(
             'verification.verify',
             now()->subMinute(),
             [
@@ -100,15 +96,14 @@ class VerificationFlowTest extends TestCase
             ],
         );
 
-        $this->get($tamperedUrl)->assertForbidden();
+        $this->get($expiredUrl)->assertForbidden();
     }
 
     public function test_ticket_page_requires_valid_signature(): void
     {
         Mail::fake();
 
-        $this->postJson('/api/register', $this->validPayload())->assertCreated();
-        $user = $this->repository->firstUser();
+        $user = $this->createPendingUser();
 
         $this->get($this->verificationUrl($user['user_id'], $user['email']))->assertRedirect();
         $ticket = $this->repository->findTicketByUserId($user['user_id']);
@@ -120,8 +115,7 @@ class VerificationFlowTest extends TestCase
     {
         Mail::fake();
 
-        $this->postJson('/api/register', $this->validPayload())->assertCreated();
-        $user = $this->repository->firstUser();
+        $user = $this->createPendingUser();
 
         $this->get($this->verificationUrl($user['user_id'], $user['email']))->assertRedirect();
         $ticket = $this->repository->findTicketByUserId($user['user_id']);
@@ -130,16 +124,16 @@ class VerificationFlowTest extends TestCase
 
         $this->get($signedTicketUrl)
             ->assertOk()
-            ->assertSee($ticket['ticket_code'])
-            ->assertSee($user['email']);
+            ->assertSee('TEST USER')
+            ->assertSee($user['identity_number'])
+            ->assertSee('Download Ticket');
     }
 
     public function test_signed_ticket_qr_route_renders_png(): void
     {
         Mail::fake();
 
-        $this->postJson('/api/register', $this->validPayload())->assertCreated();
-        $user = $this->repository->firstUser();
+        $user = $this->createPendingUser();
 
         $this->get($this->verificationUrl($user['user_id'], $user['email']))->assertRedirect();
         $ticket = $this->repository->findTicketByUserId($user['user_id']);
@@ -149,6 +143,28 @@ class VerificationFlowTest extends TestCase
         $this->get($signedTicketQrUrl)
             ->assertOk()
             ->assertHeader('Content-Type', 'image/png');
+    }
+
+    private function createPendingUser(): array
+    {
+        return $this->repository->create([
+            'full_name' => 'Test User',
+            'email' => 'test@example.com',
+            'phone_country_code' => '+62',
+            'phone_national_number' => '8123456789',
+            'phone_number' => '+628123456789',
+            'country' => 'ID',
+            'identity_country' => 'ID',
+            'identity_type' => 'passport',
+            'identity_number' => 'A1234567',
+            'account_status' => 'pending_verification',
+            'verification_status' => 'unverified',
+            'email_verified_at' => null,
+            'ticket_id' => null,
+            'ticket_ready_email_sent_at' => null,
+            'agreed_terms_at' => now()->toISOString(),
+            'registered_ip' => '127.0.0.1',
+        ]);
     }
 
     private function verificationUrl(string $userId, string $email): string
@@ -161,19 +177,5 @@ class VerificationFlowTest extends TestCase
                 'hash' => sha1($email),
             ],
         );
-    }
-
-    private function validPayload(): array
-    {
-        return [
-            'full_name' => 'Test User',
-            'email' => 'test@example.com',
-            'phone_country_code' => '+62',
-            'phone_national_number' => '8123456789',
-            'country' => 'ID',
-            'identity_type' => 'passport',
-            'identity_number' => 'A1234567',
-            'agreeTerms' => true,
-        ];
     }
 }

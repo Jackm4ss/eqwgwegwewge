@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Admin;
+use App\Models\StaffUser;
 use App\Models\User;
 
 return [
@@ -17,6 +18,10 @@ return [
             'driver' => 'session',
             'provider' => 'admins',
         ],
+        'staff' => [
+            'driver' => 'session',
+            'provider' => 'staff_users',
+        ],
     ],
     'providers' => [
         'users' => [
@@ -26,6 +31,10 @@ return [
         'admins' => [
             'driver' => 'eloquent',
             'model' => Admin::class,
+        ],
+        'staff_users' => [
+            'driver' => 'eloquent',
+            'model' => StaffUser::class,
         ],
     ],
     'passwords' => [
@@ -37,6 +46,12 @@ return [
         ],
         'admins' => [
             'provider' => 'admins',
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+        'staff_users' => [
+            'provider' => 'staff_users',
             'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,

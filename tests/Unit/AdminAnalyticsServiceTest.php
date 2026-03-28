@@ -204,8 +204,8 @@ class AdminAnalyticsServiceTest extends TestCase
 
     public function test_attendance_progress_counts_unique_success_days_per_user_within_event_window(): void
     {
-        config()->set('admin.event.start_date', '2026-04-09');
-        config()->set('admin.event.end_date', '2026-04-19');
+        config()->set('event.start_date', '2026-04-09');
+        config()->set('event.end_date', '2026-04-19');
 
         $service = new AdminAnalyticsService;
 

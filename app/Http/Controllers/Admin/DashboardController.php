@@ -11,7 +11,9 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request, AdminPanelService $adminPanel): View
     {
-        $filters = $request->only(['from', 'to']);
+        $filters = $adminPanel->normalizedScanLogFilters(
+            $request->only(['from', 'to'])
+        );
 
         return view('admin.dashboard', [
             'dashboard' => $adminPanel->dashboardData($filters),

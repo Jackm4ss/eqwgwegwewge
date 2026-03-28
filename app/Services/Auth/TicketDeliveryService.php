@@ -40,7 +40,7 @@ class TicketDeliveryService
         );
 
         try {
-            Mail::to($user['email'])->send(
+            Mail::to($user['email'])->queue(
                 new TicketReadyMail($user, $ticket, $ticketUrl, $qrPngBinary)
             );
         } catch (\Throwable $throwable) {
@@ -69,7 +69,7 @@ class TicketDeliveryService
         return [
             'user' => $updatedUser,
             'delivery' => [
-                'status' => 'sent',
+                'status' => 'queued',
                 'email_sent' => true,
                 'ticket_url' => $ticketUrl,
                 'ticket_qr_url' => $ticketQrUrl,

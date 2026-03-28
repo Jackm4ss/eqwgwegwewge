@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Contracts\UserRepositoryInterface;
-use App\Mail\VerifyRegistrationMail;
+use App\Mail\TicketReadyMail;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Mail;
@@ -44,7 +44,7 @@ class RegisterApiTest extends TestCase
             ]);
     }
 
-    public function test_register_creates_pending_user_and_indexes_and_sends_verification_mail(): void
+    public function test_register_creates_active_user_ticket_and_queues_ticket_mail(): void
     {
         Mail::fake();
 
@@ -54,16 +54,20 @@ class RegisterApiTest extends TestCase
 
         $response->assertCreated()
             ->assertJson([
-                'message' => 'Registration successful. Verification email has been sent.',
-                'status' => 'pending_verification',
+                'message' => 'Registration successful. Your QR ticket has been sent to your email.',
+                'status' => 'ticket_ready',
+                'email_sent' => true,
             ]);
 
         $user = $this->repository->firstUser();
+        $ticket = $this->repository->findTicketByUserId((string) $user['user_id']);
 
         $this->assertNotNull($user);
-        $this->assertSame('pending_verification', $user['account_status']);
-        $this->assertSame('unverified', $user['verification_status']);
-        $this->assertNull($user['ticket_id']);
+        $this->assertSame('active', $user['account_status']);
+        $this->assertSame('verified', $user['verification_status']);
+        $this->assertNotNull($user['email_verified_at']);
+        $this->assertNotNull($user['ticket_id']);
+        $this->assertNotNull($user['ticket_ready_email_sent_at']);
         $this->assertSame('test@example.com', $user['email']);
         $this->assertSame('+62', $user['phone_country_code']);
         $this->assertSame('8123456789', $user['phone_national_number']);
@@ -77,7 +81,16 @@ class RegisterApiTest extends TestCase
             $payload['identity_number'],
         ));
 
-        Mail::assertSent(VerifyRegistrationMail::class, function (VerifyRegistrationMail $mail) use ($payload) {
+        $this->assertNotNull($ticket);
+        $this->assertSame('active', $ticket['status']);
+        $this->assertSame('v2', $ticket['qr_version']);
+        $this->assertSame('esf2', $ticket['qr_format']);
+        $this->assertNotEmpty($ticket['qr_token']);
+        $this->assertSame($ticket['ticket_code'], $response->json('ticket_code'));
+        $this->assertNotEmpty($response->json('ticket_url'));
+        $this->assertNotEmpty($response->json('ticket_qr_url'));
+
+        Mail::assertQueued(TicketReadyMail::class, function (TicketReadyMail $mail) use ($payload) {
             return $mail->hasTo(strtolower($payload['email']));
         });
     }
@@ -98,7 +111,7 @@ class RegisterApiTest extends TestCase
             ->assertJsonValidationErrors(['email']);
 
         $this->assertCount(1, $this->repository->users);
-        $this->assertCount(0, $this->repository->tickets);
+        $this->assertCount(1, $this->repository->tickets);
     }
 
     public function test_register_rejects_duplicate_identity_number_with_structured_error(): void
@@ -117,7 +130,7 @@ class RegisterApiTest extends TestCase
             ->assertJsonValidationErrors(['identity_number']);
 
         $this->assertCount(1, $this->repository->users);
-        $this->assertCount(0, $this->repository->tickets);
+        $this->assertCount(1, $this->repository->tickets);
     }
 
     public function test_register_allows_same_identity_number_for_different_identity_types(): void
@@ -196,8 +209,19 @@ class RegisterApiTest extends TestCase
         $response = $this->postJson('/api/register', $this->validPayload());
 
         $response->assertCreated()
-            ->assertJsonStructure(['message', 'status'])
-            ->assertJsonMissing(['redirect']);
+            ->assertJsonStructure([
+                'message',
+                'status',
+                'email_sent',
+                'ticket_url',
+                'ticket_qr_url',
+                'ticket_code',
+            ])
+            ->assertJsonMissing(['redirect'])
+            ->assertJson([
+                'status' => 'ticket_ready',
+                'email_sent' => true,
+            ]);
     }
 
     public function test_register_accepts_legacy_combined_phone_number_payload(): void
@@ -283,8 +307,9 @@ class RegisterApiTest extends TestCase
 
         $response->assertCreated()
             ->assertJson([
-                'message' => 'Registration successful. Verification email has been sent.',
-                'status' => 'pending_verification',
+                'message' => 'Registration successful. Your QR ticket has been sent to your email.',
+                'status' => 'ticket_ready',
+                'email_sent' => true,
             ]);
 
         $this->assertCount(1, $this->repository->users);

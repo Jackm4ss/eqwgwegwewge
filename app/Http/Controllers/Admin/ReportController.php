@@ -11,7 +11,9 @@ class ReportController extends Controller
 {
     public function __invoke(Request $request, AdminPanelService $adminPanel): View
     {
-        $filters = $request->only(['q', 'from', 'to']);
+        $filters = $adminPanel->normalizedScanLogFilters(
+            $request->only(['q', 'from', 'to'])
+        );
 
         return view('admin.reports.index', [
             'reports' => $adminPanel->reports($filters),

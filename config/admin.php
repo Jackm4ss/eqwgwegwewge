@@ -8,8 +8,8 @@ return [
     'per_page' => (int) env('ADMIN_PER_PAGE', 10),
     'report_default_days' => (int) env('ADMIN_REPORT_DEFAULT_DAYS', 7),
     'event' => [
-        'start_date' => env('ADMIN_EVENT_START_DATE', '2026-04-09'),
-        'end_date' => env('ADMIN_EVENT_END_DATE', '2026-04-19'),
+        'start_date' => env('EVENT_START_DATE', env('ADMIN_EVENT_START_DATE', '2026-04-09')),
+        'end_date' => env('EVENT_END_DATE', env('ADMIN_EVENT_END_DATE', '2026-04-19')),
     ],
     'backup' => [
         'disk' => env('ADMIN_BACKUP_DISK', 'admin_backups'),

@@ -20,6 +20,11 @@ class ExportController extends Controller
         AdminAuditLogger $auditLogger,
     ): Response {
         $filters = $request->only(['q', 'from', 'to']);
+
+        if (in_array($type, ['attendance', 'daily-report', 'overall-report'], true)) {
+            $filters = $adminPanel->normalizedScanLogFilters($filters);
+        }
+
         $rows = $adminPanel->exportRows($type, $filters);
         $format = strtolower($format);
         $filename = sprintf(

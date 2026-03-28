@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\EnsureEmailVerifiedForLogin;
+use App\Http\Middleware\EnsureStaffPanelSchemaIsReady;
+use App\Http\Middleware\EnsureStaffStationSelected;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +21,8 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'email.verified.login' => EnsureEmailVerifiedForLogin::class,
+            'staff.schema.ready' => EnsureStaffPanelSchemaIsReady::class,
+            'staff.station.selected' => EnsureStaffStationSelected::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [

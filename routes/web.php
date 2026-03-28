@@ -8,6 +8,11 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExportController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Staff\Auth\AuthenticatedStaffSessionController as AuthenticatedStaffSessionController;
+use App\Http\Controllers\Staff\StaffProfilePageController;
+use App\Http\Controllers\Staff\ScannerPageController;
+use App\Http\Controllers\Staff\StaffStatsPageController;
+use App\Http\Controllers\Staff\StationSelectionController;
 use App\Http\Controllers\Api\Auth\ForgotPasswordController;
 use App\Http\Controllers\Api\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\EmailVerificationController;
@@ -67,6 +72,46 @@ Route::get('/ticket/{ticketId}/download', [TicketPageController::class, 'downloa
 Route::get('/ticket/{ticketId}/qr', [TicketPageController::class, 'qr'])
     ->middleware('signed')
     ->name('ticket.qr');
+
+$staffPath = config('staff.path', 'staff');
+
+Route::prefix($staffPath)
+    ->name('staff.')
+    ->middleware('staff.schema.ready')
+    ->group(function () {
+        Route::middleware('guest:staff')->group(function () {
+            Route::get('/login', [AuthenticatedStaffSessionController::class, 'create'])
+                ->name('login');
+            Route::post('/login', [AuthenticatedStaffSessionController::class, 'store'])
+                ->middleware('throttle:staff-login')
+                ->name('login.store');
+        });
+
+        Route::middleware('auth:staff')->group(function () {
+            Route::get('/', function () {
+                return session()->has('staff_station_id')
+                    ? redirect()->route('staff.scanner')
+                    : redirect()->route('staff.station.create');
+            })->name('home');
+
+            Route::post('/logout', [AuthenticatedStaffSessionController::class, 'destroy'])
+                ->name('logout');
+
+            Route::get('/station', [StationSelectionController::class, 'create'])
+                ->name('station.create');
+            Route::post('/station', [StationSelectionController::class, 'store'])
+                ->name('station.store');
+            Route::get('/profile', StaffProfilePageController::class)
+                ->name('profile');
+
+            Route::middleware('staff.station.selected')->group(function () {
+                Route::get('/scanner', ScannerPageController::class)
+                    ->name('scanner');
+                Route::get('/stats', StaffStatsPageController::class)
+                    ->name('stats');
+            });
+        });
+    });
 
 $adminPath = config('admin.path', 'admin');
 

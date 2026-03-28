@@ -66,7 +66,7 @@ class AdminAnalyticsService
 
             $rangeStats['total_scans']++;
 
-            if ($result === 'success') {
+            if ($this->isSuccessfulScanResult($result)) {
                 $rangeStats['successful_scans']++;
 
                 if ($uniqueKey !== '') {
@@ -78,7 +78,7 @@ class AdminAnalyticsService
                 $rangeStats['invalid_scans']++;
             }
 
-            if ($result === 'success' && isset($chartBuckets[$scanDate]) && $uniqueKey !== '') {
+            if ($this->isSuccessfulScanResult($result) && isset($chartBuckets[$scanDate]) && $uniqueKey !== '') {
                 $chartBuckets[$scanDate]['unique_keys'][$uniqueKey] = true;
             }
         }
@@ -179,7 +179,7 @@ class AdminAnalyticsService
         $attendanceDaysByUser = [];
 
         foreach ($scanLogs as $scanLog) {
-            if (strtolower((string) ($scanLog['result'] ?? 'success')) !== 'success') {
+            if (! $this->isSuccessfulScanResult((string) ($scanLog['result'] ?? 'success'))) {
                 continue;
             }
 
@@ -412,7 +412,7 @@ class AdminAnalyticsService
 
             $byDay[$scanDate]['total_scans']++;
 
-            if ($result === 'success' && $attendanceKey !== '') {
+            if ($this->isSuccessfulScanResult($result) && $attendanceKey !== '') {
                 $byDay[$scanDate]['unique_success'][$attendanceKey] = true;
             } elseif ($result === 'duplicate') {
                 $byDay[$scanDate]['duplicate_scans']++;
@@ -433,7 +433,7 @@ class AdminAnalyticsService
 
             $scannerActivity[$scannerKey]['total_scans']++;
 
-            if ($result === 'success') {
+            if ($this->isSuccessfulScanResult($result)) {
                 $scannerActivity[$scannerKey]['successful_scans']++;
             } elseif ($result === 'duplicate') {
                 $scannerActivity[$scannerKey]['duplicate_scans']++;
@@ -520,7 +520,7 @@ class AdminAnalyticsService
         $dailyVisitTrend = [];
 
         foreach ($history as $scanLog) {
-            if (strtolower((string) ($scanLog['result'] ?? '')) !== 'success') {
+            if (! $this->isSuccessfulScanResult((string) ($scanLog['result'] ?? ''))) {
                 continue;
             }
 
@@ -687,15 +687,20 @@ class AdminAnalyticsService
         return str_replace(["\r", "\n"], ' ', mb_strtolower(trim($value)));
     }
 
+    private function isSuccessfulScanResult(string $result): bool
+    {
+        return in_array(strtolower(trim($result)), ['success', 'valid'], true);
+    }
+
     private function eventWindow(): array
     {
         $timezone = config('app.timezone');
         $eventStartDate = CarbonImmutable::parse(
-            (string) config('admin.event.start_date', '2026-04-09'),
+            (string) config('event.start_date', config('admin.event.start_date', '2026-04-09')),
             $timezone
         )->startOfDay();
         $eventEndDate = CarbonImmutable::parse(
-            (string) config('admin.event.end_date', '2026-04-19'),
+            (string) config('event.end_date', config('admin.event.end_date', '2026-04-19')),
             $timezone
         )->startOfDay();
 

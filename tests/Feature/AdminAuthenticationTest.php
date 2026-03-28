@@ -75,6 +75,17 @@ class AdminAuthenticationTest extends TestCase
         $admin = Admin::query()->firstOrFail();
 
         $this->mock(AdminPanelService::class, function ($mock): void {
+            $mock->shouldReceive('normalizedScanLogFilters')
+                ->once()
+                ->with([
+                    'from' => '2026-03-24',
+                    'to' => '2026-03-25',
+                ])
+                ->andReturn([
+                    'from' => '2026-03-24',
+                    'to' => '2026-03-25',
+                ]);
+
             $mock->shouldReceive('dashboardData')
                 ->once()
                 ->with([
@@ -325,6 +336,14 @@ class AdminAuthenticationTest extends TestCase
         $admin = Admin::query()->firstOrFail();
 
         $this->mock(AdminPanelService::class, function ($mock): void {
+            $mock->shouldReceive('normalizedScanLogFilters')
+                ->once()
+                ->with([])
+                ->andReturn([
+                    'from' => now()->toDateString(),
+                    'to' => now()->toDateString(),
+                ]);
+
             $mock->shouldReceive('attendanceData')
                 ->once()
                 ->andReturn([

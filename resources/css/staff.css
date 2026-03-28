@@ -1,0 +1,128 @@
+@import '../js/src/styles/fonts.css';
+@import '../js/src/styles/tailwind.css';
+
+@theme {
+  --color-staff-bg: #fff6eb;
+  --color-staff-panel: #fffdf9;
+  --color-staff-ink: #1c1917;
+  --color-staff-soft: #6b7280;
+  --color-staff-line: rgba(28, 25, 23, 0.12);
+  --color-staff-primary: #f97316;
+  --color-staff-primary-strong: #c2410c;
+  --color-staff-success: #15803d;
+  --color-staff-warning: #b45309;
+  --color-staff-danger: #b91c1c;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-staff-bg text-staff-ink antialiased;
+    font-family: 'Space Grotesk', 'Syne', sans-serif;
+  }
+
+  ::selection {
+    @apply bg-staff-primary text-white;
+  }
+}
+
+@layer components {
+  .staff-shell {
+    @apply min-h-screen;
+    background:
+      radial-gradient(circle at top, #ffedd5, transparent 42%),
+      linear-gradient(180deg, #fff7ed 0%, #fffaf5 56%, #ffffff 100%);
+  }
+
+  .staff-card {
+    @apply rounded-3xl border border-staff-line bg-staff-panel/95 shadow-[0_24px_90px_rgba(249,115,22,0.14)] backdrop-blur;
+  }
+
+  .staff-button {
+    @apply inline-flex min-h-12 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition active:scale-[0.99];
+  }
+
+  .staff-button-primary {
+    @apply inline-flex min-h-12 items-center justify-center rounded-2xl bg-staff-primary px-4 py-3 text-sm font-semibold text-white transition shadow-[0_16px_40px_rgba(249,115,22,0.28)] hover:bg-staff-primary-strong active:scale-[0.99];
+  }
+
+  .staff-button-secondary {
+    @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-staff-line bg-white px-4 py-3 text-sm font-semibold text-staff-ink transition hover:bg-orange-50 active:scale-[0.99];
+  }
+
+  .staff-button-danger-soft {
+    @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-staff-danger transition hover:bg-red-100 active:scale-[0.99];
+  }
+
+  .staff-input {
+    @apply h-12 w-full rounded-2xl border border-staff-line bg-white px-4 text-sm text-staff-ink outline-none ring-0 transition placeholder:text-staff-soft focus:border-staff-primary focus:shadow-[0_0_0_4px_rgba(249,115,22,0.12)];
+  }
+
+  .staff-badge {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
+  }
+
+  .staff-badge-success {
+    @apply inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-staff-success;
+  }
+
+  .staff-badge-warning {
+    @apply inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-staff-warning;
+  }
+
+  .staff-badge-danger {
+    @apply inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-staff-danger;
+  }
+
+  .staff-badge-muted {
+    @apply inline-flex items-center rounded-full bg-stone-200 px-3 py-1 text-xs font-semibold text-stone-600;
+  }
+
+  .staff-card-disabled {
+    @apply rounded-2xl border border-stone-200 bg-stone-100/90 px-4 py-3 text-stone-500 shadow-none pointer-events-none select-none;
+  }
+
+  .staff-bottom-nav {
+    @apply grid grid-cols-4 gap-2 rounded-[28px] border border-white/70 bg-staff-panel/95 p-2 shadow-[0_18px_40px_rgba(28,25,23,0.12)] backdrop-blur;
+  }
+
+  .staff-bottom-nav-item {
+    @apply flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl px-3 py-2 text-[11px] font-semibold text-staff-soft transition;
+  }
+
+  .staff-bottom-nav-item.is-active {
+    @apply bg-orange-50 text-staff-primary-strong shadow-[inset_0_0_0_1px_rgba(249,115,22,0.12)];
+  }
+
+  .staff-scan-modal {
+    @apply pointer-events-none fixed inset-0 z-50 hidden items-center justify-center bg-stone-950/40 px-4 pb-28 pt-6 backdrop-blur-[3px];
+  }
+
+  .staff-scan-modal.is-open {
+    @apply pointer-events-auto flex;
+  }
+
+  .staff-scan-alert {
+    @apply w-full max-w-sm rounded-[32px] border bg-white p-5 shadow-[0_26px_80px_rgba(28,25,23,0.24)];
+  }
+
+  .staff-scan-alert[data-status='valid'] {
+    @apply border-green-200 shadow-[0_26px_80px_rgba(34,197,94,0.18)];
+  }
+
+  .staff-scan-alert[data-status='duplicate'] {
+    @apply border-amber-200 shadow-[0_26px_80px_rgba(245,158,11,0.16)];
+  }
+
+  .staff-scan-alert[data-status='invalid'],
+  .staff-scan-alert[data-status='expired'] {
+    @apply border-red-200 shadow-[0_26px_80px_rgba(239,68,68,0.16)];
+  }
+
+  .staff-scan-detail {
+    @apply rounded-2xl border border-staff-line bg-stone-50 px-4 py-3;
+  }
+}

@@ -3,10 +3,11 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 
-class TicketReadyMail extends Mailable
+class TicketReadyMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -40,6 +41,7 @@ class TicketReadyMail extends Mailable
     public function build(): self
     {
         return $this
+            ->afterCommit()
             ->subject('Your Ticket Is Ready | Songkran Festival 2026')
             ->view('emails.ticket-ready');
     }
