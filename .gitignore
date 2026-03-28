@@ -23,6 +23,7 @@
 /storage/app/local_firestore_users.json
 /storage/app/private/admin-backups/*
 /storage/app/private/test-admin-backups/*
+/database/*.sqlite
 
 # OS junk
 .DS_Store
