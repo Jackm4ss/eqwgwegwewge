@@ -143,8 +143,8 @@ const PHONE_DIAL_CODES: Record<string, string> = {
 const IDENTITY_TYPES = [
   {
     value: 'national_id',
-    label: 'IC / National ID',
-    description: 'Use MyKad for Malaysia, or an official national ID / resident ID for other countries.',
+    label: 'Malaysia IC (MyKad)',
+    description: 'Use your Malaysia IC / MyKad exactly as it appears on your card.',
   },
   {
     value: 'passport',
@@ -1091,7 +1091,7 @@ export function RegisterPage() {
       const selectedCountry = SORTED_COUNTRIES.find(country => country.code === data.country)?.name ?? data.country;
       const selectedIdentityLabel = data.identity_type === 'national_id'
         ? data.country === 'MY'
-          ? 'IC Malaysia (MyKad)'
+          ? 'Malaysia IC (MyKad)'
           : 'National ID / Resident ID'
         : 'Passport';
       const selectedIdentityNumberLabel = data.country !== 'MY'
