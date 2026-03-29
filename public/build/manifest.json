@@ -92,12 +92,12 @@
     "src": "node_modules/flag-icons/flags/4x3/vn.svg"
   },
   "resources/js/src/main.tsx": {
-    "file": "assets/main-Br-q0zHR.js",
+    "file": "assets/main-BWLk59RZ.js",
     "name": "main",
     "src": "resources/js/src/main.tsx",
     "isEntry": true,
     "css": [
-      "assets/main-CrZjiT65.css"
+      "assets/main-6H_e2chI.css"
     ],
     "assets": [
       "assets/au-DAHDIuPI.svg",

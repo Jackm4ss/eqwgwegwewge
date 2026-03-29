@@ -46,10 +46,8 @@ export function SponsorSection() {
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="rounded-[32px] border border-white/15 px-6 py-8 md:px-10 md:py-10 lg:px-12 lg:py-12"
           style={{
-            background: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 100%)",
-            backdropFilter: "blur(14px)",
-            WebkitBackdropFilter: "blur(14px)",
-            boxShadow: "0 22px 55px rgba(0,0,0,0.2)",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.22) 100%)",
+            boxShadow: "0 18px 42px rgba(0,0,0,0.12)",
           }}
         >
           <div className="grid gap-6 md:grid-cols-[1.15fr_1.15fr_3fr_1.6fr] md:items-center lg:gap-8">

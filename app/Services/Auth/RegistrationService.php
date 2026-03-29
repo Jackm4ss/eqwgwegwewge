@@ -23,15 +23,17 @@ class RegistrationService
         try {
             $country = $this->normalizeCountry((string) $data['country']);
             $identityType = $this->normalizeIdentityType((string) $data['identity_type']);
+            $phoneNumber = $this->normalizePhoneNumber((string) $data['phone_number']);
 
             $this->ensureIdentityTypeAllowedForCountry($identityType, $country);
+            $this->ensurePhoneNumberIsAvailable($phoneNumber);
 
             $payload = [
                 'full_name' => $this->normalizeName((string) $data['full_name']),
                 'identity_type' => $identityType,
                 'identity_number' => $this->normalizeIdentityNumber((string) $data['identity_number']),
                 'email' => $this->normalizeEmail((string) $data['email']),
-                'phone_number' => $this->normalizePhoneNumber((string) $data['phone_number']),
+                'phone_number' => $phoneNumber,
                 'country' => $country,
                 'identity_country' => $country,
                 'account_status' => 'active',
@@ -150,6 +152,19 @@ class RegistrationService
         if ($country !== 'MY' && $identityType !== 'passport') {
             throw ValidationException::withMessages([
                 'identity_type' => ['Untuk pendaftar luar Malaysia, gunakan Passport sebagai identitas utama.'],
+            ]);
+        }
+    }
+
+    private function ensurePhoneNumberIsAvailable(string $phoneNumber): void
+    {
+        if ($phoneNumber === '') {
+            return;
+        }
+
+        if ($this->users->findByPhoneNumber($phoneNumber) !== null) {
+            throw ValidationException::withMessages([
+                'phone_number' => ['Phone number already registered.'],
             ]);
         }
     }

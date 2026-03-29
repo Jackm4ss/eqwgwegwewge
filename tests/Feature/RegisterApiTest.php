@@ -120,6 +120,26 @@ class RegisterApiTest extends TestCase
         $this->assertCount(0, $this->repository->tickets);
     }
 
+    public function test_register_rejects_duplicate_phone_number_with_structured_error(): void
+    {
+        Mail::fake();
+
+        $this->postJson('/api/register', $this->validPayload())->assertCreated();
+
+        $duplicatePayload = array_merge($this->validPayload(), [
+            'email' => 'other@example.com',
+            'identity_number' => 'A7654321',
+        ]);
+
+        $response = $this->postJson('/api/register', $duplicatePayload);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['phone_number']);
+
+        $this->assertCount(1, $this->repository->users);
+        $this->assertCount(1, $this->repository->tickets);
+    }
+
     public function test_register_allows_same_identity_number_for_different_identity_types(): void
     {
         Mail::fake();

@@ -560,9 +560,7 @@ export function ForgotQrPage() {
                   <div>
                     <p className="mb-3 text-sm font-semibold text-slate-700">Choose your lookup method</p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {SEARCH_OPTIONS
-                        .filter((option) => option.value !== 'phone')
-                        .map((option) => {
+                      {SEARCH_OPTIONS.map((option) => {
                         const Icon = option.icon;
                         const active = searchType === option.value;
 
