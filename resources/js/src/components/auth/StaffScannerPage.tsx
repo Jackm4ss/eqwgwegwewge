@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats, type CameraDevice } from 'html5-qrcode';
 import {
   AlertCircle,
   BarChart3,
@@ -42,6 +42,7 @@ type StaffSession = {
 type CameraPermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported';
 type CameraSurface = 'browser' | 'pwa';
 type CameraPlatform = 'ios' | 'android' | 'other';
+type CameraStartTarget = string | { facingMode: 'environment' | { exact: 'environment' } };
 
 type ScannerStats = {
   total_scans: number;
@@ -291,6 +292,96 @@ function cameraStartFailure(error: unknown, surface: CameraSurface, platform: Ca
   };
 }
 
+function preferredQrBoxSize(viewfinderWidth: number, viewfinderHeight: number) {
+  const shortestEdge = Math.min(viewfinderWidth, viewfinderHeight);
+  const size = Math.max(180, Math.min(Math.floor(shortestEdge * 0.72), 320));
+
+  return { width: size, height: size };
+}
+
+function pickPreferredBackCamera(cameras: CameraDevice[]) {
+  if (cameras.length === 0) {
+    return null;
+  }
+
+  const frontCameraPattern = /\b(front|user|face)\b/i;
+  const preferredBackCameraPattern = /\b(back|rear|environment)\b/i;
+  const avoidCloseRangePattern = /\b(ultra|wide|macro|depth|tele|zoom)\b/i;
+
+  return [...cameras]
+    .sort((left, right) => {
+      const leftLabel = left.label.trim().toLowerCase();
+      const rightLabel = right.label.trim().toLowerCase();
+
+      const score = (label: string) => {
+        let value = 0;
+
+        if (preferredBackCameraPattern.test(label)) {
+          value += 120;
+        }
+
+        if (!frontCameraPattern.test(label)) {
+          value += 18;
+        }
+
+        if (frontCameraPattern.test(label)) {
+          value -= 220;
+        }
+
+        if (avoidCloseRangePattern.test(label)) {
+          value -= 35;
+        }
+
+        if (/\b0\b/.test(label)) {
+          value += 6;
+        }
+
+        return value;
+      };
+
+      return score(rightLabel) - score(leftLabel);
+    })[0] ?? null;
+}
+
+async function buildCameraStartTargets(platform: CameraPlatform): Promise<CameraStartTarget[]> {
+  const targets: CameraStartTarget[] = [];
+  const seen = new Set<string>();
+
+  const addTarget = (target: CameraStartTarget | null) => {
+    if (!target) {
+      return;
+    }
+
+    const key = typeof target === 'string' ? `device:${target}` : JSON.stringify(target);
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      targets.push(target);
+    }
+  };
+
+  try {
+    const cameras = await Html5Qrcode.getCameras();
+    const preferredCamera = pickPreferredBackCamera(cameras);
+
+    if (preferredCamera?.id) {
+      addTarget(preferredCamera.id);
+    } else if (cameras.length === 1 && cameras[0]?.id) {
+      addTarget(cameras[0].id);
+    }
+  } catch {
+    // Fall back to facingMode when camera enumeration is unavailable.
+  }
+
+  if (platform === 'android') {
+    addTarget({ facingMode: { exact: 'environment' } });
+  }
+
+  addTarget({ facingMode: 'environment' });
+
+  return targets;
+}
+
 export function StaffScannerPage() {
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
   const scannerRegionRef = useRef<HTMLDivElement | null>(null);
@@ -529,50 +620,66 @@ export function StaffScannerPage() {
 
       const html5QrCode = new Html5Qrcode(SCANNER_REGION_ID, {
         formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-        useBarCodeDetectorIfSupported: false,
+        useBarCodeDetectorIfSupported: cameraPlatform === 'android',
         verbose: false,
       });
 
       html5QrCodeRef.current = html5QrCode;
 
-      await html5QrCode.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: { width: 240, height: 240 },
-          aspectRatio: 4 / 3,
-          disableFlip: false,
-        },
-        async (decodedText) => {
-          if (detectingRef.current || scanBusy) {
-            return;
-          }
+      const scanConfig = {
+        fps: cameraPlatform === 'android' ? 12 : 10,
+        qrbox: preferredQrBoxSize,
+        disableFlip: false,
+      };
 
-          const rawValue = decodedText.trim();
-          if (!rawValue) {
-            return;
-          }
-
-          const now = Date.now();
-          if (lastValueRef.current === rawValue && now - lastValueAtRef.current < 2000) {
-            return;
-          }
-
-          detectingRef.current = true;
-          try {
-            lastValueRef.current = rawValue;
-            lastValueAtRef.current = now;
-            await submitScan(rawValue);
-          } finally {
-            detectingRef.current = false;
-          }
-        },
-        () => {
-          // html5-qrcode calls this very frequently while no QR is present.
-          // Avoid flashing the UI with false alarm messages.
+      const onDecode = async (decodedText: string) => {
+        if (detectingRef.current || scanBusy) {
           return;
-        },
-      );
+        }
+
+        const rawValue = decodedText.trim();
+        if (!rawValue) {
+          return;
+        }
+
+        const now = Date.now();
+        if (lastValueRef.current === rawValue && now - lastValueAtRef.current < 2000) {
+          return;
+        }
+
+        detectingRef.current = true;
+        try {
+          lastValueRef.current = rawValue;
+          lastValueAtRef.current = now;
+          await submitScan(rawValue);
+        } finally {
+          detectingRef.current = false;
+        }
+      };
+
+      const onDecodeError = () => {
+        // html5-qrcode calls this very frequently while no QR is present.
+        // Avoid flashing the UI with false alarm messages.
+        return;
+      };
+
+      const startTargets = await buildCameraStartTargets(cameraPlatform);
+      let lastStartError: unknown = null;
+      let scannerStarted = false;
+
+      for (const startTarget of startTargets) {
+        try {
+          await html5QrCode.start(startTarget, scanConfig, onDecode, onDecodeError);
+          scannerStarted = true;
+          break;
+        } catch (error) {
+          lastStartError = error;
+        }
+      }
+
+      if (!scannerStarted) {
+        throw lastStartError ?? new Error('Unable to start any available camera.');
+      }
 
       setScannerActive(true);
       setCameraPermissionState('granted');
