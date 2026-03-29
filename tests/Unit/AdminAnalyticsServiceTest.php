@@ -251,6 +251,51 @@ class AdminAnalyticsServiceTest extends TestCase
         $this->assertSame(9, $userTwo['attendance_progress_percent']);
     }
 
+    public function test_attendance_progress_falls_back_to_current_ticket_scans_outside_event_window_when_needed(): void
+    {
+        config()->set('admin.event.start_date', '2026-04-09');
+        config()->set('admin.event.end_date', '2026-04-19');
+
+        $service = new AdminAnalyticsService;
+
+        $rows = $service->attachAttendanceProgress([
+            [
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-active',
+                'ticket_code' => 'TICKET-ACTIVE',
+            ],
+        ], [
+            [
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-active',
+                'ticket_code' => 'TICKET-ACTIVE',
+                'scan_date' => '2026-03-29',
+                'result' => 'success',
+            ],
+            [
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-old',
+                'ticket_code' => 'TICKET-OLD',
+                'scan_date' => '2026-04-10',
+                'result' => 'success',
+            ],
+            [
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-active',
+                'ticket_code' => 'TICKET-ACTIVE',
+                'scan_date' => '2026-03-29',
+                'result' => 'duplicate',
+            ],
+        ]);
+
+        $user = $rows[0];
+
+        $this->assertSame(1, $user['attendance_days_count']);
+        $this->assertSame(['2026-03-29'], $user['attendance_days']);
+        $this->assertSame(11, $user['attendance_total_days']);
+        $this->assertSame(9, $user['attendance_progress_percent']);
+    }
+
     public function test_user_management_overview_counts_verified_checked_in_and_follow_up_users(): void
     {
         $service = new AdminAnalyticsService;

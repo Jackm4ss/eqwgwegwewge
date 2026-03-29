@@ -4,6 +4,8 @@ import { LoginPage } from './components/auth/LoginPage';
 import { RegisterPage } from './components/auth/RegisterPage';
 import { ForgotQrPage } from './components/auth/ForgotQrPage';
 import { ForgotPasswordPage } from './components/auth/ForgotPasswordPage';
+import { StaffLoginPage } from './components/auth/StaffLoginPage';
+import { StaffScannerPage } from './components/auth/StaffScannerPage';
 import { Toaster } from 'sonner';
 
 export default function App() {
@@ -16,6 +18,8 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-qr" element={<ForgotQrPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/staff/login" element={<StaffLoginPage />} />
+        <Route path="/staff" element={<StaffScannerPage />} />
       </Routes>
     </>
   );

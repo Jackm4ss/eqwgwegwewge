@@ -8,7 +8,7 @@ use RuntimeException;
 
 class AdminPanelService
 {
-    private const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v2';
+    public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v2';
 
     public function __construct(
         private readonly AdminFirestoreRepository $repository,

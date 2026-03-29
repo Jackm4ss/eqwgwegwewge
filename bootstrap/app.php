@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureEmailVerifiedForLogin;
+use App\Http\Middleware\EnsureAdminRole;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +20,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'email.verified.login' => EnsureEmailVerifiedForLogin::class,
+            'admin.role' => EnsureAdminRole::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [

@@ -9,7 +9,15 @@ import {
   Droplets, Star, Waves, Sparkles, X, Lock
 } from 'lucide-react';
 import { Link } from 'react-router';
-import { WaterAnimation } from './WaterAnimation';
+import {
+  AuthCardFrame,
+  AuthCardHeader,
+  AuthInlineError,
+  LotusIcon,
+  AuthPageShell,
+  authInputClass,
+  authSelectClass,
+} from './AuthShared';
 import {
   Dialog,
   DialogClose,
@@ -746,19 +754,6 @@ function ensureSweetAlert(): Promise<SweetAlertInstance> {
   return loader;
 }
 
-function LotusIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 120" className={className} aria-hidden="true" fill="currentColor">
-      <ellipse cx="60" cy="90" rx="8" ry="5" opacity="0.9" />
-      <path d="M60 90 C60 90 38 68 38 46 C38 28 48 16 60 16 C72 16 82 28 82 46 C82 68 60 90 60 90Z" opacity="0.75" />
-      <path d="M60 90 C60 90 22 72 16 50 C12 32 22 18 34 20 C46 22 60 90 60 90Z" opacity="0.6" />
-      <path d="M60 90 C60 90 98 72 104 50 C108 32 98 18 86 20 C74 22 60 90 60 90Z" opacity="0.6" />
-      <path d="M60 90 C60 90 8 80 6 56 C4 36 16 22 28 26 C42 30 60 90 60 90Z" opacity="0.4" />
-      <path d="M60 90 C60 90 112 80 114 56 C116 36 104 22 92 26 C78 30 60 90 60 90Z" opacity="0.4" />
-    </svg>
-  );
-}
-
 function DiamondPattern() {
   return (
     <svg viewBox="0 0 80 20" className="w-full mt-2" aria-hidden="true">
@@ -781,23 +776,6 @@ function DiamondPattern() {
         />
       ))}
     </svg>
-  );
-}
-
-function FieldError({ id, message }: { id: string; message?: string }) {
-  if (!message) return null;
-  return (
-    <motion.p
-      id={id}
-      role="alert"
-      initial={{ opacity: 0, y: -4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
-      className="mt-1.5 text-red-600 text-xs flex items-center gap-1 font-medium"
-    >
-      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
-      {message}
-    </motion.p>
   );
 }
 
@@ -1213,29 +1191,17 @@ export function RegisterPage() {
     }
   };
 
-  const inputBase =
-    'w-full px-4 py-3 pl-11 rounded-xl border-2 transition-all duration-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-offset-1';
-
   const inputClass = (field: keyof FormData) =>
-    `${inputBase} ${errors[field]
-      ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-      : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
-    }`;
+    authInputClass(Boolean(errors[field]));
 
-  const phoneSelectClass = `min-h-[50px] rounded-xl border-2 bg-white px-4 text-base font-medium text-slate-800 data-[size=default]:h-[50px] ${errors.phone_country_code
-    ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-    : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
-    }`;
+  const phoneSelectClass = authSelectClass(Boolean(errors.phone_country_code));
 
-  const phoneNumberInputClass = `${inputBase} min-h-[50px] px-4 text-base ${errors.phone_national_number
-    ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-    : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
-    }`;
+  const phoneNumberInputClass = authInputClass(Boolean(errors.phone_national_number), {
+    withIcon: false,
+    extraClassName: 'px-4',
+  });
 
-  const countrySelectClass = `min-h-[50px] rounded-xl border-2 bg-white px-4 text-base font-medium text-slate-800 data-[size=default]:h-[50px] ${errors.country
-    ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-    : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
-    }`;
+  const countrySelectClass = authSelectClass(Boolean(errors.country));
 
   const selectedCountryOption = SORTED_COUNTRIES.find(c => c.code === countryVal);
   const isMalaysianRegistrant = countryVal === 'MY';
@@ -1295,45 +1261,13 @@ export function RegisterPage() {
   });
 
   return (
-    <div
-      className="min-h-screen relative overflow-x-hidden"
-      style={{ background: 'linear-gradient(145deg, #0C4A6E 0%, #0369A1 30%, #0284C7 60%, #0EA5E9 100%)' }}
-      onClick={handlePageClick}
+    <AuthPageShell
+      skipHref="#main-form"
+      skipLabel="Skip to registration form"
+      onCanvasReady={handleCanvasReady}
+      onPageClick={handlePageClick}
     >
-      <a
-        href="#main-form"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-sky-800 focus:rounded-lg focus:shadow-lg focus:font-semibold"
-      >
-        Skip to registration form
-      </a>
-
       <Toaster position="top-center" richColors />
-      <WaterAnimation onCanvasReady={handleCanvasReady} />
-
-      <div className="fixed inset-0 pointer-events-none overflow-hidden" aria-hidden="true" style={{ zIndex: 1 }}>
-        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #BAE6FD, transparent)' }} />
-        <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #E0F2FE, transparent)' }} />
-        <div className="absolute top-4 right-4 w-64 h-64 text-sky-200 opacity-[0.08]">
-          <LotusIcon className="w-full h-full" />
-        </div>
-        <div className="absolute bottom-4 left-4 w-48 h-48 text-sky-200 opacity-[0.08] rotate-180">
-          <LotusIcon className="w-full h-full" />
-        </div>
-        <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 100" preserveAspectRatio="none">
-          <motion.path
-            d="M0,50 C360,100 720,0 1080,50 C1260,75 1350,25 1440,50 L1440,100 L0,100 Z"
-            fill="rgba(255,255,255,0.04)"
-            animate={{
-              d: [
-                'M0,50 C360,100 720,0 1080,50 C1260,75 1350,25 1440,50 L1440,100 L0,100 Z',
-                'M0,30 C360,0 720,80 1080,30 C1260,5 1350,70 1440,30 L1440,100 L0,100 Z',
-                'M0,50 C360,100 720,0 1080,50 C1260,75 1350,25 1440,50 L1440,100 L0,100 Z',
-              ],
-            }}
-            transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        </svg>
-      </div>
 
       <div className="relative flex flex-col lg:flex-row min-h-screen" style={{ zIndex: 2 }}>
 
@@ -1503,28 +1437,13 @@ export function RegisterPage() {
           */}
 
           {/* Form card */}
-          <div
-            className="w-full max-w-[520px] rounded-[2rem] overflow-hidden border border-white/20"
-            style={{ boxShadow: '0 30px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08)' }}
-          >
-            {/* Card header */}
-            <div
-              className="relative px-7 pt-7 pb-6 overflow-hidden"
-              style={{ background: 'linear-gradient(135deg, #0369A1, #0284C7, #0EA5E9)' }}
-            >
-              <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full border border-white/10 pointer-events-none" aria-hidden="true" />
-              <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full border border-white/10 pointer-events-none" aria-hidden="true" />
-
-              <div className="relative">
-                <h2 className="text-white text-2xl font-bold" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                  Register Now
-                </h2>
-                <p className="text-sky-100 text-sm mt-0.5">Join thousands of attendees at Songkran 2026</p>
-                <p className="mt-5 text-xs text-sky-50/90">
-                  Complete all details, accept the terms, and submit your registration.
-                </p>
-              </div>
-            </div>
+          <AuthCardFrame className="w-full max-w-[520px]">
+            <AuthCardHeader
+              eyebrow="Festival Registration"
+              title="Register Now"
+              description="Join thousands of attendees at Songkran 2026."
+              note="Complete all details, accept the terms, and submit your registration."
+            />
 
             {/* Form body */}
             <div className="bg-white">
@@ -1560,7 +1479,7 @@ export function RegisterPage() {
                         />
                       </div>
                       <AnimatePresence>
-                        <FieldError id="err-full_name" message={errors.full_name?.message} />
+                        <AuthInlineError id="err-full_name" message={errors.full_name?.message} />
                       </AnimatePresence>
                     </div>
 
@@ -1583,7 +1502,7 @@ export function RegisterPage() {
                         />
                       </div>
                       <AnimatePresence>
-                        <FieldError id="err-email" message={errors.email?.message} />
+                        <AuthInlineError id="err-email" message={errors.email?.message} />
                       </AnimatePresence>
                     </div>
 
@@ -1669,10 +1588,10 @@ export function RegisterPage() {
                         Choose country code then enter the number.
                       </p>
                       <AnimatePresence>
-                        <FieldError id="err-phone_country_code" message={errors.phone_country_code?.message} />
+                        <AuthInlineError id="err-phone_country_code" message={errors.phone_country_code?.message} />
                       </AnimatePresence>
                       <AnimatePresence>
-                        <FieldError id="err-phone_national_number" message={errors.phone_national_number?.message} />
+                        <AuthInlineError id="err-phone_national_number" message={errors.phone_national_number?.message} />
                       </AnimatePresence>
                     </div>
 
@@ -1737,7 +1656,7 @@ export function RegisterPage() {
                         )}
                       />
                       <AnimatePresence>
-                        <FieldError id="err-country" message={errors.country?.message} />
+                        <AuthInlineError id="err-country" message={errors.country?.message} />
                       </AnimatePresence>
                     </div>
 
@@ -1765,7 +1684,7 @@ export function RegisterPage() {
                         {identityHelperText}
                       </p>
                       <AnimatePresence>
-                        <FieldError id="err-identity_type" message={errors.identity_type?.message} />
+                        <AuthInlineError id="err-identity_type" message={errors.identity_type?.message} />
                       </AnimatePresence>
                     </div>
 
@@ -1787,7 +1706,7 @@ export function RegisterPage() {
                         />
                       </div>
                       <AnimatePresence>
-                        <FieldError id="err-identity_number" message={errors.identity_number?.message} />
+                        <AuthInlineError id="err-identity_number" message={errors.identity_number?.message} />
                       </AnimatePresence>
                     </div>
 
@@ -1825,7 +1744,7 @@ export function RegisterPage() {
                       </div>
                     </div>
                     <AnimatePresence>
-                      <FieldError id="err-terms" message={errors.agreeTerms?.message} />
+                      <AuthInlineError id="err-terms" message={errors.agreeTerms?.message} />
                     </AnimatePresence>
 
                     <input type="hidden" {...recaptchaTokenField} />
@@ -1867,7 +1786,7 @@ export function RegisterPage() {
                       </div>
                     )}
                     <AnimatePresence>
-                      <FieldError id="err-recaptcha" message={errors.recaptcha_token?.message} />
+                      <AuthInlineError id="err-recaptcha" message={errors.recaptcha_token?.message} />
                     </AnimatePresence>
                   </motion.div>
                 </div>
@@ -1899,7 +1818,7 @@ export function RegisterPage() {
                 </div>
               </form>
             </div>
-          </div>
+          </AuthCardFrame>
 
           {/* Login link */}
           {/* <p className="text-center mt-5 text-sky-200 text-sm">
@@ -2132,6 +2051,6 @@ export function RegisterPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </AuthPageShell>
   );
 }

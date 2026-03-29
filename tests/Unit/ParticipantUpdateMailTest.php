@@ -63,10 +63,13 @@ class ParticipantUpdateMailTest extends TestCase
             qrPngBinary: 'fake-qr-png-binary',
         );
 
+        $mail->assertSeeInHtml('Festival Pass Refresh');
         $mail->assertSeeInHtml('Your QR Pass Was Updated');
-        $mail->assertSeeInHtml('Latest Festival QR Pass');
-        $mail->assertSeeInHtml('TICKET-NEW');
+        $mail->assertSeeInHtml('A new QR pass has been generated for your Songkran Festival ticket.');
+        $mail->assertSeeInHtml('Your latest festival QR pass is ready.');
+        $mail->assertSeeInHtml('Please discard any older QR image and keep only this latest version for event entry.');
         $mail->assertSeeInHtml('Open My Latest Ticket');
+        $mail->assertSeeInHtml('Updated Songkran Festival ticket QR code');
         $mail->assertSeeInHtml('updated-ticket-qrcode.png');
     }
 

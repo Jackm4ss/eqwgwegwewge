@@ -33,6 +33,21 @@
     $identityNumber = trim((string) ($user['identity_number'] ?? ''));
     $identityDisplay = $identityNumber !== '' ? $identityNumber : '-';
     $fullName = trim((string) ($user['full_name'] ?? 'Guest'));
+    $entryCodeDisplay = trim((string) ($ticket['entry_code_display'] ?? ''));
+    $qrCardWidth = $entryCodeDisplay !== '' ? 280 : 186;
+    $emailDocumentTitle = trim((string) ($emailDocumentTitle ?? 'Songkran Festival E-Ticket Registration'));
+    $noticeEyebrow = trim((string) ($noticeEyebrow ?? ''));
+    $noticeTitle = trim((string) ($noticeTitle ?? ''));
+    $noticeCopy = trim((string) ($noticeCopy ?? ''));
+    $hasNotice = $noticeEyebrow !== '' || $noticeTitle !== '' || $noticeCopy !== '';
+    $heroSpacerHeight = $hasNotice ? 28 : 40;
+    $ticketButtonLabel = trim((string) ($ticketButtonLabel ?? 'Open Ticket'));
+    $messageTitle = trim((string) ($messageTitle ?? 'Thank you for your registration.'));
+    $messageCopy = (string) ($messageCopy ?? 'Please present your QR code and registered valid ID / passport at the gate.<br>QR only required to scan once per day');
+    $supportNote = trim((string) ($supportNote ?? ''));
+    $showMapsLink = (bool) ($showMapsLink ?? true);
+    $qrAltText = trim((string) ($qrAltText ?? 'Songkran Festival ticket QR code'));
+    $qrImageFilename = trim((string) ($qrImageFilename ?? 'ticket-qrcode.png'));
 @endphp
 
 <!DOCTYPE html>
@@ -41,7 +56,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Songkran Festival E-Ticket Registration</title>
+    <title>{{ $emailDocumentTitle }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
     <style>
@@ -143,8 +158,46 @@
             padding-top: 0;
         }
 
+        .notice-card {
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.42);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.48));
+            box-shadow:
+                0 14px 30px rgba(15, 23, 42, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.72);
+        }
+
+        .notice-card td {
+            padding: 18px 22px;
+        }
+
+        .notice-eyebrow {
+            color: rgba(15, 23, 42, 0.68);
+            font-size: 10px;
+            line-height: 14px;
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            margin: 0 0 8px;
+        }
+
+        .notice-title {
+            color: #0f172a;
+            font-size: 24px;
+            line-height: 30px;
+            font-weight: 800;
+            margin: 0 0 10px;
+        }
+
+        .notice-copy {
+            color: rgba(15, 23, 42, 0.78);
+            font-size: 14px;
+            line-height: 22px;
+            font-weight: 700;
+            margin: 0;
+        }
+
         .qr-card {
-            width: 186px;
             border-radius: 14px;
             background: #ffffff;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
@@ -204,6 +257,17 @@
             margin: 0;
         }
 
+        .support-note {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+            line-height: 20px;
+            font-weight: 700;
+            text-align: center;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.35);
+            margin: 16px auto 0;
+            max-width: 420px;
+        }
+
         .ticket-validity-note {
             color: #ffffff;
             font-size: 13px;
@@ -214,6 +278,46 @@
             text-align: center;
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
             margin: 0;
+        }
+
+        .entry-code-card {
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.52);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.48));
+            box-shadow:
+                0 10px 28px rgba(15, 23, 42, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.72);
+        }
+
+        .entry-code-card td {
+            padding: 18px 22px;
+        }
+
+        .entry-code-label {
+            color: rgba(15, 23, 42, 0.68);
+            font-size: 10px;
+            line-height: 14px;
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            margin: 0 0 8px;
+        }
+
+        .entry-code-value {
+            color: #0f172a;
+            font-size: 17px;
+            line-height: 22px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            margin: 0;
+        }
+
+        .entry-code-help {
+            color: rgba(15, 23, 42, 0.72);
+            font-size: 12px;
+            line-height: 18px;
+            font-weight: 700;
+            margin: 8px 0 0;
         }
 
         .maps-location-note {
@@ -411,11 +515,47 @@
                                             </tr>
                                         </table>
 
+                                        @if($hasNotice)
+                                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                                                border="0" style="width:100%; max-width:460px; margin:24px auto 0;">
+                                                <tr>
+                                                    <td class="notice-card"
+                                                        style="border-radius:22px; border:1px solid rgba(255,255,255,0.42); background:linear-gradient(135deg, rgba(255,255,255,0.72), rgba(255,255,255,0.48)); box-shadow:0 14px 30px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.72);">
+                                                        <table role="presentation" width="100%" cellpadding="0"
+                                                            cellspacing="0" border="0">
+                                                            <tr>
+                                                                <td align="center" style="padding:18px 22px;">
+                                                                    @if($noticeEyebrow !== '')
+                                                                        <p class="notice-eyebrow"
+                                                                            style="color:rgba(15,23,42,0.68); font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
+                                                                            {{ $noticeEyebrow }}
+                                                                        </p>
+                                                                    @endif
+                                                                    @if($noticeTitle !== '')
+                                                                        <p class="notice-title"
+                                                                            style="color:#0f172a; font-size:24px; line-height:30px; font-weight:800; margin:0 0 10px;">
+                                                                            {{ $noticeTitle }}
+                                                                        </p>
+                                                                    @endif
+                                                                    @if($noticeCopy !== '')
+                                                                        <p class="notice-copy"
+                                                                            style="color:rgba(15,23,42,0.78); font-size:14px; line-height:22px; font-weight:700; margin:0;">
+                                                                            {{ $noticeCopy }}
+                                                                        </p>
+                                                                    @endif
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        @endif
+
                                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                                             border="0">
                                             <tr>
                                                 <td align="center"
-                                                    style="height:40px; line-height:40px; font-size:40px;">&nbsp;</td>
+                                                    style="height:{{ $heroSpacerHeight }}px; line-height:{{ $heroSpacerHeight }}px; font-size:{{ $heroSpacerHeight }}px;">&nbsp;</td>
                                             </tr>
                                         </table>
 
@@ -423,16 +563,54 @@
                                             class="qr-wrap" style="margin:0 auto;">
                                             <tr>
                                                 <td class="qr-card"
-                                                    style="width:186px; border-radius:14px; background:#ffffff; box-shadow:0 8px 24px rgba(0,0,0,0.22);">
+                                                    style="width:{{ $qrCardWidth }}px; border-radius:14px; background:#ffffff; box-shadow:0 8px 24px rgba(0,0,0,0.22);">
                                                     <table role="presentation" cellpadding="0" cellspacing="0"
-                                                        border="0" width="186">
+                                                        border="0" width="{{ $qrCardWidth }}">
                                                         <tr>
-                                                            <td align="center" style="padding:13px;">
-                                                                <img src="{{ $message->embedData($qrPngBinary, 'ticket-qrcode.png', 'image/png') }}"
-                                                                    alt="Songkran Festival ticket QR code" width="160"
+                                                            <td align="center"
+                                                                style="padding:13px 13px {{ $entryCodeDisplay !== '' ? '0' : '13px' }};">
+                                                                <img src="{{ $message->embedData($qrPngBinary, $qrImageFilename, 'image/png') }}"
+                                                                    alt="{{ $qrAltText }}" width="160"
                                                                     style="width:160px; height:160px; display:block;">
                                                             </td>
                                                         </tr>
+                                                        @if($entryCodeDisplay !== '')
+                                                            <tr>
+                                                                <td align="center" style="padding:14px 13px 18px;">
+                                                                    <table role="presentation" width="100%"
+                                                                        cellpadding="0" cellspacing="0" border="0">
+                                                                        <tr>
+                                                                            <td class="entry-code-card"
+                                                                                style="border-radius:22px; border:1px solid rgba(255,255,255,0.52); background:linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.48)); box-shadow:0 10px 28px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.72);">
+                                                                                <table role="presentation"
+                                                                                    width="100%" cellpadding="0"
+                                                                                    cellspacing="0" border="0">
+                                                                                    <tr>
+                                                                                        <td align="center"
+                                                                                            style="padding:18px 22px;">
+                                                                                            <p class="entry-code-label"
+                                                                                                style="color:rgba(15,23,42,0.68); font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
+                                                                                                Entry Code
+                                                                                            </p>
+                                                                                            <p class="entry-code-value"
+                                                                                                style="color:#0f172a; font-size:17px; line-height:22px; font-weight:800; letter-spacing:0.12em; margin:0;">
+                                                                                                {{ $entryCodeDisplay }}
+                                                                                            </p>
+                                                                                            <p class="entry-code-help"
+                                                                                                style="color:rgba(15,23,42,0.72); font-size:12px; line-height:18px; font-weight:700; margin:8px auto 0; max-width:220px;">
+                                                                                                Use this code for manual
+                                                                                                lookup if your QR cannot
+                                                                                                be scanned at the gate.
+                                                                                            </p>
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                </table>
+                                                                            </td>
+                                                                        </tr>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                        @endif
                                                     </table>
                                                 </td>
                                             </tr>
@@ -450,7 +628,7 @@
                                                                 <a href="{{ $ticketUrl }}" target="_blank"
                                                                     rel="noopener noreferrer" class="button-link"
                                                                     style="display:inline-block; padding:14px 28px; border-radius:999px; background:rgba(255,255,255,0.95); color:#0956c8; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
-                                                                    Open Ticket
+                                                                    {{ $ticketButtonLabel }}
                                                                 </a>
                                                             </td>
                                                         </tr>
@@ -482,6 +660,7 @@
                                                 </td>
                                             </tr>
                                         </table>
+
                                     </td>
                                 </tr>
 
@@ -502,31 +681,36 @@
                                                 <td align="center">
                                                     <p class="message-title"
                                                         style="color:#ffffff; font-size:20px; line-height:28px; font-weight:800; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.45); margin:0 0 10px;">
-                                                        Thank you for your registration.
+                                                        {{ $messageTitle }}
                                                     </p>
                                                     <p class="message-copy"
                                                         style="color:#ffffff; font-size:14px; line-height:22px; font-weight:700; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.45); margin:0;">
-                                                        Please present your QR code and registered valid ID / passport
-                                                        at the gate.<br>
-                                                        QR only required to scan once per day
+                                                        {!! $messageCopy !!}
                                                     </p>
-                                                    <a href="https://maps.app.goo.gl/yWaPZYTBoHXgpXKn8"
-                                                        target="_blank" rel="noopener noreferrer"
-                                                        class="maps-location-note"
-                                                        style="color:#ffffff; font-size:20px; line-height:28px; font-weight:800; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.45); margin:16px 0 0; text-decoration:none; display:inline-block;">
-                                                        <svg class="maps-location-icon" viewBox="0 0 24 24"
-                                                            aria-hidden="true"
-                                                            style="width:30px; height:30px; vertical-align:middle; margin-right:10px;">
-                                                            <path fill="#4285F4"
-                                                                d="M12 2C8.13 2 5 5.13 5 9c0 4.91 5.37 11.62 6.08 12.49a1.18 1.18 0 0 0 1.84 0C13.63 20.62 19 13.91 19 9c0-3.87-3.13-7-7-7Z" />
-                                                            <path fill="#34A853"
-                                                                d="M12 2a6.96 6.96 0 0 0-5.17 2.29l4.24 4.24A2.5 2.5 0 0 1 14.5 12l4.21 4.21C18.9 13.91 19 11.15 19 9c0-3.87-3.13-7-7-7Z" />
-                                                            <path fill="#FBBC04"
-                                                                d="M7.04 4.06A6.97 6.97 0 0 0 5 9c0 4.91 5.37 11.62 6.08 12.49.49.61 1.27.61 1.84 0 .29-.36 1.42-1.78 2.63-3.63L7.04 9.35A2.49 2.49 0 0 1 7.04 4.06Z" />
-                                                            <circle cx="12" cy="9" r="3.2" fill="#EA4335" />
-                                                        </svg>
-                                                        <span style="vertical-align:middle;">Maps to Location</span>
-                                                    </a>
+                                                    @if($showMapsLink)
+                                                        <a href="https://maps.app.goo.gl/yWaPZYTBoHXgpXKn8" target="_blank"
+                                                            rel="noopener noreferrer" class="maps-location-note"
+                                                            style="color:#ffffff; font-size:20px; line-height:28px; font-weight:800; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.45); margin:16px 0 0; text-decoration:none; display:inline-block;">
+                                                            <svg class="maps-location-icon" viewBox="0 0 24 24"
+                                                                aria-hidden="true"
+                                                                style="width:30px; height:30px; vertical-align:middle; margin-right:10px;">
+                                                                <path fill="#4285F4"
+                                                                    d="M12 2C8.13 2 5 5.13 5 9c0 4.91 5.37 11.62 6.08 12.49a1.18 1.18 0 0 0 1.84 0C13.63 20.62 19 13.91 19 9c0-3.87-3.13-7-7-7Z" />
+                                                                <path fill="#34A853"
+                                                                    d="M12 2a6.96 6.96 0 0 0-5.17 2.29l4.24 4.24A2.5 2.5 0 0 1 14.5 12l4.21 4.21C18.9 13.91 19 11.15 19 9c0-3.87-3.13-7-7-7Z" />
+                                                                <path fill="#FBBC04"
+                                                                    d="M7.04 4.06A6.97 6.97 0 0 0 5 9c0 4.91 5.37 11.62 6.08 12.49.49.61 1.27.61 1.84 0 .29-.36 1.42-1.78 2.63-3.63L7.04 9.35A2.49 2.49 0 0 1 7.04 4.06Z" />
+                                                                <circle cx="12" cy="9" r="3.2" fill="#EA4335" />
+                                                            </svg>
+                                                            <span style="vertical-align:middle;">Maps to Location</span>
+                                                        </a>
+                                                    @endif
+                                                    @if($supportNote !== '')
+                                                        <p class="support-note"
+                                                            style="color:rgba(255,255,255,0.9); font-size:13px; line-height:20px; font-weight:700; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.35); margin:16px auto 0; max-width:420px;">
+                                                            {{ $supportNote }}
+                                                        </p>
+                                                    @endif
                                                 </td>
                                             </tr>
 

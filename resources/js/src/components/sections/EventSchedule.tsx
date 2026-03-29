@@ -112,7 +112,7 @@ export function EventSchedule() {
                     textTransform: "uppercase",
                   }}
                 >
-                  Programme
+                  EVENT TIMELINE
                 </span>
               </motion.div>
 

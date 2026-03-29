@@ -256,15 +256,7 @@ export function Footer() {
       <div className="relative py-6 px-6 md:px-12 lg:px-16">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
           <p style={{ ...SG, fontSize: "0.68rem", color: "rgba(237,232,220,0.18)", letterSpacing: "0.04em" }}>
-            © {new Date().getFullYear()} Songkran Festival Malaysia · Organised by{" "}
-            <a
-              href="https://www.eqsolutions.com.my/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#2FA7D8] hover:text-[#3FD7F5] transition-colors hover:underline"
-            >
-              EQ Solutions
-            </a>
+            © {new Date().getFullYear()} Songkran Festival Malaysia·
           </p>
           {/* 
           <div className="flex items-center gap-3">

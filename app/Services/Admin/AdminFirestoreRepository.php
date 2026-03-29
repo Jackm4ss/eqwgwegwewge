@@ -10,6 +10,7 @@ use Google\Cloud\Firestore\DocumentReference;
 use Google\Cloud\Firestore\FirestoreClient;
 use Google\Cloud\Firestore\Query;
 use Google\Cloud\Firestore\Transaction;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -57,6 +58,34 @@ class AdminFirestoreRepository
     public function findTicket(string $ticketId): ?array
     {
         return $this->getDocument($this->ticketPath($ticketId));
+    }
+
+    public function findTicketByTicketCode(string $ticketCode): ?array
+    {
+        $ticketCode = strtoupper(trim($ticketCode));
+
+        if ($ticketCode === '') {
+            return null;
+        }
+
+        $index = $this->getDocument($this->ticketCodeIndexPath($ticketCode));
+        $ticketId = (string) ($index['ticket_id'] ?? '');
+
+        return $ticketId !== '' ? $this->findTicket($ticketId) : null;
+    }
+
+    public function findTicketByEntryCode(string $entryCode): ?array
+    {
+        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/', '', $entryCode) ?? '');
+
+        if ($normalized === '') {
+            return null;
+        }
+
+        $index = $this->getDocument($this->ticketEntryCodeIndexPath($normalized));
+        $ticketId = (string) ($index['ticket_id'] ?? '');
+
+        return $ticketId !== '' ? $this->findTicket($ticketId) : null;
     }
 
     public function paginateUsers(array $filters, int $page, int $perPage): array
@@ -221,11 +250,37 @@ class AdminFirestoreRepository
         return $payload;
     }
 
+    public function appendScanLog(array $entry): array
+    {
+        $payload = $this->buildScanLogPayload($entry);
+
+        if (! $this->available()) {
+            return $payload;
+        }
+
+        $this->setDocument(
+            $this->scanLogPath((string) $payload['scan_id']),
+            $payload,
+        );
+
+        return $payload;
+    }
+
+    public function recordScannerAttendance(array $ticket, array $user, array $entry): array
+    {
+        return $this->usingRest()
+            ? $this->recordScannerAttendanceUsingRest($ticket, $user, $entry)
+            : $this->recordScannerAttendanceUsingGrpc($ticket, $user, $entry);
+    }
+
     public function snapshotCollections(?array $collections = null): array
     {
         $collections ??= [
             $this->usersCollection(),
             $this->ticketsCollection(),
+            $this->ticketCodeIndexCollection(),
+            $this->ticketEntryCodeIndexCollection(),
+            $this->attendanceDailyCollection(),
             $this->scanLogsCollection(),
             $this->adminActivityLogsCollection(),
             $this->emailIndexCollection(),
@@ -457,6 +512,23 @@ class AdminFirestoreRepository
             $ticket = $ticketDocument !== null
                 ? $this->timestamps->normalizeFromStorage($this->restApi->decodeDocument($ticketDocument))
                 : null;
+            $ticketCodeIndexPath = $ticket !== null ? $this->ticketCodeIndexPath((string) ($ticket['ticket_code'] ?? '')) : null;
+            $ticketEntryCodeIndexPath = $ticket !== null ? $this->ticketEntryCodeIndexPath((string) ($ticket['entry_code'] ?? '')) : null;
+
+            if ($ticketCodeIndexPath !== null || $ticketEntryCodeIndexPath !== null) {
+                $indexDocuments = $this->restApi->batchGet(array_values(array_filter([
+                    $ticketCodeIndexPath,
+                    $ticketEntryCodeIndexPath,
+                ])), $transaction);
+
+                if ($ticketCodeIndexPath !== null) {
+                    $relatedDocuments[$ticketCodeIndexPath] = $indexDocuments[$ticketCodeIndexPath] ?? null;
+                }
+
+                if ($ticketEntryCodeIndexPath !== null) {
+                    $relatedDocuments[$ticketEntryCodeIndexPath] = $indexDocuments[$ticketEntryCodeIndexPath] ?? null;
+                }
+            }
 
             $writes = [
                 $this->restApi->makeDeleteWrite($userPath, true),
@@ -472,6 +544,14 @@ class AdminFirestoreRepository
 
             if (isset($relatedDocuments[$identityPath])) {
                 $writes[] = $this->restApi->makeDeleteWrite($identityPath);
+            }
+
+            if ($ticketCodeIndexPath !== null && isset($relatedDocuments[$ticketCodeIndexPath])) {
+                $writes[] = $this->restApi->makeDeleteWrite($ticketCodeIndexPath);
+            }
+
+            if ($ticketEntryCodeIndexPath !== null && isset($relatedDocuments[$ticketEntryCodeIndexPath])) {
+                $writes[] = $this->restApi->makeDeleteWrite($ticketEntryCodeIndexPath);
             }
 
             $this->restApi->commit($writes, $transaction);
@@ -518,6 +598,12 @@ class AdminFirestoreRepository
                 (string) ($user['identity_country'] ?? $user['country'] ?? ''),
                 (string) ($user['identity_number'] ?? ''),
             ));
+            $ticketCodeReference = $ticket !== null
+                ? $this->documentReference($client, $this->ticketCodeIndexPath((string) ($ticket['ticket_code'] ?? '')))
+                : null;
+            $ticketEntryCodeReference = $ticket !== null
+                ? $this->documentReference($client, $this->ticketEntryCodeIndexPath((string) ($ticket['entry_code'] ?? '')))
+                : null;
 
             $transaction->delete($userReference);
 
@@ -527,6 +613,14 @@ class AdminFirestoreRepository
 
             $transaction->delete($emailReference);
             $transaction->delete($identityReference);
+
+            if ($ticketCodeReference !== null) {
+                $transaction->delete($ticketCodeReference);
+            }
+
+            if ($ticketEntryCodeReference !== null) {
+                $transaction->delete($ticketEntryCodeReference);
+            }
 
             return [
                 'user' => $user,
@@ -568,10 +662,17 @@ class AdminFirestoreRepository
 
             $ticket = $this->timestamps->normalizeFromStorage($this->restApi->decodeDocument($ticketDocument));
             $updatedTicket = $this->ticketQrCodeService->resetAttendanceAttributes($ticket);
+            $writes = array_map(
+                fn (string $attendancePath): array => $this->restApi->makeDeleteWrite($attendancePath),
+                $this->attendanceResetPaths($ticket),
+            );
+            $writes[] = $this->restApi->makeSetWrite(
+                $ticketPath,
+                $this->timestamps->prepareForStorage($updatedTicket),
+                true,
+            );
 
-            $this->restApi->commit([
-                $this->restApi->makeSetWrite($ticketPath, $this->timestamps->prepareForStorage($updatedTicket), true),
-            ], $transaction);
+            $this->restApi->commit($writes, $transaction);
 
             $committed = true;
 
@@ -614,6 +715,10 @@ class AdminFirestoreRepository
 
             $ticket = $this->timestamps->normalizeFromStorage($ticketSnapshot->data());
             $updatedTicket = $this->ticketQrCodeService->resetAttendanceAttributes($ticket);
+
+            foreach ($this->attendanceResetPaths($ticket) as $attendancePath) {
+                $transaction->delete($this->documentReference($client, $attendancePath));
+            }
 
             $transaction->set($ticketReference, $this->timestamps->prepareForStorage($updatedTicket));
 
@@ -666,8 +771,45 @@ class AdminFirestoreRepository
                     $this->timestamps->prepareForStorage($user),
                     true,
                 );
+                $writes[] = $this->restApi->makeSetWrite(
+                    $this->ticketCodeIndexPath((string) ($ticket['ticket_code'] ?? '')),
+                    $this->buildTicketCodeIndexPayload($ticket),
+                    false,
+                );
+                $writes[] = $this->restApi->makeSetWrite(
+                    $this->ticketEntryCodeIndexPath((string) ($ticket['entry_code'] ?? '')),
+                    $this->buildTicketEntryCodeIndexPayload($ticket),
+                    false,
+                );
             } else {
+                $previousTicket = $ticket;
                 $ticket = $this->ticketQrCodeService->regenerateTicketAttributes($ticket);
+                $writes[] = $this->restApi->makeSetWrite(
+                    $this->ticketCodeIndexPath((string) ($ticket['ticket_code'] ?? '')),
+                    $this->buildTicketCodeIndexPayload($ticket),
+                    false,
+                );
+                $writes[] = $this->restApi->makeSetWrite(
+                    $this->ticketEntryCodeIndexPath((string) ($ticket['entry_code'] ?? '')),
+                    $this->buildTicketEntryCodeIndexPayload($ticket),
+                    false,
+                );
+
+                if (($previousTicket['ticket_code'] ?? null) !== ($ticket['ticket_code'] ?? null)) {
+                    $writes[] = $this->restApi->makeDeleteWrite(
+                        $this->ticketCodeIndexPath((string) ($previousTicket['ticket_code'] ?? '')),
+                    );
+                }
+
+                if (($previousTicket['entry_code'] ?? null) !== ($ticket['entry_code'] ?? null)) {
+                    $writes[] = $this->restApi->makeDeleteWrite(
+                        $this->ticketEntryCodeIndexPath((string) ($previousTicket['entry_code'] ?? '')),
+                    );
+                }
+
+                foreach ($this->attendanceResetPaths($previousTicket) as $attendancePath) {
+                    $writes[] = $this->restApi->makeDeleteWrite($attendancePath);
+                }
             }
 
             $writes[] = $this->restApi->makeSetWrite(
@@ -722,8 +864,41 @@ class AdminFirestoreRepository
                 $user['ticket_id'] = $ticket['ticket_id'];
                 $user['updated_at'] = now()->toISOString();
                 $transaction->set($userReference, $this->timestamps->prepareForStorage($user));
+                $transaction->set(
+                    $this->documentReference($client, $this->ticketCodeIndexPath((string) ($ticket['ticket_code'] ?? ''))),
+                    $this->buildTicketCodeIndexPayload($ticket),
+                );
+                $transaction->set(
+                    $this->documentReference($client, $this->ticketEntryCodeIndexPath((string) ($ticket['entry_code'] ?? ''))),
+                    $this->buildTicketEntryCodeIndexPayload($ticket),
+                );
             } else {
+                $previousTicket = $ticket;
                 $ticket = $this->ticketQrCodeService->regenerateTicketAttributes($ticket);
+                $transaction->set(
+                    $this->documentReference($client, $this->ticketCodeIndexPath((string) ($ticket['ticket_code'] ?? ''))),
+                    $this->buildTicketCodeIndexPayload($ticket),
+                );
+                $transaction->set(
+                    $this->documentReference($client, $this->ticketEntryCodeIndexPath((string) ($ticket['entry_code'] ?? ''))),
+                    $this->buildTicketEntryCodeIndexPayload($ticket),
+                );
+
+                if (($previousTicket['ticket_code'] ?? null) !== ($ticket['ticket_code'] ?? null)) {
+                    $transaction->delete(
+                        $this->documentReference($client, $this->ticketCodeIndexPath((string) ($previousTicket['ticket_code'] ?? '')))
+                    );
+                }
+
+                if (($previousTicket['entry_code'] ?? null) !== ($ticket['entry_code'] ?? null)) {
+                    $transaction->delete(
+                        $this->documentReference($client, $this->ticketEntryCodeIndexPath((string) ($previousTicket['entry_code'] ?? '')))
+                    );
+                }
+
+                foreach ($this->attendanceResetPaths($previousTicket) as $attendancePath) {
+                    $transaction->delete($this->documentReference($client, $attendancePath));
+                }
             }
 
             $transaction->set($ticketReference, $this->timestamps->prepareForStorage($ticket));
@@ -731,6 +906,171 @@ class AdminFirestoreRepository
             return [
                 'user' => $user,
                 'ticket' => $ticket,
+            ];
+        });
+    }
+
+    private function recordScannerAttendanceUsingRest(array $ticket, array $user, array $entry): array
+    {
+        $this->ensureMutationAvailable();
+
+        $transaction = $this->restApi->beginTransaction();
+        $committed = false;
+
+        try {
+            $ticketId = (string) ($ticket['ticket_id'] ?? '');
+            $scanLog = $this->buildScanLogPayload($entry);
+            $ticketPath = $this->ticketPath($ticketId);
+            $documents = $this->restApi->batchGet([
+                $ticketPath,
+                $this->attendanceDailyPath($ticketId, (string) $scanLog['scan_date']),
+            ], $transaction);
+            $ticketDocument = $documents[$ticketPath] ?? null;
+
+            if ($ticketDocument === null) {
+                throw new RuntimeException('Ticket not found.');
+            }
+
+            $storedTicket = $this->timestamps->normalizeFromStorage($this->restApi->decodeDocument($ticketDocument));
+            $scanLog = $this->buildScanLogPayload(array_merge($scanLog, [
+                'ticket_id' => $ticketId,
+                'ticket_code' => (string) ($storedTicket['ticket_code'] ?? $ticket['ticket_code'] ?? ''),
+                'user_id' => (string) ($user['user_id'] ?? $ticket['user_id'] ?? ''),
+                'entry_code_display' => (string) ($storedTicket['entry_code_display'] ?? $ticket['entry_code_display'] ?? ''),
+            ]));
+            $attendancePath = $this->attendanceDailyPath($ticketId, (string) $scanLog['scan_date']);
+            $attendanceDocument = $documents[$attendancePath] ?? null;
+            $result = $attendanceDocument === null ? 'success' : 'duplicate';
+            $writes = [];
+
+            if ($result === 'success') {
+                $storedTicket['attendance_status'] = 'checked_in';
+                $storedTicket['checked_in_at'] = $storedTicket['checked_in_at'] ?? $scanLog['scanned_at'];
+            }
+
+            $storedTicket['last_scanned_at'] = $scanLog['scanned_at'];
+            $storedTicket['updated_at'] = $scanLog['scanned_at'];
+            $scanLog['result'] = $result;
+
+            $writes[] = $this->restApi->makeSetWrite(
+                $ticketPath,
+                $this->timestamps->prepareForStorage($storedTicket),
+                true,
+            );
+
+            if ($result === 'success') {
+                $writes[] = $this->restApi->makeSetWrite(
+                    $attendancePath,
+                    $this->timestamps->prepareForStorage([
+                        'attendance_id' => hash('sha256', $ticketId.':'.$scanLog['scan_date']),
+                        'ticket_id' => $ticketId,
+                        'ticket_code' => (string) $scanLog['ticket_code'],
+                        'user_id' => (string) $scanLog['user_id'],
+                        'scan_date' => (string) $scanLog['scan_date'],
+                        'scanner_id' => (string) $scanLog['scanner_id'],
+                        'scanner_name' => (string) $scanLog['scanner_name'],
+                        'scanner_role' => (string) $scanLog['scanner_role'],
+                        'operator_admin_id' => (string) ($scanLog['operator_admin_id'] ?? ''),
+                        'operator_email' => (string) ($scanLog['operator_email'] ?? ''),
+                        'scan_mode' => (string) ($scanLog['scan_mode'] ?? 'qr'),
+                        'first_scanned_at' => (string) $scanLog['scanned_at'],
+                        'created_at' => (string) $scanLog['scanned_at'],
+                        'updated_at' => (string) $scanLog['scanned_at'],
+                    ]),
+                    false,
+                );
+            }
+
+            $writes[] = $this->restApi->makeSetWrite(
+                $this->scanLogPath((string) $scanLog['scan_id']),
+                $this->timestamps->prepareForStorage($scanLog),
+                false,
+            );
+
+            $this->restApi->commit($writes, $transaction);
+            $committed = true;
+            $this->flushAdminUserManagementCacheOnSuccessfulAttendance($result);
+
+            return [
+                'result' => $result,
+                'ticket' => $storedTicket,
+                'user' => $user,
+                'log' => $scanLog,
+            ];
+        } finally {
+            if (! $committed) {
+                $this->restApi->rollbackQuietly($transaction);
+            }
+        }
+    }
+
+    private function recordScannerAttendanceUsingGrpc(array $ticket, array $user, array $entry): array
+    {
+        $client = $this->client();
+        $ticketId = (string) ($ticket['ticket_id'] ?? '');
+        $baseScanLog = $this->buildScanLogPayload($entry);
+
+        return $client->runTransaction(function (Transaction $transaction) use ($baseScanLog, $client, $ticketId, $ticket, $user) {
+            $ticketReference = $this->documentReference($client, $this->ticketPath($ticketId));
+            $ticketSnapshot = $transaction->snapshot($ticketReference);
+
+            if (! $ticketSnapshot->exists()) {
+                throw new RuntimeException('Ticket not found.');
+            }
+
+            $storedTicket = $this->timestamps->normalizeFromStorage($ticketSnapshot->data());
+            $scanLog = $this->buildScanLogPayload(array_merge($baseScanLog, [
+                'ticket_id' => $ticketId,
+                'ticket_code' => (string) ($storedTicket['ticket_code'] ?? $ticket['ticket_code'] ?? ''),
+                'user_id' => (string) ($user['user_id'] ?? $ticket['user_id'] ?? ''),
+                'entry_code_display' => (string) ($storedTicket['entry_code_display'] ?? $ticket['entry_code_display'] ?? ''),
+            ]));
+            $attendanceReference = $this->documentReference($client, $this->attendanceDailyPath($ticketId, (string) $scanLog['scan_date']));
+            $attendanceSnapshot = $transaction->snapshot($attendanceReference);
+            $result = $attendanceSnapshot->exists() ? 'duplicate' : 'success';
+
+            if ($result === 'success') {
+                $storedTicket['attendance_status'] = 'checked_in';
+                $storedTicket['checked_in_at'] = $storedTicket['checked_in_at'] ?? $scanLog['scanned_at'];
+            }
+
+            $storedTicket['last_scanned_at'] = $scanLog['scanned_at'];
+            $storedTicket['updated_at'] = $scanLog['scanned_at'];
+            $scanLog['result'] = $result;
+
+            $transaction->set($ticketReference, $this->timestamps->prepareForStorage($storedTicket));
+
+            if ($result === 'success') {
+                $transaction->set($attendanceReference, $this->timestamps->prepareForStorage([
+                    'attendance_id' => hash('sha256', $ticketId.':'.$scanLog['scan_date']),
+                    'ticket_id' => $ticketId,
+                    'ticket_code' => (string) $scanLog['ticket_code'],
+                    'user_id' => (string) $scanLog['user_id'],
+                    'scan_date' => (string) $scanLog['scan_date'],
+                    'scanner_id' => (string) $scanLog['scanner_id'],
+                    'scanner_name' => (string) $scanLog['scanner_name'],
+                    'scanner_role' => (string) $scanLog['scanner_role'],
+                    'operator_admin_id' => (string) ($scanLog['operator_admin_id'] ?? ''),
+                    'operator_email' => (string) ($scanLog['operator_email'] ?? ''),
+                    'scan_mode' => (string) ($scanLog['scan_mode'] ?? 'qr'),
+                    'first_scanned_at' => (string) $scanLog['scanned_at'],
+                    'created_at' => (string) $scanLog['scanned_at'],
+                    'updated_at' => (string) $scanLog['scanned_at'],
+                ]));
+            }
+
+            $transaction->set(
+                $this->documentReference($client, $this->scanLogPath((string) $scanLog['scan_id'])),
+                $this->timestamps->prepareForStorage($scanLog),
+            );
+
+            $this->flushAdminUserManagementCacheOnSuccessfulAttendance($result);
+
+            return [
+                'result' => $result,
+                'ticket' => $storedTicket,
+                'user' => $user,
+                'log' => $scanLog,
             ];
         });
     }
@@ -926,6 +1266,15 @@ class AdminFirestoreRepository
         }
 
         return (int) $query->count();
+    }
+
+    private function flushAdminUserManagementCacheOnSuccessfulAttendance(string $result): void
+    {
+        if ($result !== 'success') {
+            return;
+        }
+
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
     }
 
     private function buildStructuredQuery(
@@ -1183,6 +1532,72 @@ class AdminFirestoreRepository
         ])));
     }
 
+    private function buildTicketCodeIndexPayload(array $ticket): array
+    {
+        return [
+            'ticket_id' => (string) ($ticket['ticket_id'] ?? ''),
+            'user_id' => (string) ($ticket['user_id'] ?? ''),
+            'ticket_code' => strtoupper(trim((string) ($ticket['ticket_code'] ?? ''))),
+            'entry_code' => strtoupper(trim((string) ($ticket['entry_code'] ?? ''))),
+            'entry_code_display' => (string) ($ticket['entry_code_display'] ?? ''),
+            'created_at' => $ticket['created_at'] ?? now()->toISOString(),
+            'updated_at' => $ticket['updated_at'] ?? now()->toISOString(),
+        ];
+    }
+
+    private function buildTicketEntryCodeIndexPayload(array $ticket): array
+    {
+        return [
+            'ticket_id' => (string) ($ticket['ticket_id'] ?? ''),
+            'user_id' => (string) ($ticket['user_id'] ?? ''),
+            'ticket_code' => strtoupper(trim((string) ($ticket['ticket_code'] ?? ''))),
+            'entry_code' => strtoupper(trim((string) ($ticket['entry_code'] ?? ''))),
+            'entry_code_display' => (string) ($ticket['entry_code_display'] ?? ''),
+            'created_at' => $ticket['created_at'] ?? now()->toISOString(),
+            'updated_at' => $ticket['updated_at'] ?? now()->toISOString(),
+        ];
+    }
+
+    private function buildScanLogPayload(array $entry): array
+    {
+        $scannedAt = (string) ($entry['scanned_at'] ?? now()->toISOString());
+        $scanDate = trim((string) ($entry['scan_date'] ?? ''));
+
+        if ($scanDate === '') {
+            try {
+                $scanDate = \Carbon\CarbonImmutable::parse($scannedAt)
+                    ->setTimezone(config('app.timezone'))
+                    ->toDateString();
+            } catch (\Throwable) {
+                $scanDate = now()->toDateString();
+            }
+        }
+
+        return array_merge([
+            'scan_id' => (string) Str::ulid(),
+            'ticket_id' => null,
+            'ticket_code' => null,
+            'user_id' => null,
+            'scanner_id' => null,
+            'scanner_name' => null,
+            'scanner_role' => 'staff',
+            'operator_admin_id' => null,
+            'operator_email' => null,
+            'scan_mode' => 'qr',
+            'result' => 'invalid',
+            'entry_code_display' => null,
+            'raw_payload' => null,
+            'ip_address' => null,
+            'created_at' => $scannedAt,
+            'updated_at' => $scannedAt,
+        ], $entry, [
+            'scan_date' => $scanDate,
+            'scanned_at' => $scannedAt,
+            'ticket_code' => filled($entry['ticket_code'] ?? null) ? strtoupper(trim((string) $entry['ticket_code'])) : null,
+            'entry_code_display' => filled($entry['entry_code_display'] ?? null) ? strtoupper(trim((string) $entry['entry_code_display'])) : null,
+        ]);
+    }
+
     private function snapshotDataOrNull(mixed $snapshot): ?array
     {
         if ($snapshot === null || ! method_exists($snapshot, 'exists') || ! $snapshot->exists()) {
@@ -1244,6 +1659,16 @@ class AdminFirestoreRepository
         return (string) config('firebase.tickets_collection', 'tickets');
     }
 
+    private function ticketCodeIndexCollection(): string
+    {
+        return (string) config('firebase.ticket_code_index_collection', 'ticket_code_index');
+    }
+
+    private function ticketEntryCodeIndexCollection(): string
+    {
+        return (string) config('firebase.ticket_entry_code_index_collection', 'ticket_entry_code_index');
+    }
+
     private function emailIndexCollection(): string
     {
         return (string) config('firebase.user_email_index_collection', 'user_email_index');
@@ -1259,6 +1684,11 @@ class AdminFirestoreRepository
         return (string) config('firebase.scan_logs_collection', 'scan_logs');
     }
 
+    private function attendanceDailyCollection(): string
+    {
+        return (string) config('firebase.attendance_daily_collection', 'attendance_daily');
+    }
+
     private function adminActivityLogsCollection(): string
     {
         return (string) config('firebase.admin_activity_logs_collection', 'admin_activity_logs');
@@ -1272,6 +1702,69 @@ class AdminFirestoreRepository
     private function ticketPath(string $ticketId): string
     {
         return $this->ticketsCollection().'/'.$ticketId;
+    }
+
+    private function ticketCodeIndexPath(string $ticketCode): string
+    {
+        return $this->ticketCodeIndexCollection().'/'.hash('sha256', strtoupper(trim($ticketCode)));
+    }
+
+    private function ticketEntryCodeIndexPath(string $entryCode): string
+    {
+        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/', '', $entryCode) ?? '');
+
+        return $this->ticketEntryCodeIndexCollection().'/'.hash('sha256', $normalized);
+    }
+
+    private function attendanceDailyPath(string $ticketId, string $scanDate): string
+    {
+        return $this->attendanceDailyCollection().'/'.hash('sha256', $scanDate.':'.$ticketId);
+    }
+
+    private function attendanceResetPaths(array $ticket): array
+    {
+        $ticketId = trim((string) ($ticket['ticket_id'] ?? ''));
+
+        if ($ticketId === '') {
+            return [];
+        }
+
+        $dates = [$this->currentScannerDate()];
+        $lastScannedDate = $this->scanDateFromTimestamp($ticket['last_scanned_at'] ?? null);
+
+        if ($lastScannedDate !== null) {
+            $dates[] = $lastScannedDate;
+        }
+
+        return array_map(
+            fn (string $scanDate): string => $this->attendanceDailyPath($ticketId, $scanDate),
+            array_values(array_unique(array_filter($dates))),
+        );
+    }
+
+    private function currentScannerDate(): string
+    {
+        return now()->setTimezone((string) config('app.timezone', 'UTC'))->toDateString();
+    }
+
+    private function scanDateFromTimestamp(mixed $timestamp): ?string
+    {
+        if (! is_string($timestamp) || trim($timestamp) === '') {
+            return null;
+        }
+
+        try {
+            return \Carbon\CarbonImmutable::parse($timestamp)
+                ->setTimezone((string) config('app.timezone', 'UTC'))
+                ->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function scanLogPath(string $scanId): string
+    {
+        return $this->scanLogsCollection().'/'.$scanId;
     }
 
     private function adminActivityLogPath(string $logId): string

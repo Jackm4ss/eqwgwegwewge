@@ -1,24 +1,6 @@
 import type { CSSProperties } from "react";
 import { motion } from "motion/react";
 import {
-  Activity,
-  AlertTriangle,
-  ArrowUp,
-  Briefcase,
-  Crosshair,
-  Droplet,
-  Droplets,
-  Hand,
-  Mic,
-  Mountain,
-  Pill,
-  ShoppingCart,
-  Users,
-  Utensils,
-  UtensilsCrossed,
-  Wine,
-} from "lucide-react";
-import {
   PANEL_BACKGROUND,
   PANEL_BACKGROUND_SIZE,
   PANEL_BORDER,
@@ -26,23 +8,48 @@ import {
 
 const SG: CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
 
+const iconPath = (fileName: string) =>
+  `/images/icons/${encodeURIComponent(fileName)}`;
+
 const PROHIBITED_ITEMS = [
-  { label: "Trolley", icon: ShoppingCart },
-  { label: "Outside Tables & Chairs", icon: Briefcase },
-  { label: "Outside Foods & Drinks", icon: Utensils },
-  { label: "Drugs", icon: Pill },
-  { label: "Weapon", icon: Crosshair },
-  { label: "Glassware or Dangerous Item Into Wet Zone", icon: Wine },
-  { label: "Running", icon: Activity },
-  { label: "Pushing & Rough Play", icon: Users },
-  { label: "Climbing on Booth, Structures & Stage", icon: Mountain },
-  { label: "Water Play in Dry Zone", icon: Droplets },
-  { label: "Water Throwing at Performers, Crew, Stage Equipment", icon: Mic },
-  { label: "Water Soaker Refilling at Vendor's Washing Area", icon: Droplet },
-  { label: "Spraying People While Eating", icon: UtensilsCrossed },
-  { label: "Standing On Chair or Table", icon: ArrowUp },
-  { label: "Entering Restricted Area", icon: AlertTriangle },
-  { label: "Sexual Harassment", icon: Hand },
+  { label: "Trolley", fileName: "Trolley.png" },
+  { label: "Outside Tables & Chairs", fileName: "Outside Tables & Chairs.png" },
+  { label: "Outside Foods & Drinks", fileName: "Outside Foods &Drinks.png" },
+  { label: "Drugs", fileName: "Drugs.png" },
+  { label: "Weapon", fileName: "Weapon.png" },
+  {
+    label: "Glassware or Dangerous Item Into Wet Zone",
+    fileName: "Glassware or Dangerous Item Into Wet Zone.png",
+  },
+  { label: "Running", fileName: "Running.png" },
+  { label: "Don't Be Aggressive", fileName: "Don_t Be Agressive.png" },
+  { label: "Pushing & Rough Play", fileName: "Pushing & Rough Play.png" },
+  {
+    label: "Climbing on Booth, Structures & Stage",
+    fileName: "Climbing on Booth, Structures & Stage.png",
+  },
+  { label: "Water Play in Dry Zone", fileName: "Water Play in Dry Zone.png" },
+  {
+    label: "Water Throwing at Performers, Crew, Stage Equipment",
+    fileName: "Water Throwing at Perfomers, Crew, Stage Equipment.png",
+  },
+  {
+    label: "Water Soaker Refilling at Vendor's Washing Area",
+    fileName: "Water Soaker Refilling at Vendor_s Washing Area.png",
+  },
+  {
+    label: "Spraying People While Eating",
+    fileName: "Spraying People While Eating.png",
+  },
+  {
+    label: "Standing On Chair or Table",
+    fileName: "Standing On Chair or Table.png",
+  },
+  {
+    label: "Entering Restricted Area",
+    fileName: "Entering Restricted Area.png",
+  },
+  { label: "Sexual Harassment", fileName: "Sexual Harrassment.png" },
 ] as const;
 
 export function DontsSection() {
@@ -96,8 +103,6 @@ export function DontsSection() {
 
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6">
             {PROHIBITED_ITEMS.map((item, idx) => {
-              const Icon = item.icon;
-
               return (
                 <motion.div
                   key={item.label}
@@ -108,12 +113,13 @@ export function DontsSection() {
                   className="group flex h-full flex-col items-center rounded-[28px] border border-white/30 bg-white/[0.28] px-3 py-5 text-center transition-all duration-300 hover:-translate-y-1 hover:border-[#ff3344]/35 hover:bg-white/[0.38] md:px-4 md:py-6"
                   style={{ boxShadow: "0 10px 28px rgba(0,0,0,0.10)" }}
                 >
-                  <div className="relative mb-4 flex h-[88px] w-[88px] flex-shrink-0 items-center justify-center rounded-full border-[3px] border-[#E60012] bg-[#030305] shadow-[0_4px_15px_rgba(0,0,0,0.3)] transition-colors duration-300 group-hover:bg-[#E60012]/10 md:h-[100px] md:w-[100px]">
-                    <div className="absolute z-20 h-[3.5px] w-[138%] rotate-[-45deg] bg-[#E60012] transition-transform duration-300 group-hover:scale-105" />
-                    <Icon
-                      size={40}
-                      strokeWidth={1.2}
-                      className="z-10 text-[#EDE8DC] transition-all duration-300 group-hover:scale-110 group-hover:text-white md:h-[44px] md:w-[44px]"
+                  <div className="mb-4 flex h-[88px] w-[88px] flex-shrink-0 items-center justify-center transition-transform duration-300 group-hover:scale-105 md:h-[100px] md:w-[100px]">
+                    <img
+                      src={iconPath(item.fileName)}
+                      alt=""
+                      aria-hidden="true"
+                      className="h-full w-full object-contain drop-shadow-[0_6px_16px_rgba(0,0,0,0.14)]"
+                      loading="lazy"
                     />
                   </div>
 

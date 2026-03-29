@@ -4,11 +4,13 @@ export function SpotlightCard({
   children, 
   spotlightColor = "rgba(255, 255, 255, 0.25)",
   className = "",
+  contentClassName = "",
   style = {}
 }: { 
   children: React.ReactNode; 
   spotlightColor?: string;
   className?: string;
+  contentClassName?: string;
   style?: React.CSSProperties;
 }) {
   const divRef = useRef<HTMLDivElement>(null);
@@ -51,7 +53,7 @@ export function SpotlightCard({
           background: `radial-gradient(400px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 40%)`,
         }}
       />
-      <div className="relative z-10 w-full flex flex-col justify-center flex-1">
+      <div className={`relative z-10 w-full flex flex-1 flex-col justify-center ${contentClassName}`}>
         {children}
       </div>
     </div>

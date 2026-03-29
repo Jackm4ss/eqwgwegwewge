@@ -1,3 +1,5 @@
+{{-- QR refresh emails temporarily render through emails.participant-qr-refresh.
+    This legacy shared layout stays here as the fallback while the refreshed design awaits final approval. --}}
 @php
     $isQrRefresh = $updateType === 'qr_regenerated';
     $isDeletion = $updateType === 'participant_deleted';

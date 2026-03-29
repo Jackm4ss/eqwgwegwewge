@@ -8,6 +8,9 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExportController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Staff\Auth\AuthenticatedStaffSessionController;
+use App\Http\Controllers\Staff\StaffScannerController;
+use App\Http\Controllers\Staff\StaffScannerSessionController;
 use App\Http\Controllers\Api\Auth\ForgotPasswordController;
 use App\Http\Controllers\Api\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\EmailVerificationController;
@@ -23,6 +26,12 @@ Route::get('/', function () {
 
 Route::get('/login', function () {
     if (Auth::guard('admin')->check()) {
+        $admin = Auth::guard('admin')->user();
+
+        if (($admin?->role ?? null) === 'scanner') {
+            return redirect('/'.trim((string) config('scanner.path', 'staff'), '/'));
+        }
+
         return redirect()->route('admin.dashboard');
     }
 
@@ -36,6 +45,38 @@ Route::get('/register', function () {
 Route::get('/forgot-qr', function () {
     return view('welcome');
 })->name('forgot-qr.form');
+
+$staffPath = config('scanner.path', 'staff');
+
+Route::get('/'.$staffPath.'/login', function () use ($staffPath) {
+    if (Auth::guard('admin')->check()) {
+        $admin = Auth::guard('admin')->user();
+
+        if (($admin?->role ?? null) === 'scanner') {
+            return redirect('/'.$staffPath);
+        }
+
+        return redirect()->route('admin.dashboard');
+    }
+
+    return view('welcome');
+})->name('staff.login');
+
+Route::get('/'.$staffPath, function () use ($staffPath) {
+    if (! Auth::guard('admin')->check()) {
+        return redirect('/'.$staffPath.'/login');
+    }
+
+    if (Auth::guard('admin')->check()) {
+        $admin = Auth::guard('admin')->user();
+
+        if (($admin?->role ?? null) === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+    }
+
+    return view('welcome');
+})->name('staff.home');
 
 Route::post('/register', function (RegisterRequest $request, RegistrationService $service) {
     try {
@@ -92,7 +133,7 @@ Route::prefix($adminPath)
                 ->name('login.store');
         });
 
-        Route::middleware('auth:admin')->group(function () {
+        Route::middleware(['auth:admin', 'admin.role:admin'])->group(function () {
             Route::get('/', function () {
                 return redirect()->route('admin.dashboard');
             })->name('home');
@@ -129,6 +170,42 @@ Route::prefix($adminPath)
                 ->whereIn('type', ['users', 'attendance', 'admin-logs', 'daily-report', 'overall-report'])
                 ->whereIn('format', ['csv', 'xlsx'])
                 ->name('exports.download');
+        });
+    });
+
+Route::prefix($staffPath)
+    ->name('staff.')
+    ->group(function () use ($staffPath) {
+        Route::middleware('guest:admin')->group(function () {
+            Route::post('/login', [AuthenticatedStaffSessionController::class, 'store'])
+                ->middleware('throttle:admin-login')
+                ->name('login.store');
+        });
+
+        Route::middleware(['auth:admin', 'admin.role:scanner'])->group(function () use ($staffPath) {
+            Route::post('/logout', [AuthenticatedStaffSessionController::class, 'destroy'])
+                ->name('logout');
+
+            Route::get('/session', [StaffScannerSessionController::class, 'show'])
+                ->name('session.show');
+
+            Route::post('/session/scanner-post', [StaffScannerSessionController::class, 'updatePost'])
+                ->name('session.scanner-post');
+
+            Route::post('/scan', [StaffScannerController::class, 'scan'])
+                ->name('scan');
+
+            Route::post('/manual-lookup', [StaffScannerController::class, 'manualLookup'])
+                ->name('manual-lookup');
+
+            Route::post('/manual-confirm', [StaffScannerController::class, 'manualConfirm'])
+                ->name('manual-confirm');
+
+            Route::get('/history', [StaffScannerController::class, 'history'])
+                ->name('history');
+
+            Route::get('/stats', [StaffScannerController::class, 'stats'])
+                ->name('stats');
         });
     });
 

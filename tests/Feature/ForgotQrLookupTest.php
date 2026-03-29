@@ -57,8 +57,10 @@ class ForgotQrLookupTest extends TestCase
                     'account_status' => 'active',
                     'verification_status' => 'verified',
                     'ticket_code' => $ticket['ticket_code'],
+                    'entry_code_display' => $ticket['entry_code_display'],
                 ],
                 'ticket_code' => $ticket['ticket_code'],
+                'entry_code_display' => $ticket['entry_code_display'],
             ])
             ->assertJsonPath('ticket_url', app(TicketQrCodeService::class)->signedTicketUrl($ticket['ticket_id']));
     }

@@ -5,6 +5,7 @@
         $fullName = trim((string) ($user['full_name'] ?? 'Guest'));
         $identityNumber = trim((string) ($user['identity_number'] ?? ''));
         $identityDisplay = $identityNumber !== '' ? $identityNumber : '-';
+        $entryCodeDisplay = trim((string) ($ticket['entry_code_display'] ?? ''));
 
         $backgroundUrl = asset('images/BACKGROUND.jpg');
         $logoUrl = asset('images/Songkran logo.png');
@@ -110,14 +111,16 @@
 
         .qr-card {
             background-color: #ffffff;
-            width: 180px;
-            height: 180px;
+            width: min(280px, calc(100% - 32px));
             margin: 25px auto 0;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 14px;
+            padding: 14px 14px 18px;
             overflow: hidden;
         }
 
@@ -125,6 +128,13 @@
             display: block;
             width: 160px;
             height: 160px;
+            flex-shrink: 0;
+        }
+
+        .qr-card .entry-code-card {
+            width: 100%;
+            min-width: 0;
+            margin: 0;
         }
 
         .glass-card {
@@ -176,6 +186,49 @@
             letter-spacing: 0.04em;
             text-transform: uppercase;
             text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
+        }
+
+        .entry-code-card {
+            margin: 18px auto 0;
+            display: inline-flex;
+            min-width: 210px;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 18px 22px;
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.52);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.48));
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow:
+                0 10px 28px rgba(15, 23, 42, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.72);
+            color: #000000;
+        }
+
+        .entry-code-label {
+            font-size: 0.65rem;
+            font-weight: 800;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: rgba(15, 23, 42, 0.68);
+        }
+
+        .entry-code-value {
+            font-size: 1.08rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            color: #0f172a;
+        }
+
+        .entry-code-help {
+            margin-top: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            line-height: 1.45;
+            color: rgba(15, 23, 42, 0.72);
+            max-width: 220px;
         }
 
         .msg-title {
@@ -380,6 +433,14 @@
 
                 <div id="qrcode-container" class="qr-card">
                     {!! $qrSvg !!}
+                    @if ($entryCodeDisplay !== '')
+                        <div class="glass-card entry-code-card">
+                            <div class="entry-code-label">Entry Code</div>
+                            <div class="entry-code-value">{{ $entryCodeDisplay }}</div>
+                            <div class="entry-code-help">Use this code for manual lookup if your QR cannot be scanned at the gate.
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <div class="ticket-download-wrap">

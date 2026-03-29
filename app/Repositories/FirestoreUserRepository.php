@@ -192,11 +192,43 @@ class FirestoreUserRepository implements UserRepositoryInterface
 
             if (! $ticket) {
                 $ticket = $this->buildTicketPayload($user, $ticketData, $existingTicketId);
+                $ticketCodeIndexDocument = $this->ticketCodeIndexDocument($client, (string) ($ticket['ticket_code'] ?? ''));
+                $ticketEntryCodeIndexDocument = $this->ticketEntryCodeIndexDocument($client, (string) ($ticket['entry_code'] ?? ''));
                 $transaction->create(
                     $this->ticketDocument($client, (string) $ticket['ticket_id']),
                     $this->timestamps->prepareForStorage($ticket),
                 );
+                $transaction->create(
+                    $ticketCodeIndexDocument,
+                    $this->buildTicketCodeIndexPayload($ticket),
+                );
+                $transaction->create(
+                    $ticketEntryCodeIndexDocument,
+                    $this->buildTicketEntryCodeIndexPayload($ticket),
+                );
                 $ticketWasCreated = true;
+            } else {
+                $originalTicket = $ticket;
+                $ticket = $this->synchronizeExistingTicketPayload($ticket, $ticketData, $user, $existingTicketId);
+                $ticketCodeIndexDocument = $this->ticketCodeIndexDocument($client, (string) ($ticket['ticket_code'] ?? ''));
+                $ticketEntryCodeIndexDocument = $this->ticketEntryCodeIndexDocument($client, (string) ($ticket['entry_code'] ?? ''));
+
+                if ($this->ticketPayloadNeedsSync($originalTicket, $ticket)) {
+                    $transaction->set(
+                        $this->ticketDocument($client, (string) $ticket['ticket_id']),
+                        $this->timestamps->prepareForStorage($ticket),
+                        ['merge' => true],
+                    );
+                }
+
+                $transaction->set(
+                    $ticketCodeIndexDocument,
+                    $this->buildTicketCodeIndexPayload($ticket),
+                );
+                $transaction->set(
+                    $ticketEntryCodeIndexDocument,
+                    $this->buildTicketEntryCodeIndexPayload($ticket),
+                );
             }
 
             $verifiedAt = (string) ($user['email_verified_at'] ?? $ticket['activated_at']);
@@ -273,6 +305,20 @@ class FirestoreUserRepository implements UserRepositoryInterface
             ->document(hash('sha256', $email));
     }
 
+    private function ticketCodeIndexDocument(FirestoreClient $client, string $ticketCode): DocumentReference
+    {
+        return $client->collection((string) config('firebase.ticket_code_index_collection', 'ticket_code_index'))
+            ->document(hash('sha256', strtoupper(trim($ticketCode))));
+    }
+
+    private function ticketEntryCodeIndexDocument(FirestoreClient $client, string $entryCode): DocumentReference
+    {
+        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/', '', $entryCode) ?? '');
+
+        return $client->collection((string) config('firebase.ticket_entry_code_index_collection', 'ticket_entry_code_index'))
+            ->document(hash('sha256', $normalized));
+    }
+
     private function identityIndexDocument(
         FirestoreClient $client,
         string $identityType,
@@ -340,5 +386,121 @@ class FirestoreUserRepository implements UserRepositoryInterface
         $payload['updated_at'] = $ticketData['updated_at'] ?? now()->toISOString();
 
         return $payload;
+    }
+
+    private function buildTicketCodeIndexPayload(array $ticket): array
+    {
+        return [
+            'ticket_id' => (string) ($ticket['ticket_id'] ?? ''),
+            'user_id' => (string) ($ticket['user_id'] ?? ''),
+            'ticket_code' => strtoupper(trim((string) ($ticket['ticket_code'] ?? ''))),
+            'entry_code' => strtoupper(trim((string) ($ticket['entry_code'] ?? ''))),
+            'entry_code_display' => (string) ($ticket['entry_code_display'] ?? ''),
+            'created_at' => $ticket['created_at'] ?? now()->toISOString(),
+            'updated_at' => $ticket['updated_at'] ?? now()->toISOString(),
+        ];
+    }
+
+    private function synchronizeExistingTicketPayload(
+        array $ticket,
+        array $ticketData,
+        array $user,
+        string $existingTicketId,
+    ): array {
+        $ticketCode = strtoupper(trim((string) ($ticket['ticket_code'] ?? '')));
+        if ($ticketCode === '') {
+            $ticketCode = strtoupper(trim((string) ($ticketData['ticket_code'] ?? '')));
+        }
+
+        $entryCode = strtoupper(trim((string) ($ticket['entry_code'] ?? '')));
+        if ($entryCode === '') {
+            $entryCode = strtoupper(trim((string) ($ticketData['entry_code'] ?? '')));
+        }
+
+        $entryCodeDisplay = trim((string) ($ticket['entry_code_display'] ?? ''));
+        if ($entryCodeDisplay === '' && $entryCode !== '') {
+            $entryCodeDisplay = $this->formatEntryCodeDisplay($entryCode);
+        }
+
+        $attendanceStatus = strtolower(trim((string) ($ticket['attendance_status'] ?? '')));
+        if ($attendanceStatus === '') {
+            $attendanceStatus = filled($ticket['checked_in_at'] ?? null) || filled($ticket['last_scanned_at'] ?? null)
+                ? 'checked_in'
+                : 'not_checked_in';
+        }
+
+        $payload = array_merge($ticket, [
+            'ticket_id' => $existingTicketId !== '' ? $existingTicketId : (string) ($ticket['ticket_id'] ?? $ticketData['ticket_id'] ?? ''),
+            'user_id' => (string) ($ticket['user_id'] ?? $user['user_id'] ?? ''),
+            'event_code' => (string) ($ticket['event_code'] ?? $ticketData['event_code'] ?? config('event.code', 'SONGKRAN2026')),
+            'ticket_code' => $ticketCode,
+            'entry_code' => $entryCode,
+            'entry_code_display' => $entryCodeDisplay,
+            'status' => (string) ($ticket['status'] ?? $ticketData['status'] ?? 'active'),
+            'qr_version' => (string) ($ticket['qr_version'] ?? $ticketData['qr_version'] ?? 'v1'),
+            'activated_at' => (string) ($ticket['activated_at'] ?? $ticketData['activated_at'] ?? $user['email_verified_at'] ?? now()->toISOString()),
+            'created_at' => $ticket['created_at'] ?? $ticketData['created_at'] ?? now()->toISOString(),
+            'updated_at' => $ticket['updated_at'] ?? $ticketData['updated_at'] ?? now()->toISOString(),
+            'attendance_status' => $attendanceStatus,
+            'checked_in_at' => $ticket['checked_in_at'] ?? null,
+            'last_scanned_at' => $ticket['last_scanned_at'] ?? null,
+        ]);
+
+        if ($this->ticketPayloadNeedsSync($ticket, $payload)) {
+            $payload['updated_at'] = now()->toISOString();
+        }
+
+        return $payload;
+    }
+
+    private function ticketPayloadNeedsSync(array $existing, array $payload): bool
+    {
+        foreach ([
+            'ticket_id',
+            'user_id',
+            'event_code',
+            'ticket_code',
+            'entry_code',
+            'entry_code_display',
+            'status',
+            'qr_version',
+            'activated_at',
+            'created_at',
+            'attendance_status',
+            'checked_in_at',
+            'last_scanned_at',
+        ] as $field) {
+            if (($existing[$field] ?? null) !== ($payload[$field] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function formatEntryCodeDisplay(string $entryCode): string
+    {
+        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/', '', $entryCode) ?? '');
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        return substr($normalized, 0, 4).'-'.substr($normalized, 4, 4);
+    }
+
+    private function buildTicketEntryCodeIndexPayload(array $ticket): array
+    {
+        $entryCode = strtoupper(trim((string) ($ticket['entry_code'] ?? '')));
+
+        return [
+            'ticket_id' => (string) ($ticket['ticket_id'] ?? ''),
+            'user_id' => (string) ($ticket['user_id'] ?? ''),
+            'ticket_code' => strtoupper(trim((string) ($ticket['ticket_code'] ?? ''))),
+            'entry_code' => $entryCode,
+            'entry_code_display' => (string) ($ticket['entry_code_display'] ?? ''),
+            'created_at' => $ticket['created_at'] ?? now()->toISOString(),
+            'updated_at' => $ticket['updated_at'] ?? now()->toISOString(),
+        ];
     }
 }

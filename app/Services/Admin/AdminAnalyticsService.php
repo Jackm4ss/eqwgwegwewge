@@ -176,7 +176,7 @@ class AdminAnalyticsService
         [$eventStartDate, $eventEndDate, $eventTotalDays] = $this->eventWindow();
         $eventStart = $eventStartDate->toDateString();
         $eventEnd = $eventEndDate->toDateString();
-        $attendanceDaysByUser = [];
+        $successfulScanLogsByUser = [];
 
         foreach ($scanLogs as $scanLog) {
             if (strtolower((string) ($scanLog['result'] ?? 'success')) !== 'success') {
@@ -184,25 +184,49 @@ class AdminAnalyticsService
             }
 
             $userId = (string) ($scanLog['user_id'] ?? '');
-            $hasResolvableDate = trim((string) ($scanLog['scan_date'] ?? '')) !== ''
-                || trim((string) ($scanLog['scanned_at'] ?? '')) !== '';
 
-            if (! $hasResolvableDate) {
+            if ($userId === '') {
                 continue;
             }
 
-            $scanDate = $this->resolveScanDate($scanLog);
-
-            if ($userId === '' || $scanDate === '' || $scanDate < $eventStart || $scanDate > $eventEnd) {
-                continue;
-            }
-
-            $attendanceDaysByUser[$userId][$scanDate] = true;
+            $successfulScanLogsByUser[$userId][] = $scanLog;
         }
 
-        return array_map(function (array $row) use ($attendanceDaysByUser, $eventTotalDays) {
+        return array_map(function (array $row) use ($eventEnd, $eventStart, $eventTotalDays, $successfulScanLogsByUser) {
             $userId = (string) ($row['user_id'] ?? '');
-            $attendanceDays = array_keys($attendanceDaysByUser[$userId] ?? []);
+            $attendanceDaysWithinEvent = [];
+            $attendanceDaysFallback = [];
+
+            foreach ($successfulScanLogsByUser[$userId] ?? [] as $scanLog) {
+                if (! $this->scanLogMatchesAttendanceRow($scanLog, $row)) {
+                    continue;
+                }
+
+                $hasResolvableDate = trim((string) ($scanLog['scan_date'] ?? '')) !== ''
+                    || trim((string) ($scanLog['scanned_at'] ?? '')) !== '';
+
+                if (! $hasResolvableDate) {
+                    continue;
+                }
+
+                $scanDate = $this->resolveScanDate($scanLog);
+
+                if ($scanDate === '') {
+                    continue;
+                }
+
+                $attendanceDaysFallback[$scanDate] = true;
+
+                if ($scanDate >= $eventStart && $scanDate <= $eventEnd) {
+                    $attendanceDaysWithinEvent[$scanDate] = true;
+                }
+            }
+
+            $attendanceDays = array_keys(
+                $attendanceDaysWithinEvent !== []
+                    ? $attendanceDaysWithinEvent
+                    : $attendanceDaysFallback
+            );
             sort($attendanceDays);
             $attendanceCount = count($attendanceDays);
 
@@ -642,6 +666,31 @@ class AdminAnalyticsService
     private function resolveAttendanceKey(array $scanLog): string
     {
         return (string) ($scanLog['user_id'] ?? $scanLog['ticket_id'] ?? $scanLog['ticket_code'] ?? $scanLog['scan_id'] ?? '');
+    }
+
+    private function scanLogMatchesAttendanceRow(array $scanLog, array $row): bool
+    {
+        $rowUserId = (string) ($row['user_id'] ?? '');
+        $rowTicketId = (string) ($row['ticket_id'] ?? '');
+        $rowTicketCode = (string) ($row['ticket_code'] ?? '');
+
+        $scanUserId = (string) ($scanLog['user_id'] ?? '');
+        $scanTicketId = (string) ($scanLog['ticket_id'] ?? '');
+        $scanTicketCode = (string) ($scanLog['ticket_code'] ?? '');
+
+        if ($rowUserId === '' || $scanUserId !== $rowUserId) {
+            return false;
+        }
+
+        if ($rowTicketId !== '' && $scanTicketId !== '') {
+            return $rowTicketId === $scanTicketId;
+        }
+
+        if ($rowTicketCode !== '' && $scanTicketCode !== '') {
+            return $rowTicketCode === $scanTicketCode;
+        }
+
+        return $scanTicketId === '' && $scanTicketCode === '';
     }
 
     private function userSearchHaystack(array $row): string

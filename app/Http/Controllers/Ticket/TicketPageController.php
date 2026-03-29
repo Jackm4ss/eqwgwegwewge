@@ -74,14 +74,14 @@ class TicketPageController extends Controller
         $ticket = $users->findTicketById($ticketId);
         abort_if(! $ticket, 404);
 
-        $qrJpeg = $ticketQrCodeService->renderJpegBinary(
+        $downloadCard = $ticketQrCodeService->renderDownloadCardJpeg(
             $ticketQrCodeService->payloadForTicket($ticket),
-            320,
+            (string) ($ticket['entry_code_display'] ?? ''),
         );
 
         $filename = 'songkran-ticket-'.strtolower((string) ($ticket['ticket_code'] ?? $ticketId)).'.jpg';
 
-        return response($qrJpeg, 200, [
+        return response($downloadCard, 200, [
             'Content-Type' => 'image/jpeg',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);

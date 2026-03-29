@@ -15,7 +15,17 @@ import {
   UserRoundSearch,
 } from 'lucide-react';
 
-import { WaterAnimation } from './WaterAnimation';
+import {
+  AuthCardFrame,
+  AuthCardHeader,
+  AuthCodeBadge,
+  AuthInlineError,
+  AuthPageShell,
+  authInputClass,
+  authLockedFieldClass,
+  authPrimaryButtonClass,
+  authSelectClass,
+} from './AuthShared';
 import { Button } from '../ui/Button';
 import {
   Select,
@@ -52,6 +62,7 @@ type Participant = {
   account_status: string;
   verification_status: string;
   ticket_code: string;
+  entry_code_display: string;
 };
 
 type LookupResponse = {
@@ -173,6 +184,10 @@ function normalizePhoneNationalNumber(value: string) {
   return value.replace(/\D/g, '').replace(/^0+/, '');
 }
 
+function buildPhoneNumber(phoneCountryCode: string, phoneNationalNumber: string) {
+  return `${normalizePhoneCountryCode(phoneCountryCode)}${normalizePhoneNationalNumber(phoneNationalNumber)}`;
+}
+
 function isFormField(value: string): value is keyof FormData {
   return FORM_FIELDS.includes(value as keyof FormData);
 }
@@ -256,38 +271,6 @@ function ensureRecaptcha(siteKey: string) {
   });
 
   return recaptchaLoader;
-}
-
-function LotusIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 120" className={className} aria-hidden="true" fill="currentColor">
-      <ellipse cx="60" cy="90" rx="8" ry="5" opacity="0.9" />
-      <path d="M60 90 C60 90 38 68 38 46 C38 28 48 16 60 16 C72 16 82 28 82 46 C82 68 60 90 60 90Z" opacity="0.75" />
-      <path d="M60 90 C60 90 22 72 16 50 C12 32 22 18 34 20 C46 22 60 90 60 90Z" opacity="0.6" />
-      <path d="M60 90 C60 90 98 72 104 50 C108 32 98 18 86 20 C74 22 60 90 60 90Z" opacity="0.6" />
-      <path d="M60 90 C60 90 8 80 6 56 C4 36 16 22 28 26 C42 30 60 90 60 90Z" opacity="0.4" />
-      <path d="M60 90 C60 90 112 80 114 56 C116 36 104 22 92 26 C78 30 60 90 60 90Z" opacity="0.4" />
-    </svg>
-  );
-}
-
-function FieldError({ message }: { message?: string }) {
-  if (!message) {
-    return null;
-  }
-
-  return (
-    <motion.p
-      initial={{ opacity: 0, y: -4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
-      className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600"
-      role="alert"
-    >
-      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
-      {message}
-    </motion.p>
-  );
 }
 
 export function ForgotQrPage() {
@@ -488,40 +471,21 @@ export function ForgotQrPage() {
     }
   };
 
-  const inputBase =
-    'w-full rounded-xl border-2 bg-white px-4 py-3 text-slate-800 placeholder-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1';
   const inputClass = (field: keyof FormData, withIcon = true) =>
-    `${inputBase} ${withIcon ? 'pl-11' : ''} ${errors[field]
-      ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-      : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
-    }`;
+    authInputClass(Boolean(errors[field]), { withIcon });
   const selectClass = (field: keyof FormData) =>
-    `min-h-[50px] rounded-xl border-2 bg-white px-4 text-base font-medium text-slate-800 data-[size=default]:h-[50px] ${errors[field]
-      ? 'border-red-400 focus:border-red-500 focus:ring-red-300'
-      : 'border-sky-200 focus:border-sky-500 focus:ring-sky-300 hover:border-sky-300'
-    }`;
-  const lockedFieldClass =
-    'flex min-h-[50px] items-center justify-between rounded-xl border-2 border-sky-100 bg-slate-50 px-4 text-base font-medium text-slate-700 shadow-sm';
+    authSelectClass(Boolean(errors[field]));
+  const lockedFieldClass = authLockedFieldClass;
 
   return (
-    <div
-      className="relative min-h-screen overflow-x-hidden"
-      style={{ background: 'linear-gradient(145deg, #0C4A6E 0%, #0369A1 30%, #0284C7 60%, #0EA5E9 100%)' }}
-      onClick={(event) => addRippleRef.current?.(event.clientX, event.clientY)}
+    <AuthPageShell
+      skipHref="#forgot-qr-form"
+      skipLabel="Skip to forgot QR form"
+      onCanvasReady={(fn) => {
+        addRippleRef.current = fn;
+      }}
+      onPageClick={(event) => addRippleRef.current?.(event.clientX, event.clientY)}
     >
-      <a
-        href="#forgot-qr-form"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:font-semibold focus:text-sky-800 focus:shadow-lg"
-      >
-        Skip to forgot QR form
-      </a>
-      <WaterAnimation onCanvasReady={(fn) => { addRippleRef.current = fn; }} />
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true" style={{ zIndex: 1 }}>
-        <div className="absolute -right-32 -top-32 h-[500px] w-[500px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #BAE6FD, transparent)' }} />
-        <div className="absolute -bottom-40 -left-40 h-[600px] w-[600px] rounded-full opacity-10" style={{ background: 'radial-gradient(circle, #E0F2FE, transparent)' }} />
-        <div className="absolute right-4 top-4 h-64 w-64 text-sky-200 opacity-[0.08]"><LotusIcon className="h-full w-full" /></div>
-        <div className="absolute bottom-4 left-4 h-48 w-48 rotate-180 text-sky-200 opacity-[0.08]"><LotusIcon className="h-full w-full" /></div>
-      </div>
       <motion.main
         id="forgot-qr-form"
         initial={{ opacity: 0, y: 18 }}
@@ -531,28 +495,20 @@ export function ForgotQrPage() {
         style={{ zIndex: 2 }}
       >
         <div className="w-full max-w-[560px]">
-          <div className="overflow-hidden rounded-[2rem] border border-white/20" style={{ boxShadow: '0 30px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08)' }}>
-            <div className="relative overflow-hidden px-7 pb-6 pt-7" style={{ background: 'linear-gradient(135deg, #0369A1, #0284C7, #0EA5E9)' }}>
-              <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full border border-white/10" aria-hidden="true" />
-              <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full border border-white/10" aria-hidden="true" />
-              <div className="relative">
-                <div className="mb-5 flex items-center gap-4">
+          <AuthCardFrame>
+            <AuthCardHeader
+              eyebrow="Ticket Recovery"
+              title="Forgot QR"
+              description="Find your registration using the same data you used during signup, then jump straight to your ticket."
+              note="Manual lookup only. Search will run after you press the button below."
+              topSlot={(
+                <div className="flex items-center gap-4">
                   <div className="rounded-[1.35rem] border border-white/15 bg-white/10 px-4 py-3 shadow-[0_14px_45px_rgba(12,74,110,0.22)] backdrop-blur-sm">
                     <img src={SONGKRAN_LOGO_URL} alt="Songkran Festival 2026 logo" className="h-12 w-auto sm:h-14" />
                   </div>
-                  <div className="rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.28em] text-sky-50">
-                    Ticket Recovery
-                  </div>
                 </div>
-                <h1 className="text-3xl font-black tracking-tight text-white" style={{ fontFamily: '"Kanit", sans-serif' }}>Forgot QR</h1>
-                <p className="mt-1 text-sm text-sky-100">
-                  Find your registration using the same data you used during signup, then jump straight to your ticket.
-                </p>
-                <p className="mt-4 text-xs text-sky-50/90">
-                  Manual lookup only. Search will run after you press the button below.
-                </p>
-              </div>
-            </div>
+              )}
+            />
 
             <div className="bg-white">
               <form onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -618,7 +574,7 @@ export function ForgotQrPage() {
                               })}
                             />
                           </div>
-                          <AnimatePresence><FieldError message={errors.email?.message} /></AnimatePresence>
+                          <AnimatePresence><AuthInlineError message={errors.email?.message} /></AnimatePresence>
                         </div>
                       )}
 
@@ -688,8 +644,8 @@ export function ForgotQrPage() {
                           <p className="mt-1.5 text-[11px] text-slate-500">
                             Choose the country code first, then enter the exact mobile number used during registration.
                           </p>
-                          <AnimatePresence><FieldError message={errors.phone_country_code?.message} /></AnimatePresence>
-                          <AnimatePresence><FieldError message={errors.phone_national_number?.message} /></AnimatePresence>
+                          <AnimatePresence><AuthInlineError message={errors.phone_country_code?.message} /></AnimatePresence>
+                          <AnimatePresence><AuthInlineError message={errors.phone_national_number?.message} /></AnimatePresence>
                         </div>
                       )}
                       {(searchType === 'passport' || searchType === 'ic') && (
@@ -745,7 +701,7 @@ export function ForgotQrPage() {
                                 <Lock className="h-4 w-4 text-slate-400" aria-hidden="true" />
                               </div>
                             )}
-                            <AnimatePresence><FieldError message={errors.country?.message} /></AnimatePresence>
+                            <AnimatePresence><AuthInlineError message={errors.country?.message} /></AnimatePresence>
                           </div>
 
                           <div>
@@ -786,7 +742,7 @@ export function ForgotQrPage() {
                             <p className="mt-1.5 text-[11px] text-slate-500">
                               Exact match only. Make sure the document number is the same as your registration record.
                             </p>
-                            <AnimatePresence><FieldError message={errors.identity_number?.message} /></AnimatePresence>
+                            <AnimatePresence><AuthInlineError message={errors.identity_number?.message} /></AnimatePresence>
                           </div>
                         </>
                       )}
@@ -817,7 +773,7 @@ export function ForgotQrPage() {
                           <span>{isRecaptchaReady ? 'Protection ready. No checkbox is required.' : 'Preparing Google reCAPTCHA v3 background protection...'}</span>
                         </div>
                       )}
-                      <AnimatePresence><FieldError message={errors.recaptcha_token?.message} /></AnimatePresence>
+                      <AnimatePresence><AuthInlineError message={errors.recaptcha_token?.message} /></AnimatePresence>
                     </div>
                   )}
                 </div>
@@ -828,8 +784,7 @@ export function ForgotQrPage() {
                     disabled={isSubmitting}
                     whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
                     whileTap={{ scale: isSubmitting ? 1 : 0.97 }}
-                    className="flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold text-white transition-all disabled:cursor-not-allowed disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
-                    style={{ background: 'linear-gradient(135deg, #0284C7, #0EA5E9)', boxShadow: '0 4px 14px rgba(2,132,199,0.35)' }}
+                    className={authPrimaryButtonClass('rounded-xl px-6 py-2.5 text-sm font-semibold normal-case tracking-normal shadow-[0_4px_14px_rgba(2,132,199,0.35)] focus:ring-offset-1')}
                     aria-busy={isSubmitting}
                     aria-disabled={isSubmitting}
                   >
@@ -848,7 +803,7 @@ export function ForgotQrPage() {
                 </div>
               </form>
             </div>
-          </div>
+          </AuthCardFrame>
 
           <AnimatePresence>
             {notFoundMessage && (
@@ -881,6 +836,7 @@ export function ForgotQrPage() {
                   </div>
                 </div>
                 <div className="space-y-6 px-6 py-6">
+                  <AuthCodeBadge code={result.participant.entry_code_display} label="Fallback Entry Code" className="w-full sm:w-auto" />
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Email</p><p className="mt-2 break-words text-sm font-semibold text-slate-900">{result.participant.email || '-'}</p></div>
                     <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Phone Number</p><div className="mt-2 flex items-center gap-2"><Phone className="h-4 w-4 text-sky-500" aria-hidden="true" /><p className="break-words text-sm font-semibold text-slate-900">{result.participant.phone_number || buildPhoneNumber(result.participant.phone_country_code, result.participant.phone_national_number) || '-'}</p></div></div>
@@ -892,7 +848,7 @@ export function ForgotQrPage() {
                     <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] ${tone(result.participant.account_status)}`}>Account: {result.participant.account_status || 'unknown'}</span>
                     <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] ${tone(result.participant.verification_status)}`}>Verification: {result.participant.verification_status || 'unknown'}</span>
                   </div>
-                  <Button asChild size="lg" className="h-13 w-full rounded-2xl bg-gradient-to-r from-sky-600 to-cyan-500 text-base font-black uppercase tracking-[0.12em] text-white shadow-[0_16px_40px_rgba(14,165,233,0.28)] hover:from-sky-500 hover:to-cyan-400">
+                  <Button asChild size="lg" className={authPrimaryButtonClass('h-13 w-full text-base')}>
                     <a href={result.ticketUrl} target="_blank" rel="noreferrer"><QrCode className="h-5 w-5" aria-hidden="true" />Open My Ticket</a>
                   </Button>
                 </div>
@@ -901,6 +857,6 @@ export function ForgotQrPage() {
           </AnimatePresence>
         </div>
       </motion.main>
-    </div>
+    </AuthPageShell>
   );
 }

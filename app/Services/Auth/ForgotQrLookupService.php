@@ -78,9 +78,11 @@ class ForgotQrLookupService
                 'account_status' => (string) ($user['account_status'] ?? ''),
                 'verification_status' => (string) ($user['verification_status'] ?? ''),
                 'ticket_code' => (string) ($ticket['ticket_code'] ?? ''),
+                'entry_code_display' => (string) ($ticket['entry_code_display'] ?? ''),
             ],
             'ticket_url' => $this->ticketQrCodeService->signedTicketUrl((string) $ticket['ticket_id']),
             'ticket_code' => (string) ($ticket['ticket_code'] ?? ''),
+            'entry_code_display' => (string) ($ticket['entry_code_display'] ?? ''),
         ];
     }
 
@@ -88,7 +90,7 @@ class ForgotQrLookupService
     {
         return [
             'found' => false,
-            'message' => 'Participant data was not found.',
+            'message' => 'Data peserta tidak ditemukan.',
         ];
     }
 

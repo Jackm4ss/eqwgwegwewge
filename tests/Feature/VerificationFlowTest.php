@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Contracts\UserRepositoryInterface;
 use App\Mail\TicketReadyMail;
-use App\Mail\VerifyRegistrationMail;
 use App\Services\Tickets\TicketQrCodeService;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Mail;
@@ -56,8 +55,10 @@ class VerificationFlowTest extends TestCase
         $this->assertSame('active', $ticket['status']);
         $this->assertCount(1, $this->repository->tickets);
 
-        Mail::assertSent(VerifyRegistrationMail::class, 1);
-        Mail::assertSent(TicketReadyMail::class, function (TicketReadyMail $mail) use ($user) {
+        Mail::assertSent(TicketReadyMail::class, function (TicketReadyMail $mail) use ($user, $ticket) {
+            $mail->assertSeeInHtml('Fallback Entry Code');
+            $mail->assertSeeInHtml($ticket['entry_code_display']);
+
             return $mail->hasTo($user['email']);
         });
     }
@@ -130,8 +131,11 @@ class VerificationFlowTest extends TestCase
 
         $this->get($signedTicketUrl)
             ->assertOk()
-            ->assertSee($ticket['ticket_code'])
-            ->assertSee($user['email']);
+            ->assertSee(mb_strtoupper($user['full_name']))
+            ->assertSee($user['identity_number'])
+            ->assertSee($ticket['entry_code_display'])
+            ->assertSee('Fallback Entry Code')
+            ->assertSee('Thank you for your registration.');
     }
 
     public function test_signed_ticket_qr_route_renders_png(): void

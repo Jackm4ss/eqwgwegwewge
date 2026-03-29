@@ -33,17 +33,18 @@ const TILT: CSSProperties = {
 };
 
 const TITLE_HIGHLIGHT_TEXT_STYLE: CSSProperties = {
-  color: "#35d8f7",
+  color: "#0284C7",
   textShadow: "2px 3px 0 rgba(31, 52, 71, 0.24), 0 3px 8px rgba(31, 52, 71, 0.10)",
 };
 
 const STAT_NUMBER_STYLE: CSSProperties = {
-  color: "#35d8f7",
+  color: "#349CD2 ",
   textShadow: "1px 2px 0 rgba(31, 52, 71, 0.18), 0 2px 6px rgba(31, 52, 71, 0.08)",
 };
 
 const STAT_LABEL_STYLE: CSSProperties = {
-  color: "rgba(0,0,0,0.72)",
+  color: "#349CD2",
+  textShadow: "1px 2px 0 rgba(31, 52, 71, 0.18), 0 2px 6px rgba(31, 52, 71, 0.08)",
 };
 
 const PANEL_STYLE: CSSProperties = {
@@ -265,9 +266,9 @@ export function AboutFestival() {
                         style={{
                           ...TILT,
                           fontSize: "clamp(1.6rem,1.35vw,1.15rem)",
-                          color: "#35d8f7",
+                          color: "#349CD2 ",
                           lineHeight: 1.5,
-                          
+
                         }}
                       >
                         {line}
@@ -284,15 +285,14 @@ export function AboutFestival() {
                   style={{
                     ...TILT,
                     fontSize: "1rem",
-                    color: "#111111",
+                    color: "#349CD2 ",
                     lineHeight: 1.8,
                     maxWidth: 520,
-                
+
                   }}
                 >
                   More than a festival, it is a vibrant cultural celebration where communities come
-                  together and every splash tells a story of joy, unity, and new beginnings —
-                  organised by <span style={{ color: "#111111" }}>EQ Solutions</span>.
+                  together and every splash tells a story of joy, unity, and new beginnings.
                 </motion.p>
 
                 <div className="mt-12 flex flex-wrap gap-8 border-t border-black/10 pt-10 md:gap-12">

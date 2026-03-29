@@ -24,6 +24,7 @@ class AuthenticatedAdminSessionController extends Controller
             'email' => (string) $request->input('email'),
             'password' => (string) $request->input('password'),
             'is_active' => true,
+            'role' => 'admin',
         ];
 
         if (! Auth::guard('admin')->attempt($credentials, $request->boolean('remember'))) {
