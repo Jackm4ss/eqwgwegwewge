@@ -7,7 +7,7 @@ const TILT: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 
 const TITLE_HIGHLIGHT_TEXT_STYLE: React.CSSProperties = {
   color: "#349CD2",
-  textShadow: "4px 5px 0 rgba(31, 52, 71, 0.34), 0 4px 10px rgba(31, 52, 71, 0.14)",
+
 };
 
 type Ev = { time: string; name: string; icon: React.ElementType; color: string; special?: boolean };
