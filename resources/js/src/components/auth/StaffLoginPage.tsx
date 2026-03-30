@@ -136,6 +136,7 @@ export function StaffLoginPage() {
       skipLabel="Skip to staff login form"
       onCanvasReady={handleCanvasReady}
       onPageClick={handlePageClick}
+      backgroundImageUrl="/images/BACKGROUND.jpg"
     >
       <motion.main
         id="staff-login-form"

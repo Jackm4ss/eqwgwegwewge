@@ -111,44 +111,6 @@ export function Footer() {
                 </button>
               </motion.div>
             </div>
-            {/* <div className="flex flex-wrap gap-3">
-              {[
-                { label: "April 9–19", icon: Calendar, color: "#2FA7D8" },
-                { label: "One Utama", icon: MapPin, color: "#18C7CC", link: "https://maps.app.goo.gl/nV1FXduimtyZ2cbXA" },
-                { label: "12PM–12AM", icon: Clock, color: "rgba(237,232,220,0.5)" },
-              ].map(({ label, icon: Icon, color, link }) => (
-                link ? (
-                  <a
-                    key={label}
-                    href={link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-full hover:bg-[rgba(24,199,204,0.15)] hover:border-[#18C7CC]/50 transition-all duration-300 group"
-                    style={{ background: "rgba(237,232,220,0.04)", border: "1px solid rgba(237,232,220,0.08)" }}
-                  >
-                    <Icon size={13} style={{ color }} className="group-hover:scale-110 transition-transform" />
-                    <span style={{ ...SG, fontSize: "0.78rem" }} className="text-[rgba(237,232,220,0.55)] group-hover:text-white transition-colors">
-                      {label}
-                    </span>
-                  </a>
-                ) : (
-                  <div key={label} className="flex items-center gap-2 px-4 py-2.5 rounded-full" style={{ background: "rgba(237,232,220,0.04)", border: "1px solid rgba(237,232,220,0.08)" }}>
-                    <Icon size={13} style={{ color }} />
-                    <span style={{ ...SG, fontSize: "0.78rem", color: "rgba(237,232,220,0.55)" }}>{label}</span>
-                  </div>
-                )
-              ))}
-              <a
-                href="/register"
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full hover:bg-[rgba(46,204,113,0.15)] hover:border-[#2ecc71]/50 hover:scale-[1.03] transition-all duration-300 group cursor-pointer"
-                style={{ background: "rgba(46,204,113,0.08)", border: "1px solid rgba(46,204,113,0.2)" }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-[#2ecc71] group-hover:shadow-[0_0_8px_#2ecc71] transition-shadow animate-pulse" />
-                <span style={{ ...SG, fontSize: "0.78rem" }} className="text-[#2ecc71] group-hover:text-white transition-colors">
-                  FREE ENTRY
-                </span>
-              </a>
-            </div> */}
           </div>
         </div>
       </div>
@@ -240,16 +202,14 @@ export function Footer() {
                 </div>
               ))}
               <div style={{ paddingTop: 10, borderTop: "1px solid rgba(237,232,220,0.06)" }}>
-                <p style={{ ...SG, fontSize: "0.68rem", color: "rgba(237,232,220,0.25)", marginBottom: 2 }}>Organised by</p>
+                <p style={{ ...SG, fontSize: "0.68rem", color: "rgba(237,232,220,0.25)", marginBottom: 6 }}>Organised by</p>
                 <a
                   href="https://www.eqsolutions.com.my/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ ...SYNE, fontWeight: 700, fontSize: "0.95rem" }}
-                  className="inline-block text-[#2FA7D8] hover:text-[#3FD7F5] transition-colors relative group w-fit"
+                  className="inline-block transition-transform duration-300 group hover:scale-[1.03] w-fit mt-1"
                 >
-                  EQ Solutions
-                  <span className="absolute left-0 -bottom-0.5 w-0 h-[1.5px] bg-[#3FD7F5] transition-all duration-300 group-hover:w-full"></span>
+                  <img src="/images/eq-solution.png" alt="EQ Solutions" className="h-6 w-auto object-contain" />
                 </a>
               </div>
             </div>
@@ -263,13 +223,6 @@ export function Footer() {
           <p style={{ ...SG, fontSize: "0.68rem", color: "rgba(237,232,220,0.18)", letterSpacing: "0.04em" }}>
             © {new Date().getFullYear()} Songkran Festival Malaysia·
           </p>
-          {/* 
-          <div className="flex items-center gap-3">
-            <span className="fi fi-th text-xl rounded-[2px] shadow-sm" aria-hidden="true" />
-            <div style={{ width: 1, height: 16, background: "rgba(237,232,220,0.1)" }} />
-            <span className="fi fi-my text-xl rounded-[2px] shadow-sm" aria-hidden="true" />
-          </div>
-          */}
         </div>
       </div>
     </footer>

@@ -17,6 +17,7 @@ interface LoginFormData {
 }
 
 const SONGKRAN_LOGO_SRC = '/images/Songkran%20logo.png';
+const AUTH_BACKGROUND_IMAGE_URL = '/images/BACKGROUND.jpg';
 const ADMIN_LOGIN_SUBMIT_URL = getSpaUrl('adminLoginSubmit', '/admin/login');
 const ADMIN_DASHBOARD_URL = getSpaUrl('adminDashboard', '/admin/dashboard');
 
@@ -166,7 +167,13 @@ export function LoginPage() {
   return (
     <div
       className="min-h-screen relative overflow-x-hidden"
-      style={{ background: 'linear-gradient(145deg, #0C4A6E 0%, #0369A1 30%, #0284C7 60%, #0EA5E9 100%)' }}
+      style={{
+        backgroundImage: `url(${AUTH_BACKGROUND_IMAGE_URL})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundColor: '#0369A1',
+      }}
       onClick={handlePageClick}
     >
       {/* Skip link – WCAG */}

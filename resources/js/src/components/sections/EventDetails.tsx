@@ -431,24 +431,18 @@ export function EventDetails() {
                       </span>
                     </div>
 
-                    <p
-                      className="transition-colors duration-300 group-hover:text-[#349CD2]"
-                      style={{
-                        ...TILT,
-                        ...BODY_TEXT_STYLE,
-                        fontSize: "1.3rem",
-                        lineHeight: 1.2,
-                        marginBottom: "0.3rem",
-                        color: "#349CD2"
-                      }}
-                    >
-                      EQ Solutions
+                    <div className="flex items-center pt-1">
+                      <img 
+                        src="/images/eq-solution.png" 
+                        alt="EQ Solutions" 
+                        className="h-7 w-auto object-contain transition-transform duration-300 group-hover:scale-[1.03]" 
+                      />
                       <ArrowUpRight
                         strokeWidth={3}
                         size={14}
-                        className="ml-1 inline-block translate-y-2 -translate-x-2 opacity-0 text-[#349CD2] transition-all duration-300 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:opacity-100"
+                        className="ml-2 text-[#349CD2] opacity-0 -translate-x-2 translate-y-2 transition-all duration-300 group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-100"
                       />
-                    </p>
+                    </div>
                   </SpotlightCard>
                 </a>
               </div>

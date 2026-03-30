@@ -511,12 +511,13 @@ class AdminAnalyticsService
                 'duplicate_scans' => 0,
                 'invalid_scans' => 0,
                 'last_scanned_at' => null,
+                'unique_success' => [],
             ];
 
             $scannerActivity[$scannerKey]['total_scans']++;
 
-            if ($result === 'success') {
-                $scannerActivity[$scannerKey]['successful_scans']++;
+            if ($result === 'success' && $attendanceKey !== '') {
+                $scannerActivity[$scannerKey]['unique_success'][$attendanceKey] = true;
             } elseif ($result === 'duplicate') {
                 $scannerActivity[$scannerKey]['duplicate_scans']++;
             } else {
@@ -538,8 +539,32 @@ class AdminAnalyticsService
 
         usort($dailyAttendance, fn (array $left, array $right) => strcmp($right['scan_date'], $left['scan_date']));
 
-        $scannerActivityRows = array_values($scannerActivity);
-        usort($scannerActivityRows, fn (array $left, array $right) => $right['total_scans'] <=> $left['total_scans']);
+        $scannerActivityRows = array_values(array_map(function (array $scanner): array {
+            $scanner['successful_scans'] = count($scanner['unique_success']);
+            unset($scanner['unique_success']);
+
+            return $scanner;
+        }, $scannerActivity));
+        usort($scannerActivityRows, function (array $left, array $right): int {
+            $byLastScannedAt = strcmp(
+                (string) ($right['last_scanned_at'] ?? ''),
+                (string) ($left['last_scanned_at'] ?? ''),
+            );
+
+            if ($byLastScannedAt !== 0) {
+                return $byLastScannedAt;
+            }
+
+            $byTotalScans = ($right['total_scans'] ?? 0) <=> ($left['total_scans'] ?? 0);
+            if ($byTotalScans !== 0) {
+                return $byTotalScans;
+            }
+
+            return strcmp(
+                (string) ($left['scanner_name'] ?? ''),
+                (string) ($right['scanner_name'] ?? ''),
+            );
+        });
 
         return [
             'history' => $filtered,
@@ -681,8 +706,9 @@ class AdminAnalyticsService
         $query = $this->normalizeText((string) ($filters['q'] ?? ''));
         $fromDate = $this->normalizeDateInput($filters['from'] ?? null);
         $toDate = $this->normalizeDateInput($filters['to'] ?? null);
+        $scannerPost = trim((string) ($filters['scanner_post'] ?? ''));
 
-        return array_values(array_filter($scanLogs, function (array $scanLog) use ($query, $fromDate, $toDate) {
+        return array_values(array_filter($scanLogs, function (array $scanLog) use ($query, $fromDate, $toDate, $scannerPost) {
             $scanDate = $this->resolveScanDate($scanLog);
 
             if ($fromDate !== null && $scanDate < $fromDate) {
@@ -690,6 +716,10 @@ class AdminAnalyticsService
             }
 
             if ($toDate !== null && $scanDate > $toDate) {
+                return false;
+            }
+
+            if ($scannerPost !== '' && (string) ($scanLog['scanner_name'] ?? '') !== $scannerPost) {
                 return false;
             }
 

@@ -120,9 +120,12 @@ class AdminPanelService
 
     public function attendanceData(array $filters = []): array
     {
-        $overview = $this->analytics->buildAttendanceOverview(
-            $this->repository->allScanLogs(),
-            $filters,
+        $scanLogs = $this->repository->allScanLogs();
+        $overview = $this->analytics->buildAttendanceOverview($scanLogs, $filters);
+        $overview['history'] = $this->hydrateAttendanceHistory(
+            $overview['history'],
+            $this->repository->allUsers(),
+            $this->repository->allTickets(),
         );
 
         $historyPaginator = $this->makePaginator(
@@ -137,6 +140,7 @@ class AdminPanelService
             'history' => $historyPaginator,
             'daily_attendance' => $overview['daily_attendance'],
             'scanner_activity' => $overview['scanner_activity'],
+            'scan_post_options' => $this->buildAttendanceScanPostOptions($scanLogs),
         ];
     }
 
@@ -439,5 +443,117 @@ class AdminPanelService
                 'pageName' => 'page',
             ],
         );
+    }
+
+    private function buildAttendanceScanPostOptions(array $scanLogs): array
+    {
+        $options = [];
+
+        foreach ($scanLogs as $scanLog) {
+            $scannerName = trim((string) ($scanLog['scanner_name'] ?? ''));
+            if ($scannerName === '') {
+                continue;
+            }
+
+            $options[$scannerName] ??= [
+                'value' => $scannerName,
+                'label' => $scannerName,
+                'scanner_role' => trim((string) ($scanLog['scanner_role'] ?? '')),
+                'scanner_id' => trim((string) ($scanLog['scanner_id'] ?? '')),
+            ];
+        }
+
+        uasort($options, fn (array $left, array $right): int => strcasecmp(
+            (string) ($left['label'] ?? ''),
+            (string) ($right['label'] ?? ''),
+        ));
+
+        return array_values($options);
+    }
+
+    private function hydrateAttendanceHistory(array $history, array $users, array $tickets): array
+    {
+        if ($history === []) {
+            return [];
+        }
+
+        $usersById = [];
+        $ticketsById = [];
+        $ticketsByCode = [];
+
+        foreach ($users as $user) {
+            $userId = (string) ($user['user_id'] ?? '');
+            if ($userId !== '') {
+                $usersById[$userId] = $user;
+            }
+        }
+
+        foreach ($tickets as $ticket) {
+            $ticketId = (string) ($ticket['ticket_id'] ?? '');
+            $ticketCode = strtoupper(trim((string) ($ticket['ticket_code'] ?? '')));
+
+            if ($ticketId !== '') {
+                $ticketsById[$ticketId] = $ticket;
+            }
+
+            if ($ticketCode !== '') {
+                $ticketsByCode[$ticketCode] = $ticket;
+            }
+        }
+
+        return array_map(function (array $log) use ($ticketsByCode, $ticketsById, $usersById): array {
+            $ticketId = (string) ($log['ticket_id'] ?? '');
+            $ticketCode = strtoupper(trim((string) ($log['ticket_code'] ?? '')));
+            $userId = (string) ($log['user_id'] ?? '');
+
+            $ticket = $ticketsById[$ticketId] ?? ($ticketCode !== '' ? ($ticketsByCode[$ticketCode] ?? null) : null);
+            $user = $usersById[$userId] ?? null;
+
+            if (! is_array($user) && is_array($ticket)) {
+                $ticketUserId = (string) ($ticket['user_id'] ?? '');
+                $user = $ticketUserId !== '' ? ($usersById[$ticketUserId] ?? null) : null;
+            }
+
+            $entryCodeDisplay = is_array($ticket)
+                ? trim((string) ($ticket['entry_code_display'] ?? ($log['entry_code_display'] ?? '')))
+                : trim((string) ($log['entry_code_display'] ?? ''));
+
+            $log['entry_code_display'] = $entryCodeDisplay;
+            $log['participant'] = is_array($ticket) && is_array($user)
+                ? $this->attendanceParticipantSummary($user, $ticket)
+                : null;
+
+            return $log;
+        }, $history);
+    }
+
+    private function attendanceParticipantSummary(array $user, array $ticket): array
+    {
+        $fullName = trim((string) ($user['full_name'] ?? ''));
+        $country = strtoupper(trim((string) ($user['country'] ?? '')));
+
+        return [
+            'name' => $fullName,
+            'full_name' => $fullName,
+            'email' => trim((string) ($user['email'] ?? '')),
+            'phone_number' => $this->participantPhoneNumber($user),
+            'country' => $country,
+            'country_label' => $this->analytics->countryLabel($country),
+            'ticket_code' => (string) ($ticket['ticket_code'] ?? ''),
+            'entry_code_display' => (string) ($ticket['entry_code_display'] ?? ''),
+        ];
+    }
+
+    private function participantPhoneNumber(array $user): string
+    {
+        $phoneNumber = trim((string) ($user['phone_number'] ?? ''));
+        if ($phoneNumber !== '') {
+            return $phoneNumber;
+        }
+
+        $countryCode = trim((string) ($user['phone_country_code'] ?? ''));
+        $nationalNumber = preg_replace('/\s+/', '', trim((string) ($user['phone_national_number'] ?? ''))) ?? '';
+
+        return trim($countryCode.$nationalNumber);
     }
 }

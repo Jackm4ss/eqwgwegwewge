@@ -148,6 +148,146 @@ class AdminAnalyticsServiceTest extends TestCase
         $this->assertSame('Gate A', $overview['scanner_activity'][0]['scanner_name']);
     }
 
+    public function test_attendance_overview_counts_unique_success_per_scanner_activity(): void
+    {
+        $service = new AdminAnalyticsService;
+
+        $overview = $service->buildAttendanceOverview([
+            [
+                'scan_id' => 'scan-1',
+                'user_id' => 'user-1',
+                'ticket_code' => 'ABC',
+                'scan_date' => '2026-03-25',
+                'scanned_at' => '2026-03-25T09:00:00Z',
+                'scanner_id' => 'scanner-1',
+                'scanner_name' => 'Gate A',
+                'scanner_role' => 'staff',
+                'result' => 'success',
+            ],
+            [
+                'scan_id' => 'scan-2',
+                'user_id' => 'user-1',
+                'ticket_code' => 'ABC',
+                'scan_date' => '2026-03-25',
+                'scanned_at' => '2026-03-25T09:05:00Z',
+                'scanner_id' => 'scanner-1',
+                'scanner_name' => 'Gate A',
+                'scanner_role' => 'staff',
+                'result' => 'success',
+            ],
+            [
+                'scan_id' => 'scan-3',
+                'user_id' => 'user-2',
+                'ticket_code' => 'DEF',
+                'scan_date' => '2026-03-25',
+                'scanned_at' => '2026-03-25T09:10:00Z',
+                'scanner_id' => 'scanner-1',
+                'scanner_name' => 'Gate A',
+                'scanner_role' => 'staff',
+                'result' => 'duplicate',
+            ],
+        ]);
+
+        $this->assertSame(1, $overview['daily_attendance'][0]['successful_attendance']);
+        $this->assertSame(1, $overview['scanner_activity'][0]['successful_scans']);
+        $this->assertSame(1, $overview['scanner_activity'][0]['duplicate_scans']);
+        $this->assertSame(3, $overview['scanner_activity'][0]['total_scans']);
+    }
+
+    public function test_attendance_overview_can_filter_to_a_specific_scan_post(): void
+    {
+        $service = new AdminAnalyticsService;
+
+        $overview = $service->buildAttendanceOverview([
+            [
+                'scan_id' => 'scan-1',
+                'user_id' => 'user-1',
+                'ticket_code' => 'ABC',
+                'scan_date' => '2026-03-25',
+                'scanned_at' => '2026-03-25T09:00:00Z',
+                'scanner_id' => 'scanner-1',
+                'scanner_name' => 'Gate A',
+                'scanner_role' => 'staff',
+                'result' => 'success',
+            ],
+            [
+                'scan_id' => 'scan-2',
+                'user_id' => 'user-2',
+                'ticket_code' => 'DEF',
+                'scan_date' => '2026-03-25',
+                'scanned_at' => '2026-03-25T09:10:00Z',
+                'scanner_id' => 'scanner-2',
+                'scanner_name' => 'Gate B',
+                'scanner_role' => 'staff',
+                'result' => 'duplicate',
+            ],
+        ], [
+            'scanner_post' => 'Gate A',
+        ]);
+
+        $this->assertCount(1, $overview['history']);
+        $this->assertSame('Gate A', $overview['history'][0]['scanner_name']);
+        $this->assertCount(1, $overview['daily_attendance']);
+        $this->assertSame(1, $overview['daily_attendance'][0]['total_scans']);
+        $this->assertSame(1, $overview['daily_attendance'][0]['successful_attendance']);
+        $this->assertCount(1, $overview['scanner_activity']);
+        $this->assertSame('Gate A', $overview['scanner_activity'][0]['scanner_name']);
+        $this->assertSame(1, $overview['scanner_activity'][0]['total_scans']);
+    }
+
+    public function test_attendance_overview_sorts_sections_by_latest_dates_by_default(): void
+    {
+        $service = new AdminAnalyticsService;
+
+        $overview = $service->buildAttendanceOverview([
+            [
+                'scan_id' => 'scan-1',
+                'user_id' => 'user-1',
+                'ticket_code' => 'ABC',
+                'scan_date' => '2026-03-29',
+                'scanned_at' => '2026-03-29T08:00:00Z',
+                'scanner_id' => 'scanner-a',
+                'scanner_name' => 'Gate A',
+                'scanner_role' => 'staff',
+                'result' => 'success',
+            ],
+            [
+                'scan_id' => 'scan-2',
+                'user_id' => 'user-2',
+                'ticket_code' => 'DEF',
+                'scan_date' => '2026-03-30',
+                'scanned_at' => '2026-03-30T10:00:00Z',
+                'scanner_id' => 'scanner-b',
+                'scanner_name' => 'Gate B',
+                'scanner_role' => 'staff',
+                'result' => 'duplicate',
+            ],
+            [
+                'scan_id' => 'scan-3',
+                'user_id' => 'user-3',
+                'ticket_code' => 'GHI',
+                'scan_date' => '2026-03-30',
+                'scanned_at' => '2026-03-30T09:00:00Z',
+                'scanner_id' => 'scanner-a',
+                'scanner_name' => 'Gate A',
+                'scanner_role' => 'staff',
+                'result' => 'duplicate',
+            ],
+        ]);
+
+        $this->assertSame('2026-03-30T10:00:00Z', $overview['history'][0]['scanned_at']);
+        $this->assertSame('2026-03-30T09:00:00Z', $overview['history'][1]['scanned_at']);
+        $this->assertSame('2026-03-29T08:00:00Z', $overview['history'][2]['scanned_at']);
+
+        $this->assertSame('2026-03-30', $overview['daily_attendance'][0]['scan_date']);
+        $this->assertSame('2026-03-29', $overview['daily_attendance'][1]['scan_date']);
+
+        $this->assertSame('Gate B', $overview['scanner_activity'][0]['scanner_name']);
+        $this->assertSame('2026-03-30T10:00:00Z', $overview['scanner_activity'][0]['last_scanned_at']);
+        $this->assertSame('Gate A', $overview['scanner_activity'][1]['scanner_name']);
+        $this->assertSame('2026-03-30T09:00:00Z', $overview['scanner_activity'][1]['last_scanned_at']);
+    }
+
     public function test_user_rows_support_country_verification_and_attendance_filters(): void
     {
         $service = new AdminAnalyticsService;

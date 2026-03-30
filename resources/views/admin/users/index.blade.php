@@ -398,7 +398,7 @@
           @if ($activeFilterCount > 0)
             <span class="badge bg-label-primary">{{ $activeFilterCount }} active filters</span>
           @endif
-          <a href="{{ route('admin.users.index') }}" class="btn btn-sm btn-label-secondary">
+          <a href="{{ route('admin.users.index') }}" class="btn btn-sm btn-danger">
             <i class="icon-base ti tabler-rotate-clockwise-2 me-1"></i> Reset
           </a>
         </div>

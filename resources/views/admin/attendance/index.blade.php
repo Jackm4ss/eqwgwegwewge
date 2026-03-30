@@ -93,6 +93,94 @@
       background: rgba(67, 89, 113, 0.04);
       padding: 0.85rem 1rem;
     }
+
+    .attendance-activity-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .attendance-activity-item {
+      border: 1px solid rgba(67, 89, 113, 0.12);
+      border-radius: 1.1rem;
+      background: rgba(248, 250, 252, 0.82);
+      padding: 1rem;
+    }
+
+    .attendance-activity-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .attendance-activity-grid {
+      display: grid;
+      gap: 0.85rem;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      margin-top: 0.95rem;
+    }
+
+    .attendance-activity-field {
+      border: 1px solid rgba(67, 89, 113, 0.1);
+      border-radius: 1rem;
+      background: #fff;
+      padding: 0.9rem 1rem;
+    }
+
+    .attendance-activity-label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #6b7280;
+    }
+
+    .attendance-activity-value {
+      margin-top: 0.45rem;
+      display: block;
+      color: #111827;
+      font-size: 0.95rem;
+      font-weight: 600;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .attendance-activity-footer {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+      margin-top: 0.95rem;
+    }
+
+    .attendance-activity-code {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.8rem 1rem;
+      border-radius: 999px;
+      border: 1px solid rgba(67, 89, 113, 0.12);
+      background: #fff;
+      min-width: 150px;
+    }
+
+    .attendance-activity-code-value {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: 0.06em;
+    }
+
+    .attendance-activity-post {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.4rem;
+      text-align: right;
+    }
   </style>
 @endpush
 
@@ -102,7 +190,14 @@
     $history = $attendance['history'];
     $dailyAttendance = $attendance['daily_attendance'] ?? [];
     $scannerActivity = $attendance['scanner_activity'] ?? [];
-    $hasFilters = filled($filters['q'] ?? null) || filled($filters['from'] ?? null) || filled($filters['to'] ?? null);
+    $scanPostOptions = $scanPostOptions ?? ($attendance['scan_post_options'] ?? []);
+    $selectedScannerPost = trim((string) ($filters['scanner_post'] ?? ''));
+    $selectedScannerOption = collect($scanPostOptions)->firstWhere('value', $selectedScannerPost);
+    $selectedScannerLabel = is_array($selectedScannerOption) ? ($selectedScannerOption['label'] ?? $selectedScannerPost) : $selectedScannerPost;
+    $hasFilters = filled($filters['q'] ?? null)
+      || filled($filters['scanner_post'] ?? null)
+      || filled($filters['from'] ?? null)
+      || filled($filters['to'] ?? null);
     $latestLog = collect(method_exists($history, 'items') ? $history->items() : [])->first();
 
     $successfulAttendance = collect($dailyAttendance)->sum(fn (array $day): int => (int) ($day['successful_attendance'] ?? 0));
@@ -187,16 +282,27 @@
       </div>
 
       <form method="GET" action="{{ route('admin.attendance.index') }}" class="row g-4 align-items-end">
-        <div class="col-md-5">
+        <div class="col-md-4">
           <label class="form-label" for="q">Search participant, ticket code, or scan post name</label>
           <input type="text" class="form-control" id="q" name="q" value="{{ $filters['q'] ?? '' }}"
             placeholder="example: ticket code, user ID, Gate A" />
         </div>
         <div class="col-md-3">
+          <label class="form-label" for="scanner_post">Scan post</label>
+          <select class="form-select" id="scanner_post" name="scanner_post">
+            <option value="">All scan posts</option>
+            @foreach ($scanPostOptions as $option)
+              <option value="{{ $option['value'] ?? '' }}" @selected(($option['value'] ?? '') === $selectedScannerPost)>
+                {{ $option['label'] ?? ($option['value'] ?? '-') }}
+              </option>
+            @endforeach
+          </select>
+        </div>
+        <div class="col-md-2">
           <label class="form-label" for="from">From date</label>
           <input type="date" class="form-control" id="from" name="from" value="{{ $filters['from'] ?? '' }}" />
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label class="form-label" for="to">To date</label>
           <input type="date" class="form-control" id="to" name="to" value="{{ $filters['to'] ?? '' }}" />
         </div>
@@ -207,7 +313,7 @@
 
       @if ($hasFilters)
         <div class="mt-3">
-          <a href="{{ route('admin.attendance.index') }}" class="btn btn-sm btn-label-secondary">Reset filters</a>
+          <a href="{{ route('admin.attendance.index') }}" class="btn btn-sm btn-danger">Reset filters</a>
         </div>
       @endif
     </div>
@@ -329,37 +435,75 @@
       <div class="card attendance-data-card h-100">
         <div class="card-header border-0 pb-0">
           <h5 class="mb-1">Latest Scan Activity</h5>
-          <small class="text-muted">Newest records appear first. Useful for checking participant issues on-site.</small>
+          <small class="text-muted">
+            @if ($selectedScannerPost !== '')
+              Newest records for {{ $selectedScannerLabel }} appear first. Useful for matching the staff scanner feed.
+            @else
+              Newest records appear first. Useful for checking participant issues on-site.
+            @endif
+          </small>
         </div>
-        <div class="table-responsive text-nowrap">
-          <table class="table attendance-table">
-            <thead>
-              <tr>
-                <th>Scan Time</th>
-                <th>Participant / Ticket</th>
-                <th>Scan Post / Staff</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @forelse ($history as $log)
-                @php($status = $statusMeta($log['result'] ?? null))
-                <tr>
-                  <td>
+        <div class="card-body p-4">
+          @if ($history->count() === 0)
+            <div class="rounded-4 border border-light-subtle bg-body-tertiary px-4 py-4 text-muted">
+              No scan activity is available for this date range.
+            </div>
+          @else
+            <div class="attendance-activity-list">
+              @foreach ($history as $log)
+                @php
+                  $status = $statusMeta($log['result'] ?? null);
+                  $participant = is_array($log['participant'] ?? null) ? $log['participant'] : null;
+                  $entryCodeDisplay = trim((string) ($log['entry_code_display'] ?? data_get($participant, 'entry_code_display', '')));
+                @endphp
+                <article class="attendance-activity-item">
+                  <div class="attendance-activity-header">
                     <div class="d-flex flex-column">
                       <span class="fw-medium">{{ $formatDateTime($log['scanned_at'] ?? null) }}</span>
                       <small class="text-muted">Recorded date: {{ $formatDate($log['scan_date'] ?? null) }}</small>
                     </div>
-                  </td>
-                  <td>
-                    <div class="d-flex flex-column">
-                      <span class="fw-medium">{{ $log['ticket_code'] ?? '-' }}</span>
-                      <small class="text-muted">Participant ID: {{ $log['user_id'] ?? '-' }}</small>
+                    <span class="badge rounded-pill {{ $status['class'] }}">{{ $status['label'] }}</span>
+                  </div>
+
+                  @if ($participant)
+                    <div class="attendance-activity-grid">
+                      <div class="attendance-activity-field">
+                        <span class="attendance-activity-label">Email</span>
+                        <span class="attendance-activity-value">{{ $participant['email'] ?? '-' }}</span>
+                      </div>
+                      <div class="attendance-activity-field">
+                        <span class="attendance-activity-label">Full Name</span>
+                        <span class="attendance-activity-value">{{ $participant['full_name'] ?? $participant['name'] ?? '-' }}</span>
+                      </div>
+                      <div class="attendance-activity-field">
+                        <span class="attendance-activity-label">Phone Number</span>
+                        <span class="attendance-activity-value">{{ $participant['phone_number'] ?? '-' }}</span>
+                      </div>
+                      <div class="attendance-activity-field">
+                        <span class="attendance-activity-label">Country</span>
+                        <span class="attendance-activity-value">{{ $participant['country_label'] ?? $participant['country'] ?? '-' }}</span>
+                      </div>
                     </div>
-                  </td>
-                  <td>
-                    <div class="d-flex flex-column">
-                      <span class="fw-medium">{{ $log['scanner_name'] ?? '-' }}</span>
+                  @else
+                    <div class="attendance-activity-grid">
+                      <div class="attendance-activity-field">
+                        <span class="attendance-activity-label">Ticket Code</span>
+                        <span class="attendance-activity-value">{{ $log['ticket_code'] ?? '-' }}</span>
+                      </div>
+                      <div class="attendance-activity-field">
+                        <span class="attendance-activity-label">Participant ID</span>
+                        <span class="attendance-activity-value">{{ $log['user_id'] ?? '-' }}</span>
+                      </div>
+                    </div>
+                  @endif
+
+                  <div class="attendance-activity-footer">
+                    <div class="attendance-activity-code">
+                      <span class="attendance-activity-label">Entry Code</span>
+                      <span class="attendance-activity-code-value">{{ $entryCodeDisplay !== '' ? $entryCodeDisplay : '-' }}</span>
+                    </div>
+                    <div class="attendance-activity-post">
+                      <span class="badge rounded-pill bg-label-secondary">{{ $log['scanner_name'] ?? '-' }}</span>
                       <small class="text-muted">
                         {{ $log['scanner_role'] ?? 'Staff' }}
                         @if (filled($log['scanner_id'] ?? null))
@@ -367,19 +511,11 @@
                         @endif
                       </small>
                     </div>
-                  </td>
-                  <td>
-                    <span class="badge rounded-pill {{ $status['class'] }}">{{ $status['label'] }}</span>
-                    <small class="attendance-status-note">{{ $status['note'] }}</small>
-                  </td>
-                </tr>
-              @empty
-                <tr>
-                  <td colspan="4" class="text-center py-6 text-muted">No scan activity is available for this date range.</td>
-                </tr>
-              @endforelse
-            </tbody>
-          </table>
+                  </div>
+                </article>
+              @endforeach
+            </div>
+          @endif
         </div>
         <div class="card-body border-top">
           {{ $history->withQueryString()->links('pagination::bootstrap-5') }}
@@ -391,7 +527,13 @@
       <div class="card attendance-data-card mb-6">
         <div class="card-header border-0 pb-0">
           <h5 class="mb-1">Daily Summary</h5>
-          <small class="text-muted">This helps admins see which days were busiest and which had the most issues.</small>
+          <small class="text-muted">
+            @if ($selectedScannerPost !== '')
+              This summarizes {{ $selectedScannerLabel }} so the totals stay aligned with the scanner page.
+            @else
+              This helps admins see which days were busiest and which had the most issues.
+            @endif
+          </small>
         </div>
         <div class="table-responsive">
           <table class="table attendance-table">
@@ -429,7 +571,13 @@
       <div class="card attendance-data-card">
         <div class="card-header border-0 pb-0">
           <h5 class="mb-1">Scan Posts / Staff</h5>
-          <small class="text-muted">See which scan posts are most active and which need the most help.</small>
+          <small class="text-muted">
+            @if ($selectedScannerPost !== '')
+              This narrows to {{ $selectedScannerLabel }} so admins can compare the same gate across all attendance summaries.
+            @else
+              See which scan posts are most active and which need the most help.
+            @endif
+          </small>
         </div>
         <div class="table-responsive">
           <table class="table attendance-table">

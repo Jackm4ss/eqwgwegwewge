@@ -26,6 +26,7 @@ class RegisterController extends Controller
                 'ticket_url' => (string) data_get($result, 'delivery.ticket_url', ''),
                 'ticket_qr_url' => (string) data_get($result, 'delivery.ticket_qr_url', ''),
                 'ticket_code' => (string) data_get($result, 'ticket.ticket_code', ''),
+                'entry_code_display' => (string) data_get($result, 'ticket.entry_code_display', ''),
             ], 201);
         } catch (ValidationException $exception) {
             throw $exception;

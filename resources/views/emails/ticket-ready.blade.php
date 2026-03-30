@@ -19,6 +19,8 @@
     $sponsorAmazingThailandCid = $embedAsset($templateAssets['sponsorAmazingThailand'] ?? null);
     $sponsorSinghaCid = $embedAsset($templateAssets['sponsorSingha'] ?? null);
     $sponsorSnakeBrandCid = $embedAsset($templateAssets['sponsorSnakeBrand'] ?? null);
+    $sponsorThaigoCid = $embedAsset($templateAssets['sponsorThaigo'] ?? null);
+    $sponsorLayer0Cid = $embedAsset($templateAssets['sponsorLayer0'] ?? null);
     $mediaWobCid = $embedAsset($templateAssets['mediaWob'] ?? null);
     $mediaNoodouCid = $embedAsset($templateAssets['mediaNoodou'] ?? null);
     $venueSponsorSrc = $venueSponsorCid ?: $publicImageUrl('123.png');
@@ -27,6 +29,8 @@
     $sponsorAmazingThailandSrc = $sponsorAmazingThailandCid ?: $publicImageUrl('amazing thailand.png');
     $sponsorSinghaSrc = $sponsorSinghaCid ?: $publicImageUrl('singha-seeklogo.png');
     $sponsorSnakeBrandSrc = $sponsorSnakeBrandCid ?: $publicImageUrl('Snake-Brand-Logo.png');
+    $sponsorThaigoSrc = $sponsorThaigoCid ?: $publicImageUrl('thaigo.png');
+    $sponsorLayer0Src = $sponsorLayer0Cid ?: $publicImageUrl('Layer 0.png');
     $mediaWobSrc = $mediaWobCid ?: $publicImageUrl('wob.png');
     $mediaNoodouSrc = $mediaNoodouCid ?: $publicImageUrl('noodou.png');
 
@@ -793,6 +797,18 @@
                                                                             @if($sponsorSnakeBrandSrc)
                                                                                 <img src="{{ $sponsorSnakeBrandSrc }}"
                                                                                     alt="Snake Brand"
+                                                                                    class="logo-inline logo-sponsor"
+                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 3px; max-height:24px; width:auto;">
+                                                                            @endif
+                                                                            @if($sponsorThaigoSrc)
+                                                                                <img src="{{ $sponsorThaigoSrc }}"
+                                                                                    alt="Thaigo"
+                                                                                    class="logo-inline logo-sponsor"
+                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 3px; max-height:24px; width:auto;">
+                                                                            @endif
+                                                                            @if($sponsorLayer0Src)
+                                                                                <img src="{{ $sponsorLayer0Src }}"
+                                                                                    alt="Layer 0"
                                                                                     class="logo-inline logo-sponsor"
                                                                                     style="display:inline-block; vertical-align:middle; margin:2px 3px; max-height:24px; width:auto;">
                                                                             @endif

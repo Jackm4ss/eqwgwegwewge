@@ -485,6 +485,7 @@ export function ForgotQrPage() {
         addRippleRef.current = fn;
       }}
       onPageClick={(event) => addRippleRef.current?.(event.clientX, event.clientY)}
+      backgroundImageUrl="/images/BACKGROUND.jpg"
     >
       <motion.main
         id="forgot-qr-form"

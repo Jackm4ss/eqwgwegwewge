@@ -11,12 +11,16 @@ class AttendanceController extends Controller
 {
     public function __invoke(Request $request, AdminPanelService $adminPanel): View
     {
-        $filters = $request->only(['q', 'from', 'to', 'page', 'per_page']);
+        $filters = $request->only(['q', 'scanner_post', 'from', 'to', 'page', 'per_page']);
         $attendance = $adminPanel->attendanceData($filters);
         $history = $attendance['history'];
         $dailyAttendance = $attendance['daily_attendance'] ?? [];
         $scannerActivity = $attendance['scanner_activity'] ?? [];
-        $hasFilters = filled($filters['q'] ?? null) || filled($filters['from'] ?? null) || filled($filters['to'] ?? null);
+        $scanPostOptions = $attendance['scan_post_options'] ?? [];
+        $hasFilters = filled($filters['q'] ?? null)
+            || filled($filters['scanner_post'] ?? null)
+            || filled($filters['from'] ?? null)
+            || filled($filters['to'] ?? null);
         $latestLog = collect(method_exists($history, 'items') ? $history->items() : [])->first();
         $successfulAttendance = collect($dailyAttendance)->sum(fn (array $day): int => (int) ($day['successful_attendance'] ?? 0));
         $duplicateScans = collect($dailyAttendance)->sum(fn (array $day): int => (int) ($day['duplicate_scans'] ?? 0));
@@ -88,6 +92,7 @@ class AttendanceController extends Controller
             'history' => $history,
             'dailyAttendance' => $dailyAttendance,
             'scannerActivity' => $scannerActivity,
+            'scanPostOptions' => $scanPostOptions,
             'hasFilters' => $hasFilters,
             'latestLog' => $latestLog,
             'successfulAttendance' => $successfulAttendance,

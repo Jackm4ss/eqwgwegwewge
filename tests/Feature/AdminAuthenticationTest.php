@@ -356,21 +356,37 @@ class AdminAuthenticationTest extends TestCase
                                 'scanned_at' => '2026-03-25T09:00:00Z',
                                 'scan_date' => '2026-03-25',
                                 'ticket_code' => 'TICKET-123',
+                                'entry_code_display' => 'ABCD-1234',
                                 'user_id' => 'user-123',
                                 'scanner_name' => 'Gate A',
                                 'scanner_role' => 'staff',
                                 'scanner_id' => 'scanner-1',
                                 'result' => 'success',
+                                'participant' => [
+                                    'email' => 'alya@example.test',
+                                    'full_name' => 'Alya Putri',
+                                    'phone_number' => '+60123456789',
+                                    'country_label' => 'Malaysia',
+                                    'entry_code_display' => 'ABCD-1234',
+                                ],
                             ],
                             [
                                 'scanned_at' => '2026-03-25T09:05:00Z',
                                 'scan_date' => '2026-03-25',
                                 'ticket_code' => 'TICKET-123',
+                                'entry_code_display' => 'ABCD-1234',
                                 'user_id' => 'user-123',
                                 'scanner_name' => 'Gate A',
                                 'scanner_role' => 'staff',
                                 'scanner_id' => 'scanner-1',
                                 'result' => 'duplicate',
+                                'participant' => [
+                                    'email' => 'alya@example.test',
+                                    'full_name' => 'Alya Putri',
+                                    'phone_number' => '+60123456789',
+                                    'country_label' => 'Malaysia',
+                                    'entry_code_display' => 'ABCD-1234',
+                                ],
                             ],
                         ],
                         2,
@@ -402,6 +418,14 @@ class AdminAuthenticationTest extends TestCase
                             'last_scanned_at' => '2026-03-25T09:05:00Z',
                         ],
                     ],
+                    'scan_post_options' => [
+                        [
+                            'value' => 'Gate A',
+                            'label' => 'Gate A',
+                            'scanner_role' => 'staff',
+                            'scanner_id' => 'scanner-1',
+                        ],
+                    ],
                 ]);
 
             $mock->shouldReceive('firestoreAvailable')
@@ -414,11 +438,18 @@ class AdminAuthenticationTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Attendance Monitoring')
+            ->assertSee('Scan post')
+            ->assertSee('All scan posts')
             ->assertSee('How to read the statuses')
             ->assertSee('Checked In')
             ->assertSee('Already Scanned')
             ->assertSee('Needs Review')
             ->assertSee('Latest Scan Activity')
+            ->assertSee('Email')
+            ->assertSee('Full Name')
+            ->assertSee('Phone Number')
+            ->assertSee('Country')
+            ->assertSee('ABCD-1234')
             ->assertSee('Daily Summary')
             ->assertSee('Scan Posts / Staff')
             ->assertSee('Download CSV');

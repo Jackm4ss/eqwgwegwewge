@@ -85,6 +85,7 @@ type HistoryItem = {
   entry_code_display: string;
   scanner_post: string;
   scanned_at: string;
+  participant?: Participant | null;
 };
 
 type ScannerAlertIcon = 'success' | 'warning' | 'error' | 'info';
@@ -162,6 +163,44 @@ function resultParticipantField(label: string, value: string, extraClassName = '
       <span class="staff-scanner-swal__detail-value">${escapeHtml(value || '-')}</span>
     </div>
   `;
+}
+
+function participantDetailField(label: string, value: string, extraClassName = '') {
+  return (
+    <div className={extraClassName}>
+      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-900 break-words">{value || '-'}</p>
+    </div>
+  );
+}
+
+function countryFlagEmoji(countryCode?: string | null) {
+  const normalized = (countryCode ?? '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalized)) {
+    return '🏳️';
+  }
+
+  return String.fromCodePoint(...Array.from(normalized).map((char) => 127397 + char.charCodeAt(0)));
+}
+
+function historyParticipantDetails(item: HistoryItem) {
+  const participant = item.participant;
+  if (!participant) {
+    return (
+      <div className="mt-3 grid gap-3">
+        {participantDetailField('Ticket Code', item.ticket_code || 'Unknown Ticket')}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 grid gap-3">
+      {participantDetailField('Email', participant.email || '-')}
+      {participantDetailField('Full Name', participant.full_name || participant.name || '-')}
+      {participantDetailField('Phone Number', participant.phone_number || '-')}
+      {participantDetailField('Country', participant.country_label || participant.country || '-')}
+    </div>
+  );
 }
 
 function scanResultAlertHtml(result: Pick<ScanResult, 'message' | 'participant'>) {
@@ -888,11 +927,14 @@ export function StaffScannerPage() {
   const alertQueueRef = useRef<Promise<void>>(Promise.resolve());
   const pendingAlertCountRef = useRef(0);
   const zoomUpdateQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const dashboardRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [session, setSession] = useState<StaffSession | null>(null);
   const [scannerPost, setScannerPost] = useState('');
   const [stats, setStats] = useState<ScannerStats>(EMPTY_STATS);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
+  const [dashboardRefreshAnimating, setDashboardRefreshAnimating] = useState(false);
   const [latest, setLatest] = useState<ScanResult>({ status: 'invalid', message: 'Scanner is ready when you are.', participant: null, stats: EMPTY_STATS });
   const [manualCode, setManualCode] = useState('');
   const [manualLookup, setManualLookup] = useState<ManualLookupResult | null>(null);
@@ -1038,6 +1080,35 @@ export function StaffScannerPage() {
       setStats((await statsResponse.json()) as ScannerStats);
     }
   }, [redirectToLogin]);
+
+  const handleDashboardRefresh = useCallback(async () => {
+    if (dashboardRefreshing) {
+      return;
+    }
+
+    if (dashboardRefreshTimerRef.current) {
+      clearTimeout(dashboardRefreshTimerRef.current);
+    }
+
+    setDashboardRefreshAnimating(true);
+    dashboardRefreshTimerRef.current = setTimeout(() => {
+      setDashboardRefreshAnimating(false);
+      dashboardRefreshTimerRef.current = null;
+    }, 1000);
+
+    setDashboardRefreshing(true);
+    try {
+      await refreshDashboard();
+    } finally {
+      setDashboardRefreshing(false);
+    }
+  }, [dashboardRefreshing, refreshDashboard]);
+
+  useEffect(() => () => {
+    if (dashboardRefreshTimerRef.current) {
+      clearTimeout(dashboardRefreshTimerRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -1655,17 +1726,38 @@ export function StaffScannerPage() {
                 </div>
 
                 <div className="rounded-[1.8rem] border border-sky-100 bg-white p-5 shadow-[0_18px_50px_rgba(2,132,199,0.08)]">
-                  <AuthSectionHeading eyebrow="Fallback Flow" title="Manual Entry" description="Use the fallback entry code when the QR is hard to read or the attendee opens the ticket on another device." />
+                  <AuthSectionHeading eyebrow="Fallback Flow" title="Manual Entry" description="Use the entry code when the QR is hard to read." />
                   <div className="mt-5 space-y-4">
                     <div className="grid gap-3">
                       <div><label htmlFor="manual-entry-code" className="mb-1.5 block text-sm font-semibold text-slate-700">Entry Code</label><input id="manual-entry-code" type="text" autoComplete="off" placeholder="ABCD-2345" value={manualCode} onChange={(event) => setManualCode(formatEntryCode(event.target.value))} className={authInputClass(false, { withIcon: false })} /></div>
                       <button type="button" onClick={() => void handleManualLookup()} disabled={manualBusy} className={authPrimaryButtonClass('h-[50px] px-5 text-sm')}>{manualBusy ? <><Loader2 className="h-4.5 w-4.5 animate-spin" aria-hidden="true" />Looking Up...</> : <><Search className="h-4.5 w-4.5" aria-hidden="true" />Lookup</>}</button>
-                      <button type="button" onClick={() => void handleManualConfirm()} disabled={confirmBusy || !manualLookup?.found} className="inline-flex h-[50px] items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">{confirmBusy ? <><Loader2 className="h-4.5 w-4.5 animate-spin" aria-hidden="true" />Confirming...</> : <><CheckCircle2 className="h-4.5 w-4.5" aria-hidden="true" />Confirm Entry</>}</button>
                     </div>
 
                     <AnimatePresence>
-                      {manualLookup ? <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className={`rounded-[1.5rem] border px-4 py-4 ${manualLookup.found ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/70'}`}><p className="text-sm font-semibold text-slate-900">{manualLookup.message || (manualLookup.found ? 'Participant found.' : 'Participant was not found.')}</p>{manualLookup.participant ? <div className="mt-3 grid gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Participant</p><p className="mt-1 text-sm font-semibold text-slate-900">{manualLookup.participant.name || '-'}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Ticket Code</p><p className="mt-1 text-sm font-semibold text-slate-900">{manualLookup.participant.ticket_code || '-'}</p></div></div> : null}<div className="mt-4"><AuthCodeBadge code={manualLookup.participant?.entry_code_display} label="Fallback Entry Code" /></div></motion.div> : null}
+                      {manualLookup ? (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          className={`rounded-[1.5rem] border px-4 py-4 ${manualLookup.found ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/70'}`}
+                        >
+                          <p className="text-sm font-semibold text-slate-900">
+                            {manualLookup.message || (manualLookup.found ? 'Participant found.' : 'Participant was not found.')}
+                          </p>
+                          {manualLookup.participant ? (
+                            <div className="mt-3 grid gap-3">
+                              {participantDetailField('Email', manualLookup.participant.email || '-')}
+                              {participantDetailField('Full Name', manualLookup.participant.full_name || manualLookup.participant.name || '-')}
+                              {participantDetailField('Phone Number', manualLookup.participant.phone_number || '-')}
+                              {participantDetailField('Country', manualLookup.participant.country_label || manualLookup.participant.country || '-')}
+                              {participantDetailField('Entry Code', manualLookup.participant.entry_code_display || '-')}
+                            </div>
+                          ) : null}
+                        </motion.div>
+                      ) : null}
                     </AnimatePresence>
+
+                    <button type="button" onClick={() => void handleManualConfirm()} disabled={confirmBusy || !manualLookup?.found} className="flex h-[50px] w-full items-center justify-center gap-2 rounded-2xl border border-red-600 bg-red-600 px-5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(220,38,38,0.22)] transition-all hover:border-red-700 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60">{confirmBusy ? <><Loader2 className="h-4.5 w-4.5 animate-spin" aria-hidden="true" />Confirming...</> : <><CheckCircle2 className="h-4.5 w-4.5" aria-hidden="true" />Confirm Entry</>}</button>
                   </div>
                 </div>
               </section>
@@ -1685,10 +1777,10 @@ export function StaffScannerPage() {
                   <div className="rounded-[1.8rem] border border-sky-100 bg-white p-5 shadow-[0_18px_50px_rgba(2,132,199,0.08)]">
                     <div className="flex items-start justify-between gap-3">
                       <AuthSectionHeading eyebrow="Recent Activity" title="Recent Scans" description="Latest activity for the selected gate." />
-                      <button type="button" onClick={() => void refreshDashboard()} className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50" aria-label="Refresh history and stats"><RefreshCcw className="h-4.5 w-4.5" aria-hidden="true" /></button>
+                      <button type="button" onClick={() => void handleDashboardRefresh()} disabled={dashboardRefreshing} className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition-all ${(dashboardRefreshing || dashboardRefreshAnimating) ? 'border-sky-200 bg-sky-50 text-sky-600 shadow-[0_12px_24px_rgba(14,165,233,0.18)]' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'} disabled:cursor-wait`} aria-label="Refresh history and stats"><motion.span animate={dashboardRefreshAnimating ? { rotate: 360, scale: [1, 1.08, 1] } : { rotate: 0, scale: 1 }} transition={dashboardRefreshAnimating ? { rotate: { duration: 1, ease: 'easeInOut' }, scale: { duration: 1, ease: 'easeInOut' } } : { duration: 0.2, ease: 'easeOut' }}><RefreshCcw className="h-4.5 w-4.5" aria-hidden="true" /></motion.span></button>
                     </div>
                     <div className="mt-5 space-y-3">
-                      {history.length === 0 ? <div className="rounded-[1.4rem] border border-slate-100 bg-slate-50 px-4 py-4 text-sm text-slate-500">No scan activity yet for this gate today.</div> : history.map((item, index) => { const meta = statusMeta(item.status); return <div key={`${item.ticket_code}-${item.scanned_at}-${index}`} className="rounded-[1.4rem] border border-slate-100 bg-slate-50/70 px-4 py-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold text-slate-900">{item.ticket_code || 'Unknown Ticket'}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" aria-hidden="true" />{formatScannedAt(item.scanned_at)}</p></div><span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] ${meta.badge}`}>{meta.label}</span></div><div className="mt-3 flex flex-wrap items-center justify-between gap-3"><AuthCodeBadge code={item.entry_code_display} label="Entry Code" /><div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">{item.scanner_post}</div></div></div>; })}
+                      {history.length === 0 ? <div className="rounded-[1.4rem] border border-slate-100 bg-slate-50 px-4 py-4 text-sm text-slate-500">No scan activity yet for this gate today.</div> : history.map((item, index) => { const meta = statusMeta(item.status); return <div key={`${item.ticket_code}-${item.scanned_at}-${index}`} className="rounded-[1.4rem] border border-slate-100 bg-slate-50/70 px-4 py-4"><div className="flex items-start justify-between gap-3"><p className="flex items-center gap-1.5 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" aria-hidden="true" />{formatScannedAt(item.scanned_at)}</p><span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] ${meta.badge}`}>{meta.label}</span></div>{historyParticipantDetails(item)}<div className="mt-3 flex flex-wrap items-center justify-between gap-3"><AuthCodeBadge code={item.entry_code_display} label="Entry Code" /><div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">{item.scanner_post}</div></div></div>; })}
                     </div>
                   </div>
                 </div>

@@ -173,12 +173,31 @@ class StaffScannerService
         ));
 
         return array_slice(array_map(function (array $log): array {
+            $ticketId = (string) ($log['ticket_id'] ?? '');
+            $ticketCode = strtoupper(trim((string) ($log['ticket_code'] ?? '')));
+            $userId = (string) ($log['user_id'] ?? '');
+            $ticket = $ticketId !== '' ? $this->repository->findTicket($ticketId) : null;
+
+            if (! is_array($ticket) && $ticketCode !== '') {
+                $ticket = $this->repository->findTicketByTicketCode($ticketCode);
+            }
+
+            $user = $userId !== '' ? $this->repository->findUser($userId) : null;
+
+            if (! is_array($user) && is_array($ticket)) {
+                $ticketUserId = (string) ($ticket['user_id'] ?? '');
+                $user = $ticketUserId !== '' ? $this->repository->findUser($ticketUserId) : null;
+            }
+
             return [
                 'status' => (string) ($log['result'] ?? 'invalid'),
                 'ticket_code' => (string) ($log['ticket_code'] ?? ''),
                 'entry_code_display' => (string) ($log['entry_code_display'] ?? ''),
                 'scanner_post' => (string) ($log['scanner_name'] ?? ''),
                 'scanned_at' => (string) ($log['scanned_at'] ?? ''),
+                'participant' => is_array($ticket) && is_array($user)
+                    ? $this->participantSummary($user, $ticket)
+                    : null,
             ];
         }, $logs), 0, max(1, $limit));
     }

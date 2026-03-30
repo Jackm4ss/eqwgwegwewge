@@ -15,6 +15,8 @@
         $sponsorAmazingThailandUrl = asset('images/amazing thailand.png');
         $sponsorSinghaUrl = asset('images/singha-seeklogo.png');
         $sponsorSnakeBrandUrl = asset('images/Snake-Brand-Logo.png');
+        $sponsorThaigoUrl = asset('images/thaigo.png');
+        $sponsorLayer0Url = asset('images/Layer 0.png');
         $mediaWobUrl = asset('images/wob.png');
         $mediaNoodouUrl = asset('images/noodou.png');
         $mapToLocationUrl = asset('images/Map to Location.png');
@@ -498,6 +500,8 @@
                             <img src="{{ $sponsorAmazingThailandUrl }}" alt="Amazing Thailand" class="logo-sponsor-amazing">
                             <img src="{{ $sponsorSinghaUrl }}" alt="Singha" class="logo-sponsor">
                             <img src="{{ $sponsorSnakeBrandUrl }}" alt="Snake Brand" class="logo-sponsor">
+                            <img src="{{ $sponsorThaigoUrl }}" alt="Thaigo" class="logo-sponsor">
+                            <img src="{{ $sponsorLayer0Url }}" alt="Layer 0" class="logo-sponsor">
                         </div>
                     </div>
 

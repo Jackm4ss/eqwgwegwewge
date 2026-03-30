@@ -60,6 +60,7 @@ interface RegisterResponse {
   ticket_url?: string;
   ticket_qr_url?: string;
   ticket_code?: string;
+  entry_code_display?: string;
   errors?: Record<string, string[]>;
 }
 
@@ -200,6 +201,8 @@ const SPONSOR_DITP_URL = '/images/ditp.jpeg';
 const SPONSOR_AMAZING_THAILAND_URL = '/images/amazing%20thailand.png';
 const SPONSOR_SINGHA_URL = '/images/singha-seeklogo.png';
 const SPONSOR_SNAKE_BRAND_URL = '/images/Snake-Brand-Logo.png';
+const SPONSOR_THAIGO_URL = '/images/thaigo.png';
+const SPONSOR_LAYER_0_URL = '/images/Layer%200.png';
 const MEDIA_WOB_URL = '/images/wob.png';
 const MEDIA_NOODOU_URL = '/images/noodou.png';
 const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/yWaPZYTBoHXgpXKn8';
@@ -233,15 +236,19 @@ function TicketPreviewCard({
   identityNumber,
   qrUrl,
   ticketCode,
+  entryCodeDisplay,
   ticketUrl,
 }: RegisteredTicketPreviewData & {
   qrUrl: string;
   ticketCode: string;
+  entryCodeDisplay: string;
   ticketUrl: string;
 }) {
   const identityDisplay = identityNumber.trim() || '-';
   const hasTicketLink = ticketUrl.trim() !== '';
   const hasQrUrl = qrUrl.trim() !== '';
+  const normalizedEntryCodeDisplay = entryCodeDisplay.trim();
+  const hasEntryCode = normalizedEntryCodeDisplay !== '';
 
   return (
     <div
@@ -269,18 +276,34 @@ function TicketPreviewCard({
           <p className="mt-[5px] text-[0.9rem] font-bold uppercase">MALAYSIA'S PREMIER SONGKRAN FESTIVAL</p>
         </div>
 
-        <div className="mx-auto mt-[25px] flex h-[180px] w-[180px] items-center justify-center overflow-hidden rounded-[12px] bg-white shadow-[0_4px_15px_rgba(0,0,0,0.2)]">
-          {hasQrUrl ? (
-            <img
-              src={qrUrl}
-              alt="Registered participant QR code"
-              className="block h-[160px] w-[160px] object-contain"
-            />
-          ) : (
-            <div className="px-5 text-center text-sm font-extrabold uppercase tracking-[0.18em] text-sky-700">
-              {ticketCode.trim() !== '' ? ticketCode : 'Ticket QR'}
+        <div className="mx-auto mt-[25px] flex w-full max-w-[280px] flex-col items-center justify-center gap-[14px] overflow-hidden rounded-[12px] bg-white px-[14px] pb-[18px] pt-[14px] shadow-[0_4px_15px_rgba(0,0,0,0.2)]">
+          <div className="flex h-[160px] w-[160px] items-center justify-center">
+            {hasQrUrl ? (
+              <img
+                src={qrUrl}
+                alt="Registered participant QR code"
+                className="block h-[160px] w-[160px] object-contain"
+              />
+            ) : (
+              <div className="px-5 text-center text-sm font-extrabold uppercase tracking-[0.18em] text-sky-700">
+                {ticketCode.trim() !== '' ? ticketCode : 'Ticket QR'}
+              </div>
+            )}
+          </div>
+
+          {hasEntryCode ? (
+            <div className="m-0 flex w-full min-w-0 flex-col items-center gap-2 rounded-[22px] border border-white/52 bg-[linear-gradient(135deg,rgba(255,255,255,0.7),rgba(255,255,255,0.48))] px-[22px] py-[18px] text-black shadow-[0_10px_28px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-[14px]">
+              <div className="text-[0.65rem] font-extrabold uppercase tracking-[0.16em] text-slate-700/70">
+                Entry Code
+              </div>
+              <div className="text-[1.08rem] font-extrabold tracking-[0.12em] text-slate-900">
+                {normalizedEntryCodeDisplay}
+              </div>
+              <div className="max-w-[220px] text-center text-[0.75rem] font-bold leading-[1.45] text-slate-700/75">
+                Use this code for manual lookup if your QR cannot be scanned at the gate.
+              </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className="my-5 mb-6 text-white">
@@ -350,6 +373,8 @@ function TicketPreviewCard({
               <img src={SPONSOR_AMAZING_THAILAND_URL} alt="Amazing Thailand" className="h-[22px] w-auto object-contain" decoding="async" />
               <img src={SPONSOR_SINGHA_URL} alt="Singha" className="h-6 w-auto object-contain" decoding="async" />
               <img src={SPONSOR_SNAKE_BRAND_URL} alt="Snake Brand" className="h-6 w-auto object-contain" decoding="async" />
+              <img src={SPONSOR_THAIGO_URL} alt="Thaigo" className="h-6 w-auto object-contain" decoding="async" />
+              <img src={SPONSOR_LAYER_0_URL} alt="Layer 0" className="h-6 w-auto object-contain" decoding="async" />
             </div>
           </div>
 
@@ -838,6 +863,7 @@ export function RegisterPage() {
   const [registeredTicketUrl, setRegisteredTicketUrl] = useState('');
   const [registeredTicketQrUrl, setRegisteredTicketQrUrl] = useState('');
   const [registeredTicketCode, setRegisteredTicketCode] = useState('');
+  const [registeredEntryCodeDisplay, setRegisteredEntryCodeDisplay] = useState('');
   const [registeredTicketPreview, setRegisteredTicketPreview] = useState<RegisteredTicketPreviewData>({
     fullName: '',
     identityNumber: '',
@@ -1063,6 +1089,7 @@ export function RegisterPage() {
     setRegisteredTicketUrl('');
     setRegisteredTicketQrUrl('');
     setRegisteredTicketCode('');
+    setRegisteredEntryCodeDisplay('');
     setRegisteredTicketPreview({
       fullName: '',
       identityNumber: '',
@@ -1180,6 +1207,7 @@ export function RegisterPage() {
       setRegisteredTicketUrl(ticketUrl);
       setRegisteredTicketQrUrl(result.ticket_qr_url || '');
       setRegisteredTicketCode(result.ticket_code || '');
+      setRegisteredEntryCodeDisplay(result.entry_code_display || '');
       setRegisteredTicketPreview({
         fullName: data.full_name,
         identityNumber: data.identity_number,
@@ -1276,6 +1304,7 @@ export function RegisterPage() {
       skipLabel="Skip to registration form"
       onCanvasReady={handleCanvasReady}
       onPageClick={handlePageClick}
+      backgroundImageUrl="/images/BACKGROUND.jpg"
     >
       <Toaster position="top-center" richColors />
 
@@ -1933,6 +1962,7 @@ export function RegisterPage() {
                     identityNumber={registeredTicketPreview.identityNumber}
                     qrUrl={registeredTicketQrUrl}
                     ticketCode={registeredTicketCode}
+                    entryCodeDisplay={registeredEntryCodeDisplay}
                     ticketUrl={registeredTicketUrl}
                   />
 

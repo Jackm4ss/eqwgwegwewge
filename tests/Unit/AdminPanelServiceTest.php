@@ -148,6 +148,65 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame('delete_user', $logs->items()[0]['action_type']);
     }
 
+    public function test_attendance_data_hydrates_participant_details_for_history_cards(): void
+    {
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allScanLogs')
+            ->once()
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-1',
+                    'ticket_id' => 'ticket-123',
+                    'ticket_code' => '01KMYH3W10ECD5BV9F8APYPHTZ',
+                    'user_id' => 'user-123',
+                    'scanner_name' => 'Gate AB',
+                    'scanner_role' => 'staff',
+                    'scanner_id' => 'scanner-post:gate-ab',
+                    'scanned_at' => '2026-03-30T05:15:38Z',
+                    'scan_date' => '2026-03-30',
+                    'result' => 'duplicate',
+                ],
+            ]);
+        $repository->shouldReceive('allUsers')
+            ->once()
+            ->andReturn([
+                [
+                    'user_id' => 'user-123',
+                    'full_name' => 'wegwegwegweg',
+                    'email' => 'wegwegwegweg@gmail.com',
+                    'phone_number' => '+603298592389',
+                    'country' => 'MY',
+                ],
+            ]);
+        $repository->shouldReceive('allTickets')
+            ->once()
+            ->andReturn([
+                [
+                    'ticket_id' => 'ticket-123',
+                    'user_id' => 'user-123',
+                    'ticket_code' => '01KMYH3W10ECD5BV9F8APYPHTZ',
+                    'entry_code_display' => '2RCA-GYXF',
+                ],
+            ]);
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+
+        $attendance = $service->attendanceData(['scanner_post' => 'Gate AB']);
+        $history = $attendance['history']->items();
+
+        $this->assertCount(1, $history);
+        $this->assertSame('2RCA-GYXF', $history[0]['entry_code_display']);
+        $this->assertSame('wegwegwegweg@gmail.com', $history[0]['participant']['email']);
+        $this->assertSame('wegwegwegweg', $history[0]['participant']['full_name']);
+        $this->assertSame('+603298592389', $history[0]['participant']['phone_number']);
+        $this->assertSame('Malaysia', $history[0]['participant']['country_label']);
+        $this->assertSame('2RCA-GYXF', $history[0]['participant']['entry_code_display']);
+        $this->assertSame('Gate AB', $attendance['scan_post_options'][0]['value']);
+    }
+
     public function test_export_rows_for_admin_logs_only_queries_activity_logs_dataset(): void
     {
         $filters = ['from' => '2026-03-29'];

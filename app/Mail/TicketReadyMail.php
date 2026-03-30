@@ -32,6 +32,8 @@ class TicketReadyMail extends Mailable
             'sponsorAmazingThailand' => $assetDirectory.DIRECTORY_SEPARATOR.'amazing thailand.png',
             'sponsorSingha' => $assetDirectory.DIRECTORY_SEPARATOR.'singha-seeklogo.png',
             'sponsorSnakeBrand' => $assetDirectory.DIRECTORY_SEPARATOR.'Snake-Brand-Logo.png',
+            'sponsorThaigo' => $assetDirectory.DIRECTORY_SEPARATOR.'thaigo.png',
+            'sponsorLayer0' => $assetDirectory.DIRECTORY_SEPARATOR.'Layer 0.png',
             'mediaWob' => $assetDirectory.DIRECTORY_SEPARATOR.'wob.png',
             'mediaNoodou' => $assetDirectory.DIRECTORY_SEPARATOR.'noodou.png',
         ];

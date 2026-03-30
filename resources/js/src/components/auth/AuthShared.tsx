@@ -12,6 +12,7 @@ type AuthPageShellProps = {
   onPageClick?: MouseEventHandler<HTMLDivElement>;
   onCanvasReady?: (addRipple: (x: number, y: number) => void) => void;
   contentClassName?: string;
+  backgroundImageUrl?: string;
 };
 
 type AuthCardFrameProps = {
@@ -70,11 +71,24 @@ export function AuthPageShell({
   onPageClick,
   onCanvasReady,
   contentClassName,
+  backgroundImageUrl,
 }: AuthPageShellProps) {
+  const pageBackgroundStyle = backgroundImageUrl
+    ? {
+        backgroundImage: `url(${backgroundImageUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundColor: '#0369A1',
+      }
+    : {
+        background: 'linear-gradient(145deg, #0C4A6E 0%, #0369A1 30%, #0284C7 60%, #0EA5E9 100%)',
+      };
+
   return (
     <div
       className="relative min-h-screen overflow-x-hidden"
-      style={{ background: 'linear-gradient(145deg, #0C4A6E 0%, #0369A1 30%, #0284C7 60%, #0EA5E9 100%)' }}
+      style={pageBackgroundStyle}
       onClick={onPageClick}
     >
       {skipHref && skipLabel ? (
