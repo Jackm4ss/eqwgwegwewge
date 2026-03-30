@@ -12,6 +12,7 @@ import {
   authInputClass,
   authPrimaryButtonClass,
 } from './AuthShared';
+import { getSpaUrl } from '../../lib/spaRouting';
 import { cn } from '../../lib/utils';
 
 type StaffLoginFormData = {
@@ -27,7 +28,8 @@ type StaffLoginResponse = {
 };
 
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
-const STAFF_BASE_PATH = '/staff';
+const STAFF_LOGIN_SUBMIT_URL = getSpaUrl('staffLoginSubmit', '/staff/login');
+const STAFF_HOME_URL = getSpaUrl('staffHome', '/staff');
 
 function csrfToken() {
   return (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ?? '';
@@ -93,7 +95,7 @@ export function StaffLoginPage() {
     setFormError('');
 
     try {
-      const response = await fetch(`${STAFF_BASE_PATH}/login`, {
+      const response = await fetch(STAFF_LOGIN_SUBMIT_URL, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -118,7 +120,7 @@ export function StaffLoginPage() {
       }
 
       toast.success('Scanner access granted.');
-      window.location.href = result.redirect || STAFF_BASE_PATH;
+      window.location.href = result.redirect || STAFF_HOME_URL;
     } catch {
       const message = 'Unable to reach the staff portal right now.';
       setFormError(message);
@@ -146,8 +148,8 @@ export function StaffLoginPage() {
           <AuthCardHeader
             eyebrow="Scanner Portal"
             title="Staff Login"
-            description="Masuk ke dashboard scanner, pilih gate aktif, lalu lanjut scan QR dan fallback code dengan sesi yang langsung siap dipakai."
-            note="Gate dipilih saat login dan sesi scanner akan langsung mengikuti gate tersebut."
+            description="Sign in to the scanner dashboard, choose the active gate, and continue with QR scanning and fallback entry codes in a ready-to-use session."
+            note="The selected gate is assigned during sign-in, and the scanner session will follow it immediately."
             topSlot={(
               <div className="flex flex-wrap items-center gap-4">
                 <div className="rounded-[1.35rem] border border-white/15 bg-white/10 px-4 py-3 shadow-[0_14px_45px_rgba(12,74,110,0.22)] backdrop-blur-sm">
@@ -173,7 +175,7 @@ export function StaffLoginPage() {
                     id="staff-email"
                     type="email"
                     autoComplete="email"
-                    placeholder="scanner01@songkran.local"
+                    placeholder="name1@example.com"
                     className={authInputClass(Boolean(errors.email))}
                     {...register('email', {
                       required: 'Staff email is required.',
@@ -237,7 +239,7 @@ export function StaffLoginPage() {
                         Choose the active gate <span className="text-red-500">*</span>
                       </p>
                       <p className="text-xs leading-relaxed text-slate-500">
-                        Gate ini akan langsung dipakai untuk seluruh sesi scanner setelah login berhasil.
+                        This gate will be used for the entire scanner session right after sign-in succeeds.
                       </p>
                     </div>
                   </div>
@@ -339,7 +341,7 @@ export function StaffLoginPage() {
                         {selectedScannerPost}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-500">
-                        Operator akan langsung diarahkan ke dashboard scanner dengan gate ini sebagai konteks aktif.
+                        The operator will be taken straight to the scanner dashboard with this gate as the active context.
                       </p>
                     </div>
                   </div>

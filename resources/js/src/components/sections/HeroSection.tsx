@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, useMotionValue, useSpring } from "motion/react";
+import { buildRegisterUrl } from "@/lib/trafficAttribution";
 
 // Set TARGET to the event start date
 const TARGET = new Date("2026-04-09T12:00:00+08:00");
@@ -58,6 +59,9 @@ export function HeroSection() {
     const cy = (e.clientY / window.innerHeight - 0.5) * 40;
     mouseX.set(cx);
     mouseY.set(cy);
+  };
+  const goToRegister = () => {
+    window.location.assign(buildRegisterUrl());
   };
 
   return (
@@ -221,7 +225,7 @@ export function HeroSection() {
           className="px-4 md:px-8 lg:px-14 mt-6 md:mb-8 relative z-20"
         >
           <button
-            onClick={() => window.location.href = '/register'}
+            onClick={goToRegister}
             className="group relative overflow-hidden rounded-full px-8 py-3.5 md:px-10 md:py-4 transition-all hover:scale-105 active:scale-95"
             style={{
               background: 'linear-gradient(135deg, #0284C7, #0EA5E9)', boxShadow: '0 4px 14px rgba(2,132,199,0.35)'

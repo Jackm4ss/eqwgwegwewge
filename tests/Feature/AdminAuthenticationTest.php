@@ -180,7 +180,10 @@ class AdminAuthenticationTest extends TestCase
     {
         $admin = Admin::query()->firstOrFail();
 
-        config(['app.timezone' => 'Asia/Jakarta']);
+        config([
+            'app.timezone' => 'Asia/Jakarta',
+            'admin.event.timezone' => 'Asia/Jakarta',
+        ]);
 
         $this->mock(AdminPanelService::class, function ($mock): void {
             $mock->shouldReceive('userManagementPage')
@@ -203,6 +206,13 @@ class AdminAuthenticationTest extends TestCase
                                 'attendance_status' => 'not_checked_in',
                                 'account_status' => 'active',
                                 'verification_status' => 'verified',
+                                'traffic_source_label' => 'Instagram',
+                                'traffic_source_caption' => 'Promo Link: songkran-launch',
+                                'traffic_campaign' => 'songkran-launch',
+                                'traffic_referrer_host' => 'l.instagram.com',
+                                'traffic_medium_label' => 'Social',
+                                'traffic_landing_path' => '/register?utm_source=instagram',
+                                'traffic_captured_at' => '2026-03-24T20:00:00Z',
                             ],
                             [
                                 'user_id' => 'user-456',
@@ -271,6 +281,8 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('Participant Overview')
             ->assertSee('Participant Details')
             ->assertSee('Summary of key participant information')
+            ->assertSee('Registrant Source')
+            ->assertSee('Promo Link: songkran-launch')
             ->assertDontSee('js-user-editor-modal', false)
             ->assertDontSee('Participant Information')
             ->assertDontSee('Save Changes')
@@ -317,9 +329,9 @@ class AdminAuthenticationTest extends TestCase
         $response->assertOk()
             ->assertSee('Edit Participant')
             ->assertSee('Phone Number / WhatsApp')
-            ->assertSee('Identity Document')
-            ->assertSee('IC /')
-            ->assertSee('National ID')
+            ->assertSee('Document Type')
+            ->assertSee('Malaysia IC (MyKad)')
+            ->assertSee('Document Number')
             ->assertSee('Save Changes')
             ->assertSee('Ticket Snapshot')
             ->assertSee('Ticket Code')

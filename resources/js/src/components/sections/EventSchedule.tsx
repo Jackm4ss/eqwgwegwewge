@@ -6,7 +6,7 @@ import { SECTION_BACKGROUND } from "./sectionContrastTheme";
 const TILT: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 
 const TITLE_HIGHLIGHT_TEXT_STYLE: React.CSSProperties = {
-  color: "#35d8f7",
+  color: "#349CD2",
   textShadow: "4px 5px 0 rgba(31, 52, 71, 0.34), 0 4px 10px rgba(31, 52, 71, 0.14)",
 };
 

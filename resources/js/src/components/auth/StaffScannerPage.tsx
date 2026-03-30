@@ -21,7 +21,6 @@ import {
   TriangleAlert,
   UserRound,
 } from 'lucide-react';
-import { toast } from 'sonner';
 
 import {
   AuthCardFrame,
@@ -32,11 +31,13 @@ import {
   authInputClass,
   authPrimaryButtonClass,
 } from './AuthShared';
+import type { BeforeInstallPromptEvent } from '../../lib/pwa';
+import { getSpaUrl } from '../../lib/spaRouting';
+import { ensureSweetAlert } from '../../lib/sweetAlert';
 
 type StaffSession = {
   user: { email: string };
   scanner_post: string | null;
-  available_posts: string[];
 };
 
 type CameraPermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported';
@@ -86,10 +87,48 @@ type HistoryItem = {
   scanned_at: string;
 };
 
-const STAFF_BASE_PATH = '/staff';
+type ScannerAlertIcon = 'success' | 'warning' | 'error' | 'info';
+type ScannerAlertConfig = {
+  icon: ScannerAlertIcon;
+  title: string;
+  text: string;
+  html?: string;
+  iconHtml?: string;
+  iconClassName?: string;
+};
+
+type CameraZoomState = {
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+};
+
+type ExtendedMediaTrackCapabilities = MediaTrackCapabilities & {
+  focusMode?: string[];
+  zoom?: {
+    min: number;
+    max: number;
+    step?: number;
+  };
+};
+
+type ExtendedMediaTrackSettings = MediaTrackSettings & {
+  zoom?: number;
+};
+
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
+const PWA_APP_ICON_URL = '/pwa/icons/icon-192.png';
 const SCANNER_REGION_ID = 'staff-html5-qrcode-region';
 const EMPTY_STATS: ScannerStats = { total_scans: 0, successful_scans: 0, duplicate_scans: 0, invalid_scans: 0 };
+const STAFF_LOGIN_URL = getSpaUrl('staffLogin', '/staff/login');
+const STAFF_SESSION_URL = getSpaUrl('staffSession', '/staff/session');
+const STAFF_SCAN_URL = getSpaUrl('staffScan', '/staff/scan');
+const STAFF_MANUAL_LOOKUP_URL = getSpaUrl('staffManualLookup', '/staff/manual-lookup');
+const STAFF_MANUAL_CONFIRM_URL = getSpaUrl('staffManualConfirm', '/staff/manual-confirm');
+const STAFF_HISTORY_URL = getSpaUrl('staffHistory', '/staff/history');
+const STAFF_STATS_URL = getSpaUrl('staffStats', '/staff/stats');
+const STAFF_LOGOUT_URL = getSpaUrl('staffLogout', '/staff/logout');
 
 function csrfToken() {
   return (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ?? '';
@@ -107,24 +146,338 @@ function formatScannedAt(value: string) {
     : date.toLocaleString('en-MY', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-function participantFlagClass(country?: string) {
-  const normalized = country?.trim().toLowerCase() ?? '';
-
-  return /^[a-z]{2}$/.test(normalized) ? `fi fi-${normalized}` : '';
+function escapeHtml(value?: string | null) {
+  return (value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
-function notifyScanResult(result: Pick<ScanResult, 'status' | 'message'>) {
+function resultParticipantField(label: string, value: string, extraClassName = '') {
+  return `
+    <div class="staff-scanner-swal__detail ${extraClassName}">
+      <span class="staff-scanner-swal__detail-label">${escapeHtml(label)}</span>
+      <span class="staff-scanner-swal__detail-value">${escapeHtml(value || '-')}</span>
+    </div>
+  `;
+}
+
+function scanResultAlertHtml(result: Pick<ScanResult, 'message' | 'participant'>) {
+  if (!result.participant) {
+    return `
+      <div class="staff-scanner-swal__result">
+        <span class="staff-scanner-swal__result-label">Result</span>
+        <p class="staff-scanner-swal__result-message">${escapeHtml(result.message)}</p>
+      </div>
+    `;
+  }
+
+  const participant = result.participant;
+
+  return `
+    <div class="staff-scanner-swal__result">
+      <span class="staff-scanner-swal__result-label">Result</span>
+      <p class="staff-scanner-swal__result-message">${escapeHtml(result.message)}</p>
+    </div>
+    <div class="staff-scanner-swal__details-card">
+      <div class="staff-scanner-swal__details-grid">
+        ${resultParticipantField('Email', participant.email || '-')}
+        ${resultParticipantField('Full Name', participant.full_name || participant.name || '-')}
+        ${resultParticipantField('Phone Number', participant.phone_number || '-')}
+        ${resultParticipantField('Country', participant.country_label || participant.country || '-')}
+        ${resultParticipantField('Entry Code', participant.entry_code_display || '-', 'staff-scanner-swal__detail--entry')}
+      </div>
+    </div>
+  `;
+}
+
+function duplicateWarningAlertIconConfig(): Pick<ScannerAlertConfig, 'iconClassName' | 'iconHtml'> {
+  return {
+    iconClassName: 'staff-scanner-swal__icon--duplicate',
+    iconHtml: `
+      <svg class="staff-scanner-swal__warning-svg" viewBox="0 0 64 64" aria-hidden="true">
+        <path
+          d="M32 8.5c1.5 0 2.9.82 3.65 2.15l20.95 37.15c1.54 2.73-.43 6.1-3.56 6.1H11c-3.13 0-5.1-3.37-3.56-6.1L28.35 10.65A4.18 4.18 0 0 1 32 8.5Z"
+          fill="#facc15"
+          stroke="#ca8a04"
+          stroke-width="2.5"
+          stroke-linejoin="round"
+        />
+        <path d="M32 22v14" fill="none" stroke="#78350f" stroke-width="4.5" stroke-linecap="round" />
+        <circle cx="32" cy="43.5" r="3" fill="#78350f" />
+      </svg>
+    `,
+  };
+}
+
+function scanResultAlertConfig(result: Pick<ScanResult, 'status' | 'message' | 'participant'>): ScannerAlertConfig {
   if (result.status === 'success') {
-    toast.success(result.message);
-    return;
+    return {
+      icon: 'success',
+      title: 'Scan accepted',
+      text: result.message,
+      html: scanResultAlertHtml(result),
+    };
   }
 
   if (result.status === 'duplicate') {
-    toast.warning(result.message);
+    return {
+      icon: 'warning',
+      title: 'Duplicate scan',
+      text: result.message,
+      html: scanResultAlertHtml(result),
+      ...duplicateWarningAlertIconConfig(),
+    };
+  }
+
+  return {
+    icon: 'error',
+    title: 'Invalid scan',
+    text: result.message,
+    html: scanResultAlertHtml(result),
+  };
+}
+
+function cameraReadyAlertConfig(): ScannerAlertConfig {
+  return {
+    icon: 'success',
+    title: 'Camera ready',
+    text: 'Scanner camera is ready.',
+    iconClassName: 'staff-scanner-swal__icon--camera',
+    iconHtml: `
+      <svg class="staff-scanner-swal__camera-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M9 4.5a1 1 0 0 0-.8.4L7.25 6H5.5A2.5 2.5 0 0 0 3 8.5v7A2.5 2.5 0 0 0 5.5 18h13a2.5 2.5 0 0 0 2.5-2.5v-7A2.5 2.5 0 0 0 18.5 6h-1.75l-.95-1.1a1 1 0 0 0-.8-.4H9Zm3 3.25a4.25 4.25 0 1 1 0 8.5a4.25 4.25 0 0 1 0-8.5Z"/>
+        <circle cx="12" cy="12" r="2.2" fill="#0ea5e9"/>
+        <circle cx="17.4" cy="17.4" r="4.1" fill="#10b981"/>
+        <path fill="#ffffff" d="m15.9 17.35l.95.95l2-2a.75.75 0 1 1 1.06 1.06l-2.53 2.53a.75.75 0 0 1-1.06 0l-1.48-1.48a.75.75 0 1 1 1.06-1.06Z"/>
+      </svg>
+    `,
+  };
+}
+
+function ensureScannerAlertStyles() {
+  if (typeof document === 'undefined') {
     return;
   }
 
-  toast.error(result.message);
+  const styleId = 'staff-scanner-swal-style';
+
+  if (document.getElementById(styleId)) {
+    return;
+  }
+
+  const style = document.createElement('style');
+  style.id = styleId;
+  style.textContent = `
+    .staff-scanner-swal {
+      width: min(420px, calc(100vw - 1rem)) !important;
+      border-radius: 28px !important;
+      border: 1px solid rgba(186, 230, 253, 0.9) !important;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fcff 100%) !important;
+      box-shadow: 0 28px 72px rgba(12, 74, 110, 0.28) !important;
+      padding: 0 0 1.4rem !important;
+      overflow: hidden !important;
+    }
+
+    .staff-scanner-swal .swal2-icon {
+      margin: 1.6rem auto 0.85rem !important;
+    }
+
+    .staff-scanner-swal .swal2-icon.swal2-success {
+      border-color: #9ad67d !important;
+      color: #9ad67d !important;
+    }
+
+    .staff-scanner-swal .swal2-icon.swal2-success .swal2-success-ring {
+      border-color: rgba(154, 214, 125, 0.28) !important;
+    }
+
+    .staff-scanner-swal .swal2-icon.swal2-success .swal2-success-fix,
+    .staff-scanner-swal .swal2-icon.swal2-success [class^='swal2-success-circular-line'] {
+      background: #ffffff !important;
+    }
+
+    .staff-scanner-swal .swal2-icon.swal2-success [class^='swal2-success-line'] {
+      display: block !important;
+      z-index: 3 !important;
+      background-color: #9ad67d !important;
+    }
+
+    .staff-scanner-swal__icon--duplicate,
+    .staff-scanner-swal__icon--camera {
+      width: 5.4rem !important;
+      height: 5.4rem !important;
+      margin: 1.45rem auto 0.8rem !important;
+      border: none !important;
+    }
+
+    .staff-scanner-swal__icon--duplicate {
+      background: radial-gradient(circle at top, rgba(250, 204, 21, 0.24), rgba(250, 204, 21, 0.09) 55%, rgba(255, 255, 255, 0) 72%) !important;
+    }
+
+    .staff-scanner-swal__icon--camera {
+      background: radial-gradient(circle at top, rgba(14, 165, 233, 0.18), rgba(14, 165, 233, 0.08) 55%, rgba(255, 255, 255, 0) 70%) !important;
+    }
+
+    .staff-scanner-swal__icon--duplicate .swal2-icon-content,
+    .staff-scanner-swal__icon--camera .swal2-icon-content {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 100% !important;
+      height: 100% !important;
+      transform: none !important;
+      font-size: 1rem !important;
+    }
+
+    .staff-scanner-swal__warning-svg,
+    .staff-scanner-swal__camera-svg {
+      width: 4.8rem;
+      height: 4.8rem;
+    }
+
+    .staff-scanner-swal__warning-svg {
+      filter: drop-shadow(0 10px 24px rgba(202, 138, 4, 0.2));
+    }
+
+    .staff-scanner-swal__camera-svg {
+      color: #0284c7;
+      filter: drop-shadow(0 10px 24px rgba(2, 132, 199, 0.18));
+    }
+
+    .staff-scanner-swal__title {
+      margin: 0 !important;
+      padding: 0 1.25rem 0.35rem !important;
+      color: #0f172a !important;
+      font-family: "Kanit", sans-serif !important;
+      font-size: 1.6rem !important;
+      font-weight: 700 !important;
+      line-height: 1.15 !important;
+    }
+
+    .staff-scanner-swal__html {
+      margin: 0 !important;
+      padding: 0 1.25rem !important;
+      color: #475569 !important;
+      font-size: 0.96rem !important;
+      line-height: 1.7 !important;
+      text-align: left !important;
+    }
+
+    .staff-scanner-swal__result {
+      border-radius: 1.1rem;
+      border: 1px solid rgba(186, 230, 253, 0.9);
+      background: linear-gradient(180deg, rgba(240, 249, 255, 0.9), rgba(255, 255, 255, 0.96));
+      padding: 0.9rem 1rem;
+    }
+
+    .staff-scanner-swal__result-label,
+    .staff-scanner-swal__detail-label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+
+    .staff-scanner-swal__result-message {
+      margin: 0.45rem 0 0;
+      color: #0f172a;
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+
+    .staff-scanner-swal__details-card {
+      margin-top: 0.85rem;
+      border-radius: 1.1rem;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      padding: 0.95rem 1rem;
+    }
+
+    .staff-scanner-swal__details-grid {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .staff-scanner-swal__detail {
+      min-width: 0;
+    }
+
+    .staff-scanner-swal__detail-value {
+      display: block;
+      margin-top: 0.2rem;
+      color: #0f172a;
+      font-size: 0.94rem;
+      font-weight: 700;
+      line-height: 1.55;
+      word-break: break-word;
+    }
+
+    .staff-scanner-swal__detail--entry .staff-scanner-swal__detail-value {
+      letter-spacing: 0.08em;
+    }
+
+    .staff-scanner-swal__actions {
+      margin: 1.25rem 0 0 !important;
+      padding: 0 1.25rem !important;
+    }
+
+    .staff-scanner-swal__confirm {
+      margin: 0 !important;
+      width: 100% !important;
+      border: 1px solid transparent !important;
+      border-radius: 1rem !important;
+      background: linear-gradient(135deg, #0284c7, #0ea5e9) !important;
+      color: #ffffff !important;
+      font-size: 0.96rem !important;
+      font-weight: 700 !important;
+      padding: 0.9rem 1.2rem !important;
+      box-shadow: 0 14px 28px rgba(2, 132, 199, 0.22) !important;
+      transition: transform 0.18s ease, filter 0.18s ease !important;
+    }
+
+    .staff-scanner-swal__confirm:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.03);
+    }
+
+    .staff-scanner-swal__confirm:focus-visible,
+    .staff-scanner-swal .swal2-close:focus-visible {
+      box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.18) !important;
+      outline: none !important;
+    }
+
+    .staff-scanner-swal .swal2-close {
+      top: 0.95rem !important;
+      right: 0.95rem !important;
+      color: #64748b !important;
+      font-size: 1.55rem !important;
+      transition: background-color 0.18s ease, color 0.18s ease !important;
+    }
+
+    .staff-scanner-swal .swal2-close:hover {
+      background: rgba(226, 232, 240, 0.8) !important;
+      color: #0f172a !important;
+    }
+
+    @media (max-width: 640px) {
+      .staff-scanner-swal {
+        border-radius: 24px !important;
+      }
+
+      .staff-scanner-swal__title {
+        font-size: 1.4rem !important;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
 }
 
 function statusMeta(status: ScanResult['status']) {
@@ -294,9 +647,152 @@ function cameraStartFailure(error: unknown, surface: CameraSurface, platform: Ca
 
 function preferredQrBoxSize(viewfinderWidth: number, viewfinderHeight: number) {
   const shortestEdge = Math.min(viewfinderWidth, viewfinderHeight);
-  const size = Math.max(180, Math.min(Math.floor(shortestEdge * 0.72), 320));
+  const maxSafeSize = Math.max(180, Math.floor(shortestEdge - 24));
+  const size = Math.max(180, Math.min(Math.floor(shortestEdge * 0.88), maxSafeSize, 420));
 
   return { width: size, height: size };
+}
+
+function buildCameraVideoConstraints(
+  target: CameraStartTarget,
+  platform: CameraPlatform,
+): MediaTrackConstraints {
+  const idealWidth = platform === 'android' ? 1600 : 1280;
+  const idealHeight = platform === 'android' ? 1200 : 960;
+
+  return {
+    width: { ideal: idealWidth },
+    height: { ideal: idealHeight },
+    ...(typeof target === 'string'
+      ? { deviceId: { exact: target } }
+      : { facingMode: target.facingMode }),
+  };
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizeZoomStep(value: number | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return 0.1;
+  }
+
+  return value;
+}
+
+function roundZoomValue(value: number, step: number) {
+  const decimals = step >= 1 ? 0 : Math.min(3, (String(step).split('.')[1] ?? '').length || 1);
+
+  return Number(value.toFixed(decimals));
+}
+
+function formatZoomValue(value: number) {
+  return `${value.toFixed(value >= 10 ? 0 : 1)}x`;
+}
+
+function getScannerVideoTrack(region: HTMLDivElement | null) {
+  if (!region) {
+    return null;
+  }
+
+  const videoElement = region.querySelector('video');
+  if (!(videoElement instanceof HTMLVideoElement)) {
+    return null;
+  }
+
+  const mediaStream = videoElement.srcObject;
+  if (!(mediaStream instanceof MediaStream)) {
+    return null;
+  }
+
+  return mediaStream.getVideoTracks()[0] ?? null;
+}
+
+async function applyTrackAdvancedConstraint(track: MediaStreamTrack, constraint: Record<string, unknown>) {
+  try {
+    await track.applyConstraints({ advanced: [constraint] } as MediaTrackConstraints);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readCameraZoomState(track: MediaStreamTrack) {
+  if (typeof track.getCapabilities !== 'function') {
+    return null;
+  }
+
+  const capabilities = track.getCapabilities() as ExtendedMediaTrackCapabilities;
+  const zoomCapability = capabilities.zoom;
+
+  if (
+    !zoomCapability
+    || typeof zoomCapability.min !== 'number'
+    || typeof zoomCapability.max !== 'number'
+    || zoomCapability.max <= zoomCapability.min
+  ) {
+    return null;
+  }
+
+  const step = normalizeZoomStep(zoomCapability.step);
+  const settings = typeof track.getSettings === 'function'
+    ? track.getSettings() as ExtendedMediaTrackSettings
+    : null;
+  const currentZoom = typeof settings?.zoom === 'number'
+    ? settings.zoom
+    : zoomCapability.min;
+
+  return {
+    min: roundZoomValue(zoomCapability.min, step),
+    max: roundZoomValue(zoomCapability.max, step),
+    step,
+    value: roundZoomValue(clampNumber(currentZoom, zoomCapability.min, zoomCapability.max), step),
+  } satisfies CameraZoomState;
+}
+
+async function configureActiveScannerCamera(
+  region: HTMLDivElement | null,
+  platform: CameraPlatform,
+) {
+  const track = getScannerVideoTrack(region);
+  if (!track) {
+    return null;
+  }
+
+  if (typeof track.getCapabilities === 'function') {
+    const capabilities = track.getCapabilities() as ExtendedMediaTrackCapabilities;
+
+    if (Array.isArray(capabilities.focusMode) && capabilities.focusMode.includes('continuous')) {
+      await applyTrackAdvancedConstraint(track, { focusMode: 'continuous' });
+    }
+  }
+
+  const zoomState = readCameraZoomState(track);
+  if (!zoomState) {
+    return null;
+  }
+
+  let preferredZoom = zoomState.value;
+
+  if (platform === 'android' && zoomState.max >= 1.2 && zoomState.value <= zoomState.min + zoomState.step) {
+    preferredZoom = roundZoomValue(clampNumber(1.15, zoomState.min, zoomState.max), zoomState.step);
+  }
+
+  if (Math.abs(preferredZoom - zoomState.value) >= zoomState.step / 2) {
+    const applied = await applyTrackAdvancedConstraint(track, { zoom: preferredZoom });
+
+    if (applied) {
+      const updatedZoomState = readCameraZoomState(track);
+      if (updatedZoomState) {
+        return updatedZoomState;
+      }
+
+      return { ...zoomState, value: preferredZoom };
+    }
+  }
+
+  return zoomState;
 }
 
 function pickPreferredBackCamera(cameras: CameraDevice[]) {
@@ -389,6 +885,9 @@ export function StaffScannerPage() {
   const detectingRef = useRef(false);
   const lastValueRef = useRef('');
   const lastValueAtRef = useRef(0);
+  const alertQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const pendingAlertCountRef = useRef(0);
+  const zoomUpdateQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const [session, setSession] = useState<StaffSession | null>(null);
   const [scannerPost, setScannerPost] = useState('');
@@ -405,12 +904,93 @@ export function StaffScannerPage() {
   const [scannerPending, setScannerPending] = useState(false);
   const [cameraMessage, setCameraMessage] = useState('');
   const [cameraPermissionState, setCameraPermissionState] = useState<CameraPermissionState>('unknown');
+  const [cameraZoom, setCameraZoom] = useState<CameraZoomState | null>(null);
   const [awaitingCameraPermission, setAwaitingCameraPermission] = useState(false);
   const [activeTab, setActiveTab] = useState<StaffScannerTab>('home');
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installBannerDismissed, setInstallBannerDismissed] = useState(false);
+  const [installingApp, setInstallingApp] = useState(false);
+  const [appInstalled, setAppInstalled] = useState(() => detectCameraSurface() === 'pwa');
 
   const handleCanvasReady = useCallback((fn: (x: number, y: number) => void) => { addRippleRef.current = fn; }, []);
   const handlePageClick = useCallback((event: MouseEvent<HTMLDivElement>) => { addRippleRef.current?.(event.clientX, event.clientY); }, []);
-  const redirectToLogin = useCallback(() => { window.location.href = `${STAFF_BASE_PATH}/login`; }, []);
+  const redirectToLogin = useCallback(() => { window.location.href = STAFF_LOGIN_URL; }, []);
+  const showScannerAlert = useCallback((config: ScannerAlertConfig) => {
+    pendingAlertCountRef.current += 1;
+
+    const runAlert = async () => {
+      ensureScannerAlertStyles();
+
+      try {
+        const Swal = await ensureSweetAlert();
+        const fireOptions: Record<string, unknown> = {
+          icon: config.icon,
+          title: config.title,
+          text: config.html ? undefined : config.text,
+          html: config.html,
+          confirmButtonText: 'OK',
+          allowOutsideClick: false,
+          allowEscapeKey: true,
+          showCloseButton: true,
+          buttonsStyling: false,
+          customClass: {
+            popup: 'staff-scanner-swal',
+            title: 'staff-scanner-swal__title',
+            htmlContainer: 'staff-scanner-swal__html',
+            actions: 'staff-scanner-swal__actions',
+            confirmButton: 'staff-scanner-swal__confirm',
+          },
+        };
+
+        if (config.iconHtml) {
+          fireOptions.iconHtml = config.iconHtml;
+        }
+
+        if (config.iconClassName) {
+          const customClass = fireOptions.customClass as Record<string, string>;
+          customClass.icon = config.iconClassName;
+        }
+
+        await Swal.fire(fireOptions);
+      } catch {
+        window.alert(`${config.title}\n\n${config.text}`);
+      } finally {
+        pendingAlertCountRef.current = Math.max(0, pendingAlertCountRef.current - 1);
+        lastValueAtRef.current = Date.now();
+      }
+    };
+
+    alertQueueRef.current = alertQueueRef.current
+      .catch(() => undefined)
+      .then(runAlert);
+
+    return alertQueueRef.current;
+  }, []);
+  const handleCameraZoomChange = useCallback((rawValue: number) => {
+    if (!cameraZoom) {
+      return;
+    }
+
+    const nextValue = roundZoomValue(clampNumber(rawValue, cameraZoom.min, cameraZoom.max), cameraZoom.step);
+    setCameraZoom({ ...cameraZoom, value: nextValue });
+
+    zoomUpdateQueueRef.current = zoomUpdateQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        const track = getScannerVideoTrack(scannerRegionRef.current);
+        if (!track) {
+          return;
+        }
+
+        const applied = await applyTrackAdvancedConstraint(track, { zoom: nextValue });
+        if (!applied) {
+          const refreshedZoomState = readCameraZoomState(track);
+          if (refreshedZoomState) {
+            setCameraZoom(refreshedZoomState);
+          }
+        }
+      });
+  }, [cameraZoom]);
 
   const stopScanner = useCallback(async () => {
     setScannerPending(true);
@@ -434,6 +1014,7 @@ export function StaffScannerPage() {
       if (scannerRegionRef.current) {
         scannerRegionRef.current.innerHTML = '';
       }
+      setCameraZoom(null);
       setScannerActive(false);
       setScannerPending(false);
     }
@@ -441,8 +1022,8 @@ export function StaffScannerPage() {
 
   const refreshDashboard = useCallback(async () => {
     const [historyResponse, statsResponse] = await Promise.all([
-      fetch(`${STAFF_BASE_PATH}/history`, { headers: { Accept: 'application/json' } }),
-      fetch(`${STAFF_BASE_PATH}/stats`, { headers: { Accept: 'application/json' } }),
+      fetch(STAFF_HISTORY_URL, { headers: { Accept: 'application/json' } }),
+      fetch(STAFF_STATS_URL, { headers: { Accept: 'application/json' } }),
     ]);
 
     if ([401, 403].includes(historyResponse.status) || [401, 403].includes(statsResponse.status)) {
@@ -462,7 +1043,7 @@ export function StaffScannerPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`${STAFF_BASE_PATH}/session`, { headers: { Accept: 'application/json' } });
+        const response = await fetch(STAFF_SESSION_URL, { headers: { Accept: 'application/json' } });
         if ([401, 403].includes(response.status)) {
           redirectToLogin();
           return;
@@ -475,7 +1056,11 @@ export function StaffScannerPage() {
         setScannerPost(payload.scanner_post ?? '');
         await refreshDashboard();
       } catch {
-        toast.error('Unable to load scanner session.');
+        void showScannerAlert({
+          icon: 'error',
+          title: 'Session unavailable',
+          text: 'Unable to load scanner session.',
+        });
       } finally {
         setLoading(false);
       }
@@ -485,7 +1070,7 @@ export function StaffScannerPage() {
     return () => {
       void stopScanner();
     };
-  }, [redirectToLogin, refreshDashboard, stopScanner]);
+  }, [redirectToLogin, refreshDashboard, showScannerAlert, stopScanner]);
 
   useEffect(() => {
     let mounted = true;
@@ -546,6 +1131,29 @@ export function StaffScannerPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event: Event) => {
+      const promptEvent = event as BeforeInstallPromptEvent;
+      promptEvent.preventDefault();
+      setInstallPromptEvent(promptEvent);
+      setInstallBannerDismissed(false);
+    };
+
+    const handleAppInstalled = () => {
+      setAppInstalled(true);
+      setInstallPromptEvent(null);
+      setInstallBannerDismissed(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt as EventListener);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
   const applyResult = useCallback(async (result: ScanResult) => {
     setLatest(result);
     setStats(result.stats);
@@ -555,7 +1163,7 @@ export function StaffScannerPage() {
   const submitScan = useCallback(async (payload: string) => {
     setScanBusy(true);
     try {
-      const response = await fetch(`${STAFF_BASE_PATH}/scan`, {
+      const response = await fetch(STAFF_SCAN_URL, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -575,35 +1183,51 @@ export function StaffScannerPage() {
         throw new Error(result.message || 'Unable to process scan.');
       }
 
-      await applyResult(result);
+      await showScannerAlert(scanResultAlertConfig(result));
       setManualLookup(null);
-      notifyScanResult(result);
+      await applyResult(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to process scan.';
-      toast.error(message);
+      await showScannerAlert({
+        icon: 'error',
+        title: 'Scan failed',
+        text: message,
+      });
       setLatest({ status: 'invalid', message, participant: null, stats });
     } finally {
       setScanBusy(false);
     }
-  }, [applyResult, redirectToLogin, stats]);
+  }, [applyResult, redirectToLogin, showScannerAlert, stats]);
 
   const startScanner = async () => {
     if (!scannerPost.trim()) {
-      toast.error('No gate is assigned to this session. Please sign in again.');
+      void showScannerAlert({
+        icon: 'error',
+        title: 'Gate not assigned',
+        text: 'No gate is assigned to this session. Please sign in again.',
+      });
       return;
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraPermissionState('unsupported');
       setCameraMessage('Camera access is unavailable in this browser. Use Manual Entry below.');
-      toast.error('Live QR scanning is unavailable.');
+      void showScannerAlert({
+        icon: 'error',
+        title: 'Scanner unavailable',
+        text: 'Live QR scanning is unavailable.',
+      });
       return;
     }
 
     if (cameraPermissionState === 'denied') {
       const deniedMessage = cameraDeniedGuidance(cameraSurface, cameraPlatform);
       setCameraMessage(deniedMessage);
-      toast.error('Camera permission is blocked.');
+      void showScannerAlert({
+        icon: 'error',
+        title: 'Camera blocked',
+        text: 'Camera permission is blocked.',
+      });
       return;
     }
 
@@ -628,12 +1252,13 @@ export function StaffScannerPage() {
 
       const scanConfig = {
         fps: cameraPlatform === 'android' ? 12 : 10,
+        aspectRatio: 4 / 3,
         qrbox: preferredQrBoxSize,
         disableFlip: false,
       };
 
       const onDecode = async (decodedText: string) => {
-        if (detectingRef.current || scanBusy) {
+        if (detectingRef.current || scanBusy || pendingAlertCountRef.current > 0) {
           return;
         }
 
@@ -669,11 +1294,27 @@ export function StaffScannerPage() {
 
       for (const startTarget of startTargets) {
         try {
-          await html5QrCode.start(startTarget, scanConfig, onDecode, onDecodeError);
+          await html5QrCode.start(
+            startTarget,
+            {
+              ...scanConfig,
+              videoConstraints: buildCameraVideoConstraints(startTarget, cameraPlatform),
+            },
+            onDecode,
+            onDecodeError,
+          );
           scannerStarted = true;
           break;
         } catch (error) {
           lastStartError = error;
+
+          try {
+            await html5QrCode.start(startTarget, scanConfig, onDecode, onDecodeError);
+            scannerStarted = true;
+            break;
+          } catch (fallbackError) {
+            lastStartError = fallbackError;
+          }
         }
       }
 
@@ -683,12 +1324,17 @@ export function StaffScannerPage() {
 
       setScannerActive(true);
       setCameraPermissionState('granted');
-      toast.success('Scanner camera is ready.');
+      setCameraZoom(await configureActiveScannerCamera(scannerRegionRef.current, cameraPlatform));
+      void showScannerAlert(cameraReadyAlertConfig());
     } catch (error) {
       const failure = cameraStartFailure(error, cameraSurface, cameraPlatform);
       setCameraPermissionState(failure.permissionState);
       setCameraMessage(failure.message);
-      toast.error('Unable to start live QR scanning.');
+      void showScannerAlert({
+        icon: 'error',
+        title: 'Unable to start scanner',
+        text: failure.message,
+      });
       await stopScanner();
     } finally {
       setAwaitingCameraPermission(false);
@@ -698,12 +1344,16 @@ export function StaffScannerPage() {
 
   const handleManualLookup = async () => {
     if (!manualCode.trim()) {
-      toast.error('Enter the fallback entry code first.');
+      void showScannerAlert({
+        icon: 'warning',
+        title: 'Entry code required',
+        text: 'Enter the fallback entry code first.',
+      });
       return;
     }
     setManualBusy(true);
     try {
-      const response = await fetch(`${STAFF_BASE_PATH}/manual-lookup`, {
+      const response = await fetch(STAFF_MANUAL_LOOKUP_URL, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -721,9 +1371,17 @@ export function StaffScannerPage() {
         throw new Error(result.message || 'Unable to lookup entry code.');
       }
       setManualLookup(result);
-      toast[result.found ? 'success' : 'error'](result.message || (result.found ? 'Participant found.' : 'Participant was not found.'));
+      void showScannerAlert({
+        icon: result.found ? 'success' : 'error',
+        title: result.found ? 'Participant found' : 'Participant not found',
+        text: result.message || (result.found ? 'Participant found.' : 'Participant was not found.'),
+      });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to lookup entry code.');
+      void showScannerAlert({
+        icon: 'error',
+        title: 'Lookup failed',
+        text: error instanceof Error ? error.message : 'Unable to lookup entry code.',
+      });
     } finally {
       setManualBusy(false);
     }
@@ -731,12 +1389,16 @@ export function StaffScannerPage() {
 
   const handleManualConfirm = async () => {
     if (!manualLookup?.resolution_token) {
-      toast.error('Lookup the entry code before confirming.');
+      void showScannerAlert({
+        icon: 'warning',
+        title: 'Lookup required',
+        text: 'Lookup the entry code before confirming.',
+      });
       return;
     }
     setConfirmBusy(true);
     try {
-      const response = await fetch(`${STAFF_BASE_PATH}/manual-confirm`, {
+      const response = await fetch(STAFF_MANUAL_CONFIRM_URL, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -753,29 +1415,50 @@ export function StaffScannerPage() {
       if (!response.ok) {
         throw new Error(result.message || 'Unable to confirm entry.');
       }
-      await applyResult(result);
+      await showScannerAlert(scanResultAlertConfig(result));
       setManualLookup(null);
       setManualCode('');
-      notifyScanResult(result);
+      await applyResult(result);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to confirm entry.');
+      void showScannerAlert({
+        icon: 'error',
+        title: 'Confirmation failed',
+        text: error instanceof Error ? error.message : 'Unable to confirm entry.',
+      });
     } finally {
       setConfirmBusy(false);
     }
   };
 
+  const handleInstallApp = async () => {
+    if (!installPromptEvent) {
+      return;
+    }
+
+    setInstallingApp(true);
+
+    try {
+      await installPromptEvent.prompt();
+      await installPromptEvent.userChoice;
+    } finally {
+      setInstallingApp(false);
+      setInstallPromptEvent(null);
+      setInstallBannerDismissed(true);
+    }
+  };
+
   const logout = async () => {
     try {
-      const response = await fetch(`${STAFF_BASE_PATH}/logout`, {
+      const response = await fetch(STAFF_LOGOUT_URL, {
         method: 'POST',
         headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrfToken() },
       });
       const result = (await response.json()) as { redirect?: string };
       await stopScanner();
-      window.location.href = result.redirect || `${STAFF_BASE_PATH}/login`;
+      window.location.href = result.redirect || STAFF_LOGIN_URL;
     } catch {
       await stopScanner();
-      window.location.href = `${STAFF_BASE_PATH}/login`;
+      window.location.href = STAFF_LOGIN_URL;
     }
   };
 
@@ -802,16 +1485,21 @@ export function StaffScannerPage() {
     cameraPlatform,
     awaitingCameraPermission,
   );
+  const installBannerVisible = cameraPlatform === 'android'
+    && cameraSurface !== 'pwa'
+    && !appInstalled
+    && Boolean(installPromptEvent)
+    && !installBannerDismissed;
   const quickNavItems = [
     { key: 'home', label: 'Home', icon: House },
     { key: 'stats', label: 'Stats', icon: BarChart3 },
     { key: 'profile', label: 'Profile', icon: UserRound },
   ] as const;
-  const homeTabClass = activeTab === 'home' ? 'space-y-6' : 'hidden space-y-6 lg:block';
-  const statsTabClass = activeTab === 'stats' ? 'space-y-6' : 'hidden space-y-6 lg:block';
-  const profileTabClass = activeTab === 'profile' ? 'block' : 'hidden lg:block';
-  const homeBannerClass = activeTab === 'home' ? 'block' : 'hidden lg:block';
-  const homeInlineBannerClass = activeTab === 'home' ? 'inline-flex' : 'hidden lg:inline-flex';
+  const homeTabClass = activeTab === 'home' ? 'space-y-6' : 'hidden space-y-6';
+  const statsTabClass = activeTab === 'stats' ? 'space-y-6' : 'hidden space-y-6';
+  const profileTabClass = activeTab === 'profile' ? 'block' : 'hidden';
+  const homeBannerClass = activeTab === 'home' ? 'block' : 'hidden';
+  const homeInlineBannerClass = activeTab === 'home' ? 'inline-flex' : 'hidden';
 
   return (
     <AuthPageShell
@@ -820,25 +1508,25 @@ export function StaffScannerPage() {
       onCanvasReady={handleCanvasReady}
       onPageClick={handlePageClick}
     >
-      <motion.main id="staff-scanner-main" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }} className="relative px-4 py-6 pb-28 lg:px-8 lg:pb-6">
-        <AuthCardFrame className="mx-auto w-full max-w-[1180px]">
+      <motion.main id="staff-scanner-main" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }} className="relative px-4 py-6 pb-28">
+        <AuthCardFrame className="mx-auto w-full max-w-[580px]">
           <AuthCardHeader
             eyebrow="Gate Operations"
             title="Staff Scanner"
             description="Scan festival QR tickets, recover attendees from fallback entry code, and keep gate throughput moving."
             note={scannerPost ? `Active gate: ${scannerPost}` : 'Gate assignment is missing. Please sign in again.'}
             topSlot={(
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-4">
                   <div className="rounded-[1.35rem] border border-white/15 bg-white/10 px-4 py-3 shadow-[0_14px_45px_rgba(12,74,110,0.22)] backdrop-blur-sm">
-                    <img src={SONGKRAN_LOGO_URL} alt="Songkran Festival 2026 logo" className="h-12 w-auto sm:h-14" />
+                    <img src={SONGKRAN_LOGO_URL} alt="Songkran Festival 2026 logo" className="h-12 w-auto" />
                   </div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.28em] text-sky-50">
                     <ScanLine className="h-3.5 w-3.5" aria-hidden="true" />
                     Staff Access
                   </div>
                 </div>
-                <div className="flex flex-col gap-3 sm:min-w-[250px]">
+                <div className="flex flex-col gap-3">
                   <div className="rounded-[1.3rem] border border-white/15 bg-white/10 px-4 py-3 text-sm text-sky-50 shadow-[0_14px_45px_rgba(12,74,110,0.18)] backdrop-blur-sm">
                     <div className="flex items-center gap-3">
                       <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sky-50">
@@ -866,8 +1554,29 @@ export function StaffScannerPage() {
             )}
           />
 
-          <div className="space-y-6 bg-white px-5 py-6 lg:px-6">
-            <div className="grid gap-6 xl:grid-cols-[1.55fr_0.95fr]">
+          <div className="space-y-6 bg-white px-5 py-6">
+            {installBannerVisible ? (
+              <div className={`${homeBannerClass} rounded-[1.8rem] border border-sky-200 bg-[linear-gradient(135deg,rgba(240,249,255,0.96),rgba(224,242,254,0.92))] p-4 shadow-[0_18px_45px_rgba(2,132,199,0.12)]`}>
+                <div className="flex items-start gap-4">
+                  <img src={PWA_APP_ICON_URL} alt="Songkran Scanner app icon" className="h-14 w-14 rounded-[1.1rem] border border-sky-100 bg-white object-cover shadow-[0_10px_24px_rgba(12,74,110,0.12)]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-sky-600">Install App</p>
+                    <h3 className="mt-2 text-lg font-black tracking-tight text-slate-950" style={{ fontFamily: '"Kanit", sans-serif' }}>Install Songkran Scanner</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">Add this scanner to the Android home screen so staff can launch the gate app faster and use it in its own app window.</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button type="button" onClick={() => void handleInstallApp()} disabled={installingApp} className={authPrimaryButtonClass('h-[46px] px-5 text-sm')}>
+                        {installingApp ? <Loader2 className="h-4.5 w-4.5 animate-spin" aria-hidden="true" /> : null}
+                        Install App
+                      </button>
+                      <button type="button" onClick={() => setInstallBannerDismissed(true)} className="inline-flex h-[46px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50">
+                        Not now
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div className="space-y-6">
               <section className={homeTabClass}>
                 <div className="rounded-[1.8rem] border border-sky-100 bg-sky-50/70 p-5">
                   <div className="flex flex-wrap justify-end gap-3">
@@ -876,7 +1585,7 @@ export function StaffScannerPage() {
                   </div>
 
                   <div className={`mt-4 rounded-[1.35rem] border px-4 py-4 ${permissionToneClass(permissionNotice.tone)}`}>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-col gap-3">
                       <div>
                         <p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-75">Camera</p>
                         <p className="mt-2 text-sm font-semibold">{permissionNotice.title}</p>
@@ -889,19 +1598,50 @@ export function StaffScannerPage() {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.9fr)]">
+                  <div className="mt-5 space-y-4">
                     <div className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-slate-950">
                       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-sm text-sky-50"><span className="font-semibold">Live Camera Feed</span><span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] ${scannerActive ? 'border-emerald-300/40 bg-emerald-400/10 text-emerald-200' : 'border-white/15 bg-white/5 text-sky-100/80'}`}>{scannerActive ? 'Active' : 'Standby'}</span></div>
-                      <div className="relative aspect-[4/3] bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.18),_transparent_55%),linear-gradient(135deg,_rgba(12,74,110,0.92),_rgba(15,23,42,0.96))]">
+                      <div className="relative aspect-[5/6] min-h-[24rem] sm:aspect-[4/3] sm:min-h-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.18),_transparent_55%),linear-gradient(135deg,_rgba(12,74,110,0.92),_rgba(15,23,42,0.96))]">
                         <div
                           id={SCANNER_REGION_ID}
                           ref={scannerRegionRef}
                           className="h-full w-full [&_canvas]:h-full [&_canvas]:w-full [&_canvas]:object-cover [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
                         />
                         {!scannerActive ? <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center text-sky-100"><div className="rounded-full border border-white/15 bg-white/10 p-5"><Camera className="h-10 w-10" aria-hidden="true" /></div><div><p className="text-lg font-black tracking-tight" style={{ fontFamily: '"Kanit", sans-serif' }}>Camera waiting</p><p className="mt-2 text-sm leading-relaxed text-sky-100/80">Start Scan to open the camera. Use Manual Entry below if this device cannot decode QR live.</p></div></div> : null}
-                        <div className="pointer-events-none absolute inset-[15%] rounded-[1.4rem] border-2 border-dashed border-white/35 shadow-[0_0_0_9999px_rgba(2,6,23,0.12)]" />
+                        <div className="pointer-events-none absolute inset-x-[8%] inset-y-[12%] rounded-[1.4rem] border-2 border-dashed border-white/35 shadow-[0_0_0_9999px_rgba(2,6,23,0.12)] sm:inset-[15%]" />
                       </div>
                     </div>
+
+                    {cameraZoom ? (
+                      <div className="rounded-[1.4rem] border border-sky-100 bg-white px-4 py-4 shadow-[0_12px_35px_rgba(2,132,199,0.08)]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Camera Zoom</p>
+                            <p className="mt-2 text-sm leading-relaxed text-slate-600">Slide right when the QR looks small from a distance. Slide left when the QR is too close to the camera.</p>
+                          </div>
+                          <span className="inline-flex min-w-[64px] justify-center rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700">
+                            {formatZoomValue(cameraZoom.value)}
+                          </span>
+                        </div>
+
+                        <div className="mt-4">
+                          <input
+                            type="range"
+                            min={cameraZoom.min}
+                            max={cameraZoom.max}
+                            step={cameraZoom.step}
+                            value={cameraZoom.value}
+                            onChange={(event) => handleCameraZoomChange(Number(event.target.value))}
+                            className="h-2 w-full cursor-pointer appearance-none rounded-full bg-sky-100 accent-sky-600"
+                            aria-label="Camera zoom"
+                          />
+                          <div className="mt-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                            <span>Near QR</span>
+                            <span>Far QR</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
 
                     <div className={`rounded-[1.6rem] border p-5 ${latestMeta.panel}`}>
                       <div className="flex items-start justify-between gap-4">
@@ -909,58 +1649,22 @@ export function StaffScannerPage() {
                         <LatestIcon className="h-8 w-8 text-slate-700" aria-hidden="true" />
                       </div>
                       <p className="mt-4 text-sm leading-relaxed text-slate-700">{latest.message}</p>
-                      {latest.participant ? (() => {
-                        const participantFlag = participantFlagClass(latest.participant.country);
-
-                        return (
-                          <div className="mt-5 space-y-4 rounded-[1.4rem] border border-white/70 bg-white/80 p-4">
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <div>
-                                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Email</p>
-                                <p className="mt-1 break-words text-sm font-semibold text-slate-900">{latest.participant.email || '-'}</p>
-                              </div>
-                              <div>
-                                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Full Name</p>
-                                <p className="mt-1 text-sm font-semibold text-slate-900">{latest.participant.full_name || latest.participant.name || '-'}</p>
-                              </div>
-                              <div>
-                                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Phone Number</p>
-                                <div className="mt-1 flex items-center gap-2">
-                                  {participantFlag ? <span className={`${participantFlag} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" /> : null}
-                                  <p className="break-words text-sm font-semibold text-slate-900">{latest.participant.phone_number || '-'}</p>
-                                </div>
-                              </div>
-                              <div>
-                                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Country</p>
-                                <div className="mt-1 flex items-center gap-2">
-                                  {participantFlag ? <span className={`${participantFlag} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" /> : null}
-                                  <p className="text-sm font-semibold text-slate-900">{latest.participant.country_label || latest.participant.country || '-'}</p>
-                                </div>
-                              </div>
-                              <div className="sm:col-span-2">
-                                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Entry Code</p>
-                                <p className="mt-1 text-sm font-semibold text-slate-900">{latest.participant.entry_code_display || '-'}</p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })() : null}
                       {cameraMessage ? <div className="mt-5 rounded-[1.3rem] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{cameraMessage}</div> : null}
                     </div>
                   </div>
                 </div>
 
                 <div className="rounded-[1.8rem] border border-sky-100 bg-white p-5 shadow-[0_18px_50px_rgba(2,132,199,0.08)]">
-                  <AuthSectionHeading eyebrow="Fallback Flow" title="Manual Entry" description="Gunakan fallback entry code saat QR sulit dibaca atau attendee membuka ticket dari device lain." />
+                  <AuthSectionHeading eyebrow="Fallback Flow" title="Manual Entry" description="Use the fallback entry code when the QR is hard to read or the attendee opens the ticket on another device." />
                   <div className="mt-5 space-y-4">
-                    <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+                    <div className="grid gap-3">
                       <div><label htmlFor="manual-entry-code" className="mb-1.5 block text-sm font-semibold text-slate-700">Entry Code</label><input id="manual-entry-code" type="text" autoComplete="off" placeholder="ABCD-2345" value={manualCode} onChange={(event) => setManualCode(formatEntryCode(event.target.value))} className={authInputClass(false, { withIcon: false })} /></div>
                       <button type="button" onClick={() => void handleManualLookup()} disabled={manualBusy} className={authPrimaryButtonClass('h-[50px] px-5 text-sm')}>{manualBusy ? <><Loader2 className="h-4.5 w-4.5 animate-spin" aria-hidden="true" />Looking Up...</> : <><Search className="h-4.5 w-4.5" aria-hidden="true" />Lookup</>}</button>
                       <button type="button" onClick={() => void handleManualConfirm()} disabled={confirmBusy || !manualLookup?.found} className="inline-flex h-[50px] items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">{confirmBusy ? <><Loader2 className="h-4.5 w-4.5 animate-spin" aria-hidden="true" />Confirming...</> : <><CheckCircle2 className="h-4.5 w-4.5" aria-hidden="true" />Confirm Entry</>}</button>
                     </div>
 
                     <AnimatePresence>
-                      {manualLookup ? <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className={`rounded-[1.5rem] border px-4 py-4 ${manualLookup.found ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/70'}`}><p className="text-sm font-semibold text-slate-900">{manualLookup.message || (manualLookup.found ? 'Participant found.' : 'Participant was not found.')}</p>{manualLookup.participant ? <div className="mt-3 grid gap-3 sm:grid-cols-2"><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Participant</p><p className="mt-1 text-sm font-semibold text-slate-900">{manualLookup.participant.name || '-'}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Ticket Code</p><p className="mt-1 text-sm font-semibold text-slate-900">{manualLookup.participant.ticket_code || '-'}</p></div></div> : null}<div className="mt-4"><AuthCodeBadge code={manualLookup.participant?.entry_code_display} label="Fallback Entry Code" /></div></motion.div> : null}
+                      {manualLookup ? <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className={`rounded-[1.5rem] border px-4 py-4 ${manualLookup.found ? 'border-emerald-200 bg-emerald-50/60' : 'border-amber-200 bg-amber-50/70'}`}><p className="text-sm font-semibold text-slate-900">{manualLookup.message || (manualLookup.found ? 'Participant found.' : 'Participant was not found.')}</p>{manualLookup.participant ? <div className="mt-3 grid gap-3"><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Participant</p><p className="mt-1 text-sm font-semibold text-slate-900">{manualLookup.participant.name || '-'}</p></div><div><p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Ticket Code</p><p className="mt-1 text-sm font-semibold text-slate-900">{manualLookup.participant.ticket_code || '-'}</p></div></div> : null}<div className="mt-4"><AuthCodeBadge code={manualLookup.participant?.entry_code_display} label="Fallback Entry Code" /></div></motion.div> : null}
                     </AnimatePresence>
                   </div>
                 </div>
@@ -970,7 +1674,7 @@ export function StaffScannerPage() {
                 <div className={statsTabClass}>
                   <div className="rounded-[1.8rem] border border-sky-100 bg-white p-5 shadow-[0_18px_50px_rgba(2,132,199,0.08)]">
                     <AuthSectionHeading eyebrow="Today" title="Stats" description="Live totals refresh after every QR or manual confirmation." />
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                    <div className="mt-5 grid gap-3">
                       <div className="rounded-[1.3rem] border border-sky-100 bg-sky-50/80 px-4 py-4 text-sky-800"><p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-80">Total Scans</p><p className="mt-2 text-3xl font-black tracking-tight">{stats.total_scans}</p></div>
                       <div className="rounded-[1.3rem] border border-emerald-100 bg-emerald-50/80 px-4 py-4 text-emerald-800"><p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-80">Valid</p><p className="mt-2 text-3xl font-black tracking-tight">{stats.successful_scans}</p></div>
                       <div className="rounded-[1.3rem] border border-amber-100 bg-amber-50/80 px-4 py-4 text-amber-800"><p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-80">Duplicate</p><p className="mt-2 text-3xl font-black tracking-tight">{stats.duplicate_scans}</p></div>
@@ -991,7 +1695,7 @@ export function StaffScannerPage() {
 
                 <div className={profileTabClass}>
                   <div className="rounded-[1.8rem] border border-sky-100 bg-white p-5 shadow-[0_18px_50px_rgba(2,132,199,0.08)]">
-                    <AuthSectionHeading eyebrow="Operator" title="Profile" description="Quick access to scanner account details and session controls." />
+                    <AuthSectionHeading eyebrow="Operator" title="Profile" description="Quick access to scanner account details and the locked gate assignment for this session." />
                     <div className="mt-5 space-y-3">
                       <div className="rounded-[1.3rem] border border-sky-100 bg-sky-50/70 px-4 py-4">
                         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Email</p>
@@ -1000,6 +1704,10 @@ export function StaffScannerPage() {
                       <div className="rounded-[1.3rem] border border-sky-100 bg-sky-50/70 px-4 py-4">
                         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Post Scanner Gate</p>
                         <p className="mt-2 text-sm font-semibold text-slate-900">{scannerPost || 'No gate assigned'}</p>
+                      </div>
+                      <div className="rounded-[1.3rem] border border-sky-100 bg-sky-50/70 px-4 py-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Gate Locked</p>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600">Gate assignment is fixed when the operator signs in. To use another gate, log out first, then sign in again with the correct gate.</p>
                       </div>
                       <div className="rounded-[1.3rem] border border-sky-100 bg-sky-50/70 px-4 py-4">
                         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Access Role</p>
@@ -1018,8 +1726,8 @@ export function StaffScannerPage() {
           </div>
         </AuthCardFrame>
 
-        <nav className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(env(safe-area-inset-bottom)+0.9rem)] lg:hidden" aria-label="Scanner quick navigation">
-          <div className="mx-auto max-w-[1180px] rounded-[1.7rem] border border-white/30 bg-white/92 p-2 shadow-[0_18px_55px_rgba(15,23,42,0.16)] backdrop-blur-xl">
+        <nav className="fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(env(safe-area-inset-bottom)+0.9rem)]" aria-label="Scanner quick navigation">
+          <div className="mx-auto max-w-[580px] rounded-[1.7rem] border border-white/30 bg-white/92 p-2 shadow-[0_18px_55px_rgba(15,23,42,0.16)] backdrop-blur-xl">
             <div className="grid grid-cols-3 gap-2">
               {quickNavItems.map((item) => {
                 const Icon = item.icon;

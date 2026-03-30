@@ -296,6 +296,47 @@ class AdminAnalyticsServiceTest extends TestCase
         $this->assertSame(9, $user['attendance_progress_percent']);
     }
 
+    public function test_attendance_progress_normalizes_success_days_using_event_timezone_from_scanned_at(): void
+    {
+        config()->set('admin.event.timezone', 'Asia/Kuala_Lumpur');
+        config()->set('admin.event.start_date', '2026-03-01');
+        config()->set('admin.event.end_date', '2026-04-19');
+
+        $service = new AdminAnalyticsService;
+
+        $rows = $service->attachAttendanceProgress([
+            [
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-active',
+                'ticket_code' => 'TICKET-ACTIVE',
+            ],
+        ], [
+            [
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-active',
+                'ticket_code' => 'TICKET-ACTIVE',
+                'scan_date' => '2026-03-29',
+                'scanned_at' => '2026-03-29T22:20:39.748171Z',
+                'result' => 'success',
+            ],
+            [
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-active',
+                'ticket_code' => 'TICKET-ACTIVE',
+                'scan_date' => '2026-03-30',
+                'scanned_at' => '2026-03-30T00:15:18.215861Z',
+                'result' => 'success',
+            ],
+        ]);
+
+        $user = $rows[0];
+
+        $this->assertSame(1, $user['attendance_days_count']);
+        $this->assertSame(['2026-03-30'], $user['attendance_days']);
+        $this->assertSame(50, $user['attendance_total_days']);
+        $this->assertSame(2, $user['attendance_progress_percent']);
+    }
+
     public function test_user_management_overview_counts_verified_checked_in_and_follow_up_users(): void
     {
         $service = new AdminAnalyticsService;
@@ -427,5 +468,37 @@ class AdminAnalyticsServiceTest extends TestCase
         $this->assertCount(1, $filtered);
         $this->assertSame('user-1', $filtered[0]['user_id']);
         $this->assertSame('Japan', $filtered[0]['country_label']);
+    }
+
+    public function test_user_rows_humanize_flexible_traffic_sources_and_support_searching_them(): void
+    {
+        $service = new AdminAnalyticsService;
+
+        $rows = $service->buildUserRows(
+            users: [
+                [
+                    'user_id' => 'user-1',
+                    'full_name' => 'Dewi',
+                    'email' => 'dewi@example.test',
+                    'country' => 'ID',
+                    'traffic_source' => 'media-partner',
+                    'traffic_source_detail' => 'media-partner',
+                    'traffic_medium' => 'social',
+                    'traffic_campaign' => 'songkran-launch',
+                    'traffic_referrer_host' => 'partner.example.com',
+                    'traffic_landing_path' => '/register?utm_source=media-partner',
+                    'created_at' => '2026-03-25T10:00:00Z',
+                ],
+            ],
+            tickets: [],
+        );
+
+        $this->assertSame('Media Partner', $rows[0]['traffic_source_label']);
+        $this->assertSame('Promo Link: songkran-launch', $rows[0]['traffic_source_caption']);
+
+        $filtered = $service->filterUserRows($rows, ['q' => 'media partner']);
+
+        $this->assertCount(1, $filtered);
+        $this->assertSame('user-1', $filtered[0]['user_id']);
     }
 }

@@ -5,7 +5,7 @@ import { SECTION_BACKGROUND } from "./sectionContrastTheme";
 const TILT: CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 
 const TITLE_HIGHLIGHT_TEXT_STYLE: CSSProperties = {
-  color: "#35d8f7",
+  color: "#349CD2",
   textShadow: "2px 3px 0 rgba(31, 52, 71, 0.22), 0 3px 8px rgba(31, 52, 71, 0.10)",
 };
 
@@ -14,7 +14,7 @@ const LABEL_TEXT_STYLE: CSSProperties = {
 };
 
 const QUESTION_TEXT_STYLE: CSSProperties = {
-  color: "#35d8f7",
+  color: "#349CD2",
   fontSize: "1.2rem",
 };
 
@@ -250,9 +250,8 @@ export function FAQ() {
                 className="overflow-hidden rounded-2xl"
                 style={{
                   background: open === i ? "rgba(255,255,255,0.42)" : "rgba(255,255,255,0.28)",
-                  border: `1px solid ${
-                    open === i ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.30)"
-                  }`,
+                  border: `1px solid ${open === i ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.30)"
+                    }`,
                   boxShadow: open === i ? "0 10px 28px rgba(0,0,0,0.08)" : "none",
                 }}
               >

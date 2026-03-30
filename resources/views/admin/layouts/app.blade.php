@@ -65,6 +65,18 @@
               <div>Monitoring Attendance</div>
             </a>
           </li>
+          <li class="menu-item {{ request()->routeIs('admin.gates.*') ? 'active' : '' }}">
+            <a href="{{ route('admin.gates.index') }}" class="menu-link">
+              <i class="menu-icon icon-base ti tabler-qrcode"></i>
+              <div>Gate Management</div>
+            </a>
+          </li>
+          <li class="menu-item {{ request()->routeIs('admin.campaign-links.*') ? 'active' : '' }}">
+            <a href="{{ route('admin.campaign-links.index') }}" class="menu-link">
+              <i class="menu-icon icon-base ti tabler-badge"></i>
+              <div>Campaign Links</div>
+            </a>
+          </li>
           <li class="menu-item {{ request()->routeIs('admin.logs.*') ? 'active' : '' }}">
             <a href="{{ route('admin.logs.index') }}" class="menu-link">
               <i class="menu-icon icon-base ti tabler-history"></i>

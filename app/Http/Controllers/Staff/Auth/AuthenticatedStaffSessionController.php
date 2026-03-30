@@ -51,7 +51,7 @@ class AuthenticatedStaffSessionController extends Controller
             $request->ip(),
         );
 
-        $redirect = url('/'.trim((string) config('scanner.path', 'staff'), '/'));
+        $redirect = route('staff.home');
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -83,7 +83,7 @@ class AuthenticatedStaffSessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        $redirect = url('/'.trim((string) config('scanner.path', 'staff'), '/').'/login');
+        $redirect = route('staff.login');
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -92,7 +92,7 @@ class AuthenticatedStaffSessionController extends Controller
             ]);
         }
 
-        return redirect()->to($redirect);
+        return redirect()->route('staff.login');
     }
 
     private function failedLoginResponse(StaffLoginRequest $request): JsonResponse|RedirectResponse

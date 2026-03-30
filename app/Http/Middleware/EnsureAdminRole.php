@@ -30,14 +30,17 @@ class EnsureAdminRole
             return $next($request);
         }
 
-        if ($request->expectsJson() || $request->is('staff/session*') || $request->is('staff/scan*') || $request->is('staff/manual-*') || $request->is('staff/history') || $request->is('staff/stats')) {
+        $routeName = (string) ($request->route()?->getName() ?? '');
+        $isStaffApiRoute = str_starts_with($routeName, 'staff.');
+
+        if ($request->expectsJson() || $isStaffApiRoute) {
             return new JsonResponse([
                 'message' => 'You are not allowed to access this area.',
             ], 403);
         }
 
         $redirect = $currentRole === 'scanner'
-            ? url('/'.trim((string) config('scanner.path', 'staff'), '/'))
+            ? route('staff.home')
             : route('admin.dashboard');
 
         return new RedirectResponse($redirect);

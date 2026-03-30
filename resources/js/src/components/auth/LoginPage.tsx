@@ -8,6 +8,7 @@ import {
   LayoutDashboard, QrCode, Activity, HardDrive
 } from 'lucide-react';
 import { WaterAnimation } from './WaterAnimation';
+import { getSpaUrl } from '../../lib/spaRouting';
 
 interface LoginFormData {
   email: string;
@@ -16,6 +17,8 @@ interface LoginFormData {
 }
 
 const SONGKRAN_LOGO_SRC = '/images/Songkran%20logo.png';
+const ADMIN_LOGIN_SUBMIT_URL = getSpaUrl('adminLoginSubmit', '/admin/login');
+const ADMIN_DASHBOARD_URL = getSpaUrl('adminDashboard', '/admin/dashboard');
 
 function LotusIcon({ className }: { className?: string }) {
   return (
@@ -111,7 +114,7 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('/admin/login', {
+      const response = await fetch(ADMIN_LOGIN_SUBMIT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -137,7 +140,7 @@ export function LoginPage() {
       });
 
       setTimeout(() => {
-        window.location.href = result.redirect || '/admin/dashboard';
+        window.location.href = result.redirect || ADMIN_DASHBOARD_URL;
       }, 1000);
 
     } catch (error: any) {
@@ -331,7 +334,7 @@ export function LoginPage() {
                       id="email"
                       type="email"
                       autoComplete="email"
-                      placeholder="nama@email.com"
+                      placeholder="name@example.com"
                       aria-required="true"
                       aria-describedby={errors.email ? 'err-login-email' : 'email-hint'}
                       aria-invalid={!!errors.email}
@@ -439,11 +442,11 @@ export function LoginPage() {
                     >
                       <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
                       <p className="text-red-700 text-xs leading-relaxed">
-                        <strong>Login gagal.</strong> Gunakan akun admin hasil seeder, misalnya{' '}
+                        <strong>Login failed.</strong> Use one of the seeded admin accounts, for example{' '}
                         <code className="bg-red-100 px-1 py-0.5 rounded text-red-800 font-mono">
                           admin01@songkran.local
                         </code>{' '}
-                        untuk development lokal.
+                        for local development.
                       </p>
                     </motion.div>
                   )}

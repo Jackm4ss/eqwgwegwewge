@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Admin;
+use App\Models\ScannerGate;
 use App\Services\Staff\StaffScannerService;
 use Database\Seeders\AdminSeeder;
 use Database\Seeders\ScannerStaffSeeder;
@@ -29,7 +30,7 @@ class StaffScannerApiTest extends TestCase
         $this->seed(ScannerStaffSeeder::class);
     }
 
-    public function test_scanner_can_fetch_session_and_available_posts(): void
+    public function test_scanner_can_fetch_session(): void
     {
         $scanner = Admin::query()->where('role', 'scanner')->firstOrFail();
 
@@ -43,7 +44,39 @@ class StaffScannerApiTest extends TestCase
                     'role' => 'scanner',
                 ],
                 'scanner_post' => 'Gate A',
-                'available_posts' => ['Gate A', 'Gate B'],
+            ]);
+    }
+
+    public function test_scanner_cannot_switch_gate_from_session_endpoint_after_login(): void
+    {
+        $scanner = Admin::query()->where('role', 'scanner')->firstOrFail();
+
+        $this->actingAs($scanner, 'admin')
+            ->withSession(['staff.scanner_post' => 'Gate A', '_token' => 'csrf-token'])
+            ->postJson('/staff/session/scanner-post', [
+                'scanner_post' => 'Gate B',
+            ], [
+                'X-CSRF-TOKEN' => 'csrf-token',
+            ])
+            ->assertForbidden()
+            ->assertJson([
+                'message' => 'Scanner gate is locked after sign-in. Log out and sign in again to use another gate.',
+            ])
+            ->assertSessionHas('staff.scanner_post', 'Gate A');
+    }
+
+    public function test_scanner_session_clears_gate_when_it_is_no_longer_available(): void
+    {
+        $scanner = Admin::query()->where('role', 'scanner')->firstOrFail();
+
+        ScannerGate::query()->where('name', 'Gate B')->delete();
+
+        $this->actingAs($scanner, 'admin')
+            ->withSession(['staff.scanner_post' => 'Gate B'])
+            ->getJson('/staff/session')
+            ->assertOk()
+            ->assertJson([
+                'scanner_post' => null,
             ]);
     }
 

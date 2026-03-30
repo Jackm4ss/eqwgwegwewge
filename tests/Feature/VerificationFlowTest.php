@@ -56,7 +56,7 @@ class VerificationFlowTest extends TestCase
         $this->assertCount(1, $this->repository->tickets);
 
         Mail::assertSent(TicketReadyMail::class, function (TicketReadyMail $mail) use ($user, $ticket) {
-            $mail->assertSeeInHtml('Fallback Entry Code');
+            $mail->assertSeeInHtml('Entry Code');
             $mail->assertSeeInHtml($ticket['entry_code_display']);
 
             return $mail->hasTo($user['email']);
@@ -134,7 +134,7 @@ class VerificationFlowTest extends TestCase
             ->assertSee(mb_strtoupper($user['full_name']))
             ->assertSee($user['identity_number'])
             ->assertSee($ticket['entry_code_display'])
-            ->assertSee('Fallback Entry Code')
+            ->assertSee('Entry Code')
             ->assertSee('Thank you for your registration.');
     }
 

@@ -32,7 +32,7 @@
       <div class="card">
         <div class="card-body">
           <span class="fw-medium d-block mb-1">Total Scans</span>
-          <h3 class="mb-0">{{ number_format(data_get($reports, 'daily.jumlah_scan', 0)) }}</h3>
+          <h3 class="mb-0">{{ number_format(data_get($reports, 'daily.total_scans', 0)) }}</h3>
         </div>
       </div>
     </div>
@@ -40,7 +40,7 @@
       <div class="card">
         <div class="card-body">
           <span class="fw-medium d-block mb-1">Total Visitors</span>
-          <h3 class="mb-0">{{ number_format(data_get($reports, 'daily.jumlah_pengunjung', 0)) }}</h3>
+          <h3 class="mb-0">{{ number_format(data_get($reports, 'daily.total_visitors', 0)) }}</h3>
         </div>
       </div>
     </div>
@@ -48,7 +48,7 @@
       <div class="card">
         <div class="card-body">
           <span class="fw-medium d-block mb-1">Total Participants</span>
-          <h3 class="mb-0">{{ number_format(data_get($reports, 'overall.total_peserta', 0)) }}</h3>
+          <h3 class="mb-0">{{ number_format(data_get($reports, 'overall.total_participants', 0)) }}</h3>
         </div>
       </div>
     </div>
@@ -78,7 +78,7 @@
               </tr>
             </thead>
             <tbody>
-              @forelse (data_get($reports, 'daily.statistik_kehadiran', []) as $day)
+              @forelse (data_get($reports, 'daily.attendance_statistics', []) as $day)
                 <tr>
                   <td>{{ $day['scan_date'] }}</td>
                   <td>{{ number_format($day['total_scans']) }}</td>
@@ -115,7 +115,7 @@
               </tr>
             </thead>
             <tbody>
-              @forelse (data_get($reports, 'overall.statistik_kunjungan', []) as $visit)
+              @forelse (data_get($reports, 'overall.visitor_statistics', []) as $visit)
                 <tr>
                   <td>{{ $visit['scan_date'] }}</td>
                   <td>{{ number_format($visit['unique_visitors']) }}</td>

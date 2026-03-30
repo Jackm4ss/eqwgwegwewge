@@ -69,6 +69,119 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(5, $page['filter_options']['attendance_statuses'][1]['count']);
     }
 
+    public function test_activity_logs_uses_optimized_firestore_pagination_when_text_search_is_empty(): void
+    {
+        $filters = [
+            'from' => '2026-03-29',
+            'page' => 2,
+            'per_page' => 500,
+        ];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('paginateAdminActivityLogs')
+            ->once()
+            ->with($filters, 2, 100)
+            ->andReturn([
+                'items' => [[
+                    'admin_email' => 'admin@example.test',
+                    'action_type' => 'ticket_updated',
+                    'created_at' => '2026-03-29T08:00:00Z',
+                ]],
+                'total' => 250,
+            ]);
+        $repository->shouldNotReceive('queryAdminActivityLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+
+        $logs = $service->activityLogs($filters);
+
+        $this->assertSame(250, $logs->total());
+        $this->assertSame(100, $logs->perPage());
+        $this->assertSame(2, $logs->currentPage());
+        $this->assertSame('admin@example.test', $logs->items()[0]['admin_email']);
+    }
+
+    public function test_activity_logs_falls_back_to_in_memory_text_search_when_query_is_present(): void
+    {
+        $filters = [
+            'q' => 'delete',
+            'from' => '2026-03-29',
+            'page' => 1,
+            'per_page' => 25,
+        ];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('queryAdminActivityLogs')
+            ->once()
+            ->with($filters)
+            ->andReturn([
+                [
+                    'admin_email' => 'admin@example.test',
+                    'action_type' => 'delete_user',
+                    'target_type' => 'user',
+                    'target_id' => 'user-1',
+                    'created_at' => '2026-03-29T08:00:00Z',
+                    'metadata' => [],
+                ],
+                [
+                    'admin_email' => 'admin@example.test',
+                    'action_type' => 'ticket_updated',
+                    'target_type' => 'ticket',
+                    'target_id' => 'ticket-1',
+                    'created_at' => '2026-03-29T07:00:00Z',
+                    'metadata' => [],
+                ],
+            ]);
+        $repository->shouldNotReceive('paginateAdminActivityLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+
+        $logs = $service->activityLogs($filters);
+
+        $this->assertSame(1, $logs->total());
+        $this->assertSame('delete_user', $logs->items()[0]['action_type']);
+    }
+
+    public function test_export_rows_for_admin_logs_only_queries_activity_logs_dataset(): void
+    {
+        $filters = ['from' => '2026-03-29'];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('queryAdminActivityLogs')
+            ->once()
+            ->with($filters)
+            ->andReturn([
+                [
+                    'admin_email' => 'admin@example.test',
+                    'action_type' => 'ticket_updated',
+                    'target_type' => 'ticket',
+                    'target_id' => 'ticket-1',
+                    'created_at' => '2026-03-29T08:00:00Z',
+                    'metadata' => [],
+                ],
+            ]);
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('allScanLogs');
+        $repository->shouldNotReceive('allAdminActivityLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+
+        $rows = $service->exportRows('admin-logs', $filters);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('ticket_updated', $rows[0]['action_type']);
+    }
+
     public function test_update_user_by_admin_sends_profile_notification_with_hydrated_ticket(): void
     {
         $repository = Mockery::mock(AdminFirestoreRepository::class);

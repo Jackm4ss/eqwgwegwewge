@@ -8,9 +8,11 @@ use App\Repositories\FirestoreUserRepository;
 use App\Services\Admin\AdminFirestoreRepository;
 use App\Services\Firebase\FirebaseClientFactory;
 use App\Services\Firebase\FirestoreRestApi;
+use App\Services\Scanner\ScannerGateService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
 
@@ -44,6 +46,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        View::composer('welcome', function ($view): void {
+            $view->with('staffScannerPosts', app(ScannerGateService::class)->names());
+        });
+
         RateLimiter::for('register-api', function (Request $request) {
             return Limit::perMinute(10)->by($request->ip());
         });

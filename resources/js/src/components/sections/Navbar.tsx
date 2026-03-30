@@ -1,6 +1,7 @@
 import { useState, memo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, Info, Music, Sparkles, Calendar, Image as ImageIcon, HelpCircle, ChevronRight, ArrowUpRight } from "lucide-react";
+import { buildRegisterUrl } from "@/lib/trafficAttribution";
 
 const S: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 
@@ -75,6 +76,9 @@ const NavLink = memo(({ l, onClick, isMobile = false }: { l: any, onClick: (id: 
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
+  const goToRegister = () => {
+    window.location.assign(buildRegisterUrl());
+  };
 
   // Tampil ketika section #about sudah menyentuh/melewati viewport atas
   useEffect(() => {
@@ -163,7 +167,7 @@ export function Navbar() {
 
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => window.location.href = '/register'}
+                    onClick={goToRegister}
                     className="hidden lg:flex items-center gap-2 rounded-full px-5 py-2 text-[#050508] transition-all hover:scale-105 active:scale-95 group"
                     style={{ ...S, background: "#2FA7D8", fontSize: "0.8rem", fontWeight: 600, letterSpacing: "0.04em" }}
                   >
@@ -224,7 +228,7 @@ export function Navbar() {
 
               <div className="mt-8">
                 <button
-                  onClick={() => window.location.href = '/register'}
+                  onClick={goToRegister}
                   className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 text-[#050508] font-bold text-lg shadow-lg shadow-[#2FA7D8]/20"
                   style={{ ...S, background: "#2FA7D8" }}
                 >

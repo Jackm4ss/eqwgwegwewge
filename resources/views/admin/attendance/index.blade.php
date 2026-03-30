@@ -98,6 +98,7 @@
 
 @section('content')
   @php
+    $adminEventTimezone = (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
     $history = $attendance['history'];
     $dailyAttendance = $attendance['daily_attendance'] ?? [];
     $scannerActivity = $attendance['scanner_activity'] ?? [];
@@ -112,28 +113,28 @@
       : collect(method_exists($history, 'items') ? $history->items() : [])->count();
     $activeScannerCount = count($scannerActivity);
 
-    $formatDateTime = static function (mixed $value): string {
+    $formatDateTime = static function (mixed $value) use ($adminEventTimezone): string {
       if (blank($value)) {
         return '-';
       }
 
       try {
         return \Carbon\CarbonImmutable::parse((string) $value)
-          ->setTimezone(config('app.timezone'))
+          ->setTimezone($adminEventTimezone)
           ->format('d M Y, h:i A');
       } catch (\Throwable) {
         return (string) $value;
       }
     };
 
-    $formatDate = static function (mixed $value): string {
+    $formatDate = static function (mixed $value) use ($adminEventTimezone): string {
       if (blank($value)) {
         return '-';
       }
 
       try {
         return \Carbon\CarbonImmutable::parse((string) $value)
-          ->setTimezone(config('app.timezone'))
+          ->setTimezone($adminEventTimezone)
           ->format('d M Y');
       } catch (\Throwable) {
         return (string) $value;

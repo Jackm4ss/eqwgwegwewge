@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import {
   MapPin, Calendar, Clock, Instagram, Facebook
 } from "lucide-react";
+import { buildRegisterUrl } from "@/lib/trafficAttribution";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 const SG: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
@@ -24,6 +25,10 @@ function ScribbleLine({ width = 200 }: { width?: number }) {
 }
 
 export function Footer() {
+  const goToRegister = () => {
+    window.location.assign(buildRegisterUrl());
+  };
+
   const scrollTo = (id: string) => {
     const el = document.querySelector(id);
     if (el) {
@@ -95,7 +100,7 @@ export function Footer() {
                 className="mt-8"
               >
                 <button
-                  onClick={() => window.location.href = '/register'}
+                  onClick={goToRegister}
                   className="group relative overflow-hidden rounded-full px-8 py-3.5 md:px-10 md:py-4 transition-all hover:scale-105 active:scale-95"
                   style={{ background: "#2FA7D8", boxShadow: "0 0 20px rgba(244,160,51,0.3)" }}
                 >

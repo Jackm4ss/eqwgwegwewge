@@ -68,7 +68,10 @@ class ForgotPasswordController extends Controller
             ]
         );
 
-        $resetUrl = url('/reset-password/' . urlencode($plainToken) . '?email=' . urlencode($email));
+        $resetUrl = route('password.reset', [
+            'token' => $plainToken,
+            'email' => $email,
+        ]);
 
         Mail::to($user->email)->send(new ResetPasswordMail($user, $resetUrl));
     }

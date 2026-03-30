@@ -6,6 +6,10 @@ use App\Services\Firebase\FirebaseClientFactory;
 use App\Services\Firebase\FirestoreRestApi;
 use App\Services\Firebase\FirestoreTimestampNormalizer;
 use App\Services\Tickets\TicketQrCodeService;
+use Carbon\CarbonImmutable;
+use DateTimeImmutable;
+use DateTimeInterface;
+use DateTimeZone;
 use Google\Cloud\Firestore\DocumentReference;
 use Google\Cloud\Firestore\FirestoreClient;
 use Google\Cloud\Firestore\Query;
@@ -48,6 +52,38 @@ class AdminFirestoreRepository
     public function allAdminActivityLogs(): array
     {
         return $this->listCollectionDocuments($this->adminActivityLogsCollection());
+    }
+
+    public function paginateAdminActivityLogs(array $filters, int $page, int $perPage): array
+    {
+        if (! $this->available()) {
+            return [
+                'items' => [],
+                'total' => 0,
+            ];
+        }
+
+        $page = max(1, $page);
+        $perPage = max(1, $perPage);
+        $offset = ($page - 1) * $perPage;
+        $normalizedFilters = $this->normalizeAdminActivityLogFilters($filters);
+
+        return $this->usingRest()
+            ? $this->paginateAdminActivityLogsUsingRest($normalizedFilters, $offset, $perPage)
+            : $this->paginateAdminActivityLogsUsingGrpc($normalizedFilters, $offset, $perPage);
+    }
+
+    public function queryAdminActivityLogs(array $filters = []): array
+    {
+        if (! $this->available()) {
+            return [];
+        }
+
+        $normalizedFilters = $this->normalizeAdminActivityLogFilters($filters);
+
+        return $this->usingRest()
+            ? $this->queryAdminActivityLogsUsingRest($normalizedFilters)
+            : $this->queryAdminActivityLogsUsingGrpc($normalizedFilters);
     }
 
     public function findUser(string $userId): ?array
@@ -1224,6 +1260,105 @@ class AdminFirestoreRepository
         ];
     }
 
+    private function paginateAdminActivityLogsUsingRest(array $filters, int $offset, int $limit): array
+    {
+        $structuredQuery = $this->buildStructuredQuery(
+            $this->adminActivityLogsCollection(),
+            $this->buildAdminActivityLogFilterClauses($filters),
+            $limit,
+            $offset,
+        );
+
+        $documents = $this->restApi->runQuery($structuredQuery);
+
+        return [
+            'items' => array_map(function (array $document): array {
+                $decoded = $this->timestamps->normalizeFromStorage(
+                    $this->restApi->decodeDocument($document)
+                );
+                $decoded['__id'] = $this->documentIdFromName((string) ($document['name'] ?? ''));
+                $decoded['__path'] = $this->documentPathFromName((string) ($document['name'] ?? ''));
+
+                return $decoded;
+            }, $documents),
+            'total' => $this->countAdminActivityLogsUsingRest($filters),
+        ];
+    }
+
+    private function paginateAdminActivityLogsUsingGrpc(array $filters, int $offset, int $limit): array
+    {
+        $query = $this->applyAdminActivityLogFilters(
+            $this->client()->collection($this->adminActivityLogsCollection()),
+            $filters,
+        );
+
+        $query = $query
+            ->orderBy('created_at', Query::DIR_DESCENDING)
+            ->orderBy(Query::DOCUMENT_ID, Query::DIR_DESCENDING)
+            ->offset($offset)
+            ->limit($limit);
+
+        $rows = [];
+
+        foreach ($query->documents() as $documentSnapshot) {
+            if (! $documentSnapshot->exists()) {
+                continue;
+            }
+
+            $row = $this->timestamps->normalizeFromStorage($documentSnapshot->data());
+            $row['__id'] = $documentSnapshot->id();
+            $row['__path'] = $this->adminActivityLogsCollection().'/'.$documentSnapshot->id();
+            $rows[] = $row;
+        }
+
+        return [
+            'items' => $rows,
+            'total' => $this->countAdminActivityLogsUsingGrpc($filters),
+        ];
+    }
+
+    private function queryAdminActivityLogsUsingRest(array $filters): array
+    {
+        $structuredQuery = $this->buildStructuredQuery(
+            $this->adminActivityLogsCollection(),
+            $this->buildAdminActivityLogFilterClauses($filters),
+        );
+
+        return array_map(function (array $document): array {
+            $decoded = $this->timestamps->normalizeFromStorage(
+                $this->restApi->decodeDocument($document)
+            );
+            $decoded['__id'] = $this->documentIdFromName((string) ($document['name'] ?? ''));
+            $decoded['__path'] = $this->documentPathFromName((string) ($document['name'] ?? ''));
+
+            return $decoded;
+        }, $this->restApi->runQuery($structuredQuery));
+    }
+
+    private function queryAdminActivityLogsUsingGrpc(array $filters): array
+    {
+        $query = $this->applyAdminActivityLogFilters(
+            $this->client()->collection($this->adminActivityLogsCollection()),
+            $filters,
+        )->orderBy('created_at', Query::DIR_DESCENDING)
+            ->orderBy(Query::DOCUMENT_ID, Query::DIR_DESCENDING);
+
+        $rows = [];
+
+        foreach ($query->documents() as $documentSnapshot) {
+            if (! $documentSnapshot->exists()) {
+                continue;
+            }
+
+            $row = $this->timestamps->normalizeFromStorage($documentSnapshot->data());
+            $row['__id'] = $documentSnapshot->id();
+            $row['__path'] = $this->adminActivityLogsCollection().'/'.$documentSnapshot->id();
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
     private function countUsersUsingRest(array $filters): int
     {
         $structuredQuery = $this->buildStructuredQuery(
@@ -1242,6 +1377,27 @@ class AdminFirestoreRepository
         foreach ($filters as $field => $value) {
             $query = $query->where($field, '=', $value);
         }
+
+        return (int) $query->count();
+    }
+
+    private function countAdminActivityLogsUsingRest(array $filters): int
+    {
+        $structuredQuery = $this->buildStructuredQuery(
+            $this->adminActivityLogsCollection(),
+            $this->buildAdminActivityLogFilterClauses($filters),
+            withOrdering: false,
+        );
+
+        return $this->restApi->runCountQuery($structuredQuery, 'count');
+    }
+
+    private function countAdminActivityLogsUsingGrpc(array $filters): int
+    {
+        $query = $this->applyAdminActivityLogFilters(
+            $this->client()->collection($this->adminActivityLogsCollection()),
+            $filters,
+        );
 
         return (int) $query->count();
     }
@@ -1332,16 +1488,44 @@ class AdminFirestoreRepository
         $clauses = [];
 
         foreach ($filters as $field => $value) {
-            $clauses[] = [
-                'fieldFilter' => [
-                    'field' => ['fieldPath' => $field],
-                    'op' => 'EQUAL',
-                    'value' => $this->encodeStructuredQueryValue($value),
-                ],
-            ];
+            $clauses[] = $this->buildFieldFilter($field, 'EQUAL', $value);
         }
 
         return $clauses;
+    }
+
+    private function buildAdminActivityLogFilterClauses(array $filters): array
+    {
+        $clauses = [];
+
+        if (isset($filters['created_at_from'])) {
+            $clauses[] = $this->buildFieldFilter(
+                'created_at',
+                'GREATER_THAN_OR_EQUAL',
+                $filters['created_at_from'],
+            );
+        }
+
+        if (isset($filters['created_at_to'])) {
+            $clauses[] = $this->buildFieldFilter(
+                'created_at',
+                'LESS_THAN_OR_EQUAL',
+                $filters['created_at_to'],
+            );
+        }
+
+        return $clauses;
+    }
+
+    private function buildFieldFilter(string $field, string $operator, mixed $value): array
+    {
+        return [
+            'fieldFilter' => [
+                'field' => ['fieldPath' => $field],
+                'op' => $operator,
+                'value' => $this->encodeStructuredQueryValue($value),
+            ],
+        ];
     }
 
     private function encodeStructuredQueryValue(mixed $value): array
@@ -1350,6 +1534,7 @@ class AdminFirestoreRepository
             is_bool($value) => ['booleanValue' => $value],
             is_int($value) => ['integerValue' => (string) $value],
             is_float($value) => ['doubleValue' => $value],
+            $value instanceof DateTimeInterface => ['timestampValue' => $this->formatStructuredQueryTimestamp($value)],
             is_string($value) => ['stringValue' => $value],
             is_null($value) => ['nullValue' => 'NULL_VALUE'],
             default => throw new RuntimeException('Unsupported Firestore query value encountered.'),
@@ -1386,6 +1571,49 @@ class AdminFirestoreRepository
         return $normalized;
     }
 
+    private function normalizeAdminActivityLogFilters(array $filters): array
+    {
+        $normalized = [];
+        $timezone = (string) config('app.timezone', 'UTC');
+
+        if (filled($filters['from'] ?? null)) {
+            try {
+                $normalized['created_at_from'] = CarbonImmutable::parse((string) $filters['from'], $timezone)
+                    ->startOfDay()
+                    ->utc();
+            } catch (\Throwable) {
+                // Ignore invalid date filters and keep behavior aligned with
+                // the in-memory analytics fallback.
+            }
+        }
+
+        if (filled($filters['to'] ?? null)) {
+            try {
+                $normalized['created_at_to'] = CarbonImmutable::parse((string) $filters['to'], $timezone)
+                    ->endOfDay()
+                    ->utc();
+            } catch (\Throwable) {
+                // Ignore invalid date filters and keep behavior aligned with
+                // the in-memory analytics fallback.
+            }
+        }
+
+        return $normalized;
+    }
+
+    private function applyAdminActivityLogFilters(mixed $query, array $filters): mixed
+    {
+        if (isset($filters['created_at_from'])) {
+            $query = $query->where('created_at', '>=', $filters['created_at_from']);
+        }
+
+        if (isset($filters['created_at_to'])) {
+            $query = $query->where('created_at', '<=', $filters['created_at_to']);
+        }
+
+        return $query;
+    }
+
     private function listCollectionDocuments(string $collection): array
     {
         if (! $this->available()) {
@@ -1418,6 +1646,20 @@ class AdminFirestoreRepository
         }
 
         return $rows;
+    }
+
+    private function formatStructuredQueryTimestamp(DateTimeInterface $value): string
+    {
+        return DateTimeImmutable::createFromInterface($value)
+            ->setTimezone($this->utcTimezone())
+            ->format('Y-m-d\TH:i:s.u\Z');
+    }
+
+    private function utcTimezone(): DateTimeZone
+    {
+        static $timezone = null;
+
+        return $timezone ??= new DateTimeZone('UTC');
     }
 
     private function getDocument(string $documentPath): ?array
@@ -1566,10 +1808,10 @@ class AdminFirestoreRepository
         if ($scanDate === '') {
             try {
                 $scanDate = \Carbon\CarbonImmutable::parse($scannedAt)
-                    ->setTimezone(config('app.timezone'))
+                    ->setTimezone($this->eventTimezone())
                     ->toDateString();
             } catch (\Throwable) {
-                $scanDate = now()->toDateString();
+                $scanDate = now($this->eventTimezone())->toDateString();
             }
         }
 
@@ -1744,7 +1986,7 @@ class AdminFirestoreRepository
 
     private function currentScannerDate(): string
     {
-        return now()->setTimezone((string) config('app.timezone', 'UTC'))->toDateString();
+        return now($this->eventTimezone())->toDateString();
     }
 
     private function scanDateFromTimestamp(mixed $timestamp): ?string
@@ -1755,11 +1997,16 @@ class AdminFirestoreRepository
 
         try {
             return \Carbon\CarbonImmutable::parse($timestamp)
-                ->setTimezone((string) config('app.timezone', 'UTC'))
+                ->setTimezone($this->eventTimezone())
                 ->toDateString();
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function eventTimezone(): string
+    {
+        return (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
     }
 
     private function scanLogPath(string $scanId): string

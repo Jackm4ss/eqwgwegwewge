@@ -1,6 +1,7 @@
 @once
   @push('vendor-styles')
     <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/fonts/flag-icons.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/libs/sweetalert2/sweetalert2.css') }}" />
     <style>
       .user-editor-shell {
         position: relative;
@@ -164,6 +165,10 @@
     </style>
   @endpush
 
+  @push('vendor-scripts')
+    <script src="{{ asset('assets-vuexy/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
+  @endpush
+
   @push('page-scripts')
     <script>
       document.addEventListener('DOMContentLoaded', function () {
@@ -317,8 +322,81 @@
           });
         };
 
+        const bindQrActionConfirmation = function (form) {
+          if (!form || form.dataset.qrActionConfirmBound === 'true') {
+            return;
+          }
+
+          form.addEventListener('submit', async function (event) {
+            if (form.dataset.qrActionConfirmed === 'true') {
+              return;
+            }
+
+            event.preventDefault();
+
+            const title = form.dataset.confirmTitle || 'Are you sure?';
+            const text = form.dataset.confirmText || 'Please confirm this action before continuing.';
+            const confirmButtonText = form.dataset.confirmButtonText || 'Yes, continue';
+            const cancelButtonText = form.dataset.cancelButtonText || 'Cancel';
+            const confirmButtonClass = form.dataset.confirmButtonClass || 'btn btn-primary me-2';
+            const cancelButtonClass = form.dataset.cancelButtonClass || 'btn btn-label-secondary';
+
+            let shouldContinue = false;
+
+            if (window.Swal?.fire) {
+              const result = await window.Swal.fire({
+                title,
+                text,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText,
+                cancelButtonText,
+                reverseButtons: true,
+                buttonsStyling: false,
+                customClass: {
+                  confirmButton: confirmButtonClass,
+                  cancelButton: cancelButtonClass,
+                },
+              });
+
+              shouldContinue = Boolean(result.isConfirmed);
+            } else {
+              shouldContinue = window.confirm(`${title}\n\n${text}`);
+            }
+
+            if (!shouldContinue) {
+              return;
+            }
+
+            form.dataset.qrActionConfirmed = 'true';
+
+            const submitButton = event.submitter instanceof HTMLButtonElement
+              ? event.submitter
+              : form.querySelector('button[type="submit"]');
+
+            if (submitButton) {
+              submitButton.disabled = true;
+            }
+
+            form.submit();
+          });
+
+          form.dataset.qrActionConfirmBound = 'true';
+        };
+
+        window.refreshUserEditorQrActionConfirmations = function (scope) {
+          const forms = scope
+            ? (scope.matches?.('[data-user-qr-action-form]') ? [scope] : scope.querySelectorAll?.('[data-user-qr-action-form]') || [])
+            : document.querySelectorAll('[data-user-qr-action-form]');
+
+          Array.from(forms).forEach(function (form) {
+            bindQrActionConfirmation(form);
+          });
+        };
+
         window.refreshUserEditorIdentityRules();
         window.refreshUserEditorCountrySelects();
+        window.refreshUserEditorQrActionConfirmations();
       });
     </script>
   @endpush
@@ -346,6 +424,7 @@
   $attendanceStatus = (string) data_get($ticket, 'attendance_status', $user['attendance_status'] ?? 'not_checked_in');
   $ticketCode = (string) data_get($ticket, 'ticket_code', $user['ticket_code'] ?? '-');
   $identityType = (string) ($user['identity_type'] ?? 'passport');
+  $identityTypeLabel = $identityType === 'national_id' ? 'Malaysia IC (MyKad)' : 'Passport';
   $countryLabel = (string) ($user['country_label'] ?? ($user['country'] ?? '-'));
   $phoneDisplay = (string) ($user['phone_number'] ?? '');
 
@@ -496,14 +575,14 @@
             </div>
 
             <div class="col-md-6">
-              <label class="form-label" for="{{ $fieldIdPrefix }}-identity-type-display">Identity Document</label>
+              <label class="form-label" for="{{ $fieldIdPrefix }}-identity-type-display">Document Type</label>
               <select class="form-select {{ $invalidClass('identity_type') }}"
                 id="{{ $fieldIdPrefix }}-identity-type-display" {{ $isReadonly ? 'disabled' : '' }} data-user-input
                 data-user-identity-display>
                 <option value="passport" @selected($fieldValue('identity_type', $identityType) === 'passport')>Passport
                 </option>
-                <option value="national_id" @selected($fieldValue('identity_type', $identityType) === 'national_id')>IC /
-                  National ID</option>
+                <option value="national_id" @selected($fieldValue('identity_type', $identityType) === 'national_id')>Malaysia
+                  IC (MyKad)</option>
               </select>
               <small class="text-muted d-block mt-1" data-user-identity-note></small>
               @if ($errorMessage('identity_type'))
@@ -512,7 +591,7 @@
             </div>
 
             <div class="col-md-6">
-              <label class="form-label" for="{{ $fieldIdPrefix }}-identity-number">Identity Number</label>
+              <label class="form-label" for="{{ $fieldIdPrefix }}-identity-number">Document Number</label>
               <input type="text" class="form-control {{ $invalidClass('identity_number') }}"
                 id="{{ $fieldIdPrefix }}-identity-number" name="identity_number"
                 value="{{ $fieldValue('identity_number') }}" {{ $isReadonly ? 'readonly' : '' }} data-user-input
@@ -599,7 +678,7 @@
             </span>
             <span class="user-editor-meta-chip">
               <i class="icon-base ti tabler-id-badge-2"></i>
-              Document {{ ucfirst(str_replace('_', ' ', $identityType)) }}
+              {{ $identityTypeLabel }}
             </span>
           </div>
         </div>
@@ -632,12 +711,22 @@
           </div>
 
           <div class="d-grid gap-3" data-user-edit-only @if ($isReadonly) style="display:none;" @endif>
-            <form method="POST" action="{{ route('admin.users.qr.reset', $user['user_id']) }}">
+            <form method="POST" action="{{ route('admin.users.qr.reset', $user['user_id']) }}"
+              data-user-qr-action-form
+              data-confirm-title="Reset attendance?"
+              data-confirm-text="This will clear the participant attendance record and reset the QR state for this participant. Do you want to continue?"
+              data-confirm-button-text="Yes, reset attendance"
+              data-confirm-button-class="btn btn-label-warning me-2">
               @csrf
               <button type="submit" class="btn btn-label-warning w-100">Reset Attendance</button>
             </form>
 
-            <form method="POST" action="{{ route('admin.users.qr.regenerate', $user['user_id']) }}">
+            <form method="POST" action="{{ route('admin.users.qr.regenerate', $user['user_id']) }}"
+              data-user-qr-action-form
+              data-confirm-title="Generate a new QR code?"
+              data-confirm-text="This will generate a fresh QR code for the participant. Previous QR references should no longer be used. Do you want to continue?"
+              data-confirm-button-text="Yes, generate QR"
+              data-confirm-button-class="btn btn-primary me-2">
               @csrf
               <button type="submit" class="btn btn-label-primary w-100">Generate QR</button>
             </form>

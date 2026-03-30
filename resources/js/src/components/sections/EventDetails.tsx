@@ -11,12 +11,12 @@ const TILT: CSSProperties = {
 };
 
 const TITLE_HIGHLIGHT_TEXT_STYLE: CSSProperties = {
-  color: "#35d8f7",
+  color: "#349CD2",
   textShadow: "2px 3px 0 rgba(31, 52, 71, 0.22), 0 3px 8px rgba(31, 52, 71, 0.10)",
 };
 
 const NUMBER_HIGHLIGHT_TEXT_STYLE: CSSProperties = {
-  color: "#35d8f7",
+  color: "#349CD2",
   textShadow: "1px 2px 0 rgba(31, 52, 71, 0.18), 0 2px 6px rgba(31, 52, 71, 0.08)",
 };
 
@@ -138,73 +138,73 @@ export function EventDetails() {
                 contentClassName="justify-start h-full"
                 style={DATE_CARD_STYLE}
               >
-              <div
-                className="pointer-events-none absolute -left-10 -top-20 h-80 w-80 rounded-full"
-                style={{
-                  background: "radial-gradient(circle, rgba(255,255,255,0.20) 0%, transparent 70%)",
-                }}
-              />
-
-              <div className="relative z-10 mb-2 flex items-center gap-2">
                 <div
-                  className="flex h-5 w-5 items-center justify-center rounded"
-                  style={{ color: "#35d8f7" }}
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect
-                      x="1"
-                      y="2.5"
-                      width="14"
-                      height="12"
-                      rx="2"
-                      stroke="currentColor"
-                      strokeWidth="1.3"
-                    />
-                    <path d="M1 6.5h14" stroke="currentColor" strokeWidth="1.3" />
-                    <path
-                      d="M5 1v3M11 1v3"
-                      stroke="currentColor"
-                      strokeWidth="1.3"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  className="pointer-events-none absolute -left-10 -top-20 h-80 w-80 rounded-full"
+                  style={{
+                    background: "radial-gradient(circle, rgba(255,255,255,0.20) 0%, transparent 70%)",
+                  }}
+                />
+
+                <div className="relative z-10 mb-2 flex items-center gap-2">
+                  <div
+                    className="flex h-5 w-5 items-center justify-center rounded"
+                    style={{ color: "#349CD2" }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <rect
+                        x="1"
+                        y="2.5"
+                        width="14"
+                        height="12"
+                        rx="2"
+                        stroke="currentColor"
+                        strokeWidth="1.3"
+                      />
+                      <path d="M1 6.5h14" stroke="currentColor" strokeWidth="1.3" />
+                      <path
+                        d="M5 1v3M11 1v3"
+                        stroke="currentColor"
+                        strokeWidth="1.3"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </div>
+
+                  <span
+                    className="text-xs uppercase tracking-[0.16em]"
+                    style={{ ...TILT, ...LABEL_TEXT_STYLE }}
+                  >
+                    Festival Dates
+                  </span>
                 </div>
 
-                <span
-                  className="text-xs uppercase tracking-[0.16em]"
-                  style={{ ...TILT, ...LABEL_TEXT_STYLE }}
+                <div
+                  className="relative z-10 uppercase tracking-[0.12em]"
+                  style={{
+                    ...TILT,
+                    ...LABEL_TEXT_STYLE,
+                    fontSize: "clamp(1.1rem, 2.2vw, 1.65rem)",
+                    lineHeight: 1,
+                    marginBottom: "0.18em",
+                    color: "#349CD2",
+                  }}
                 >
-                  Festival Dates
-                </span>
-              </div>
+                  APR
+                </div>
 
-              <div
-                className="relative z-10 uppercase tracking-[0.12em]"
-                style={{
-                  ...TILT,
-                  ...LABEL_TEXT_STYLE,
-                  fontSize: "clamp(1.1rem, 2.2vw, 1.65rem)",
-                  lineHeight: 1,
-                  marginBottom: "0.18em",
-                  color: "#35d8f7",
-                }}
-              >
-                APR
-              </div>
-
-              <div
-                className="relative z-10"
-                style={{
-                  ...TILT,
-                  ...TITLE_HIGHLIGHT_TEXT_STYLE,
-                  fontSize: "clamp(3.9rem, 8.2vw, 6.6rem)",
-                  lineHeight: 0.82,
-                  letterSpacing: "0.01em",
-                  marginBottom: "0.1em",
-                }}
-              >
-                9-19
-              </div>
+                <div
+                  className="relative z-10"
+                  style={{
+                    ...TILT,
+                    ...TITLE_HIGHLIGHT_TEXT_STYLE,
+                    fontSize: "clamp(3.9rem, 8.2vw, 6.6rem)",
+                    lineHeight: 0.82,
+                    letterSpacing: "0.01em",
+                    marginBottom: "0.1em",
+                  }}
+                >
+                  9-19
+                </div>
 
                 <div className="relative z-10 flex flex-wrap items-end gap-4 pt-3">
                   <span
@@ -240,7 +240,7 @@ export function EventDetails() {
                 style={SOFT_CARD_STYLE}
               >
                 <div className="mb-2 flex items-center gap-2">
-                  <MapPin size={13} style={{ color: "#35d8f7" }} />
+                  <MapPin size={13} style={{ color: "#349CD2" }} />
                   <span
                     className="text-xs uppercase tracking-[0.16em]"
                     style={{ ...TILT, ...LABEL_TEXT_STYLE }}
@@ -256,7 +256,7 @@ export function EventDetails() {
                     fontSize: "1.8rem",
                     lineHeight: 1.2,
                     marginBottom: "0.3rem",
-                    color: "#35d8f7",
+                    color: "#349CD2",
                   }}
                 >
                   @Gf Forecourt Outdoor Carpark 1 Utama, Malaysia
@@ -267,7 +267,7 @@ export function EventDetails() {
                     ...TILT,
                     ...META_TEXT_STYLE,
                     fontSize: "1rem",
-                    color: "#35d8f7",
+                    color: "#349CD2",
                   }}
                 >
                   1 Utama | Malaysia
@@ -283,15 +283,15 @@ export function EventDetails() {
                     fontSize: "1.5rem",
                     letterSpacing: "0.03em",
                     textDecoration: "none",
-                    color: "#35d8f7",
+                    color: "#349CD2",
                   }}
                 >
-                  <span className="border-b border-transparent transition-all duration-300 group-hover:border-[#35d8f7] group-hover:text-[#35d8f7]">
+                  <span className="border-b border-transparent transition-all duration-300 group-hover:border-[#349CD2] group-hover:text-[#349CD2]">
                     Get Directions
                   </span>
                   <ArrowUpRight
                     size={12}
-                    className="transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#35d8f7]"
+                    className="transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[#349CD2]"
                   />
                 </a>
               </SpotlightCard>
@@ -303,7 +303,7 @@ export function EventDetails() {
                 style={SOFT_CARD_STYLE}
               >
                 <div className="mb-3 flex items-center gap-2">
-                  <Clock size={13} style={{ color: "#35d8f7" }} />
+                  <Clock size={13} style={{ color: "#349CD2" }} />
                   <span
                     className="text-xs uppercase tracking-[0.16em]"
                     style={{ ...TILT, ...LABEL_TEXT_STYLE }}
@@ -350,7 +350,7 @@ export function EventDetails() {
                     ...META_TEXT_STYLE,
                     fontSize: "1rem",
                     marginTop: "0.45rem",
-                    color: "#35d8f7"
+                    color: "#349CD2"
                   }}
                 >
                   12 hours of festivities
@@ -365,7 +365,7 @@ export function EventDetails() {
                   style={SOFT_CARD_STYLE}
                 >
                   <div className="mb-2 flex items-center gap-2">
-                    <Ticket size={13} style={{ color: "#35d8f7" }} />
+                    <Ticket size={13} style={{ color: "#349CD2" }} />
                     <span
                       className="text-xs uppercase tracking-[0.16em]"
                       style={{ ...TILT, ...LABEL_TEXT_STYLE }}
@@ -390,14 +390,14 @@ export function EventDetails() {
                   <div className="mt-1 flex items-center gap-1.5">
                     <span
                       className="h-1.5 w-1.5 rounded-full"
-                      style={{ backgroundColor: "#35d8f7" }}
+                      style={{ backgroundColor: "#349CD2" }}
                     />
                     <span
                       style={{
                         ...TILT,
                         ...META_TEXT_STYLE,
                         fontSize: "1rem",
-                        color: "#35d8f7"
+                        color: "#349CD2"
                       }}
                     >
                       Open to everyone
@@ -413,18 +413,18 @@ export function EventDetails() {
                 >
                   <SpotlightCard
                     spotlightColor="rgba(255,255,255,0.18)"
-                    className="h-full transition-all duration-300 group-hover:-translate-y-1 group-hover:border-[#35d8f7]"
+                    className="h-full transition-all duration-300 group-hover:-translate-y-1 group-hover:border-[#349CD2]"
                     contentClassName="justify-start"
                     style={SOFT_CARD_STYLE}
                   >
                     <div className="mb-2 flex items-center gap-2">
                       <Building2
                         size={13}
-                        style={{ color: "#35d8f7" }}
-                        className="transition-colors duration-300 group-hover:text-[#35d8f7]"
+                        style={{ color: "#349CD2" }}
+                        className="transition-colors duration-300 group-hover:text-[#349CD2]"
                       />
                       <span
-                        className="text-xs uppercase tracking-[0.16em] transition-colors duration-300 group-hover:text-[#35d8f7]"
+                        className="text-xs uppercase tracking-[0.16em] transition-colors duration-300 group-hover:text-[#349CD2]"
                         style={{ ...TILT, ...LABEL_TEXT_STYLE }}
                       >
                         Organised By
@@ -432,21 +432,21 @@ export function EventDetails() {
                     </div>
 
                     <p
-                      className="transition-colors duration-300 group-hover:text-[#35d8f7]"
+                      className="transition-colors duration-300 group-hover:text-[#349CD2]"
                       style={{
                         ...TILT,
                         ...BODY_TEXT_STYLE,
                         fontSize: "1.3rem",
                         lineHeight: 1.2,
                         marginBottom: "0.3rem",
-                        color: "#35d8f7"
+                        color: "#349CD2"
                       }}
                     >
                       EQ Solutions
                       <ArrowUpRight
                         strokeWidth={3}
                         size={14}
-                        className="ml-1 inline-block translate-y-2 -translate-x-2 opacity-0 text-[#35d8f7] transition-all duration-300 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:opacity-100"
+                        className="ml-1 inline-block translate-y-2 -translate-x-2 opacity-0 text-[#349CD2] transition-all duration-300 group-hover:translate-y-0 group-hover:translate-x-0 group-hover:opacity-100"
                       />
                     </p>
                   </SpotlightCard>

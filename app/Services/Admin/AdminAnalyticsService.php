@@ -24,6 +24,21 @@ class AdminAnalyticsService
         'VN' => 'Vietnam',
     ];
 
+    private const TRAFFIC_SOURCE_LABELS = [
+        'instagram' => 'Instagram',
+        'whatsapp' => 'WhatsApp',
+        'facebook' => 'Facebook',
+        'tiktok' => 'TikTok',
+        'threads' => 'Threads',
+        'x' => 'X',
+        'linkedin' => 'LinkedIn',
+        'youtube' => 'YouTube',
+        'google' => 'Google',
+        'website' => 'Website',
+        'direct' => 'Direct',
+        'other' => 'Other',
+    ];
+
     public function buildDashboard(
         array $users,
         array $scanLogs,
@@ -31,7 +46,8 @@ class AdminAnalyticsService
         ?CarbonImmutable $referenceDate = null,
         array $filters = [],
     ): array {
-        $referenceDate ??= CarbonImmutable::now();
+        $referenceDate = ($referenceDate ?? CarbonImmutable::now($this->eventTimezone()))
+            ->setTimezone($this->eventTimezone());
         [$startDate, $endDate, $hasDateFilter] = $this->resolveDashboardDateRange($days, $referenceDate, $filters);
         $startDateString = $startDate->toDateString();
         $endDateString = $endDate->toDateString();
@@ -145,7 +161,7 @@ class AdminAnalyticsService
             $userId = (string) ($user['user_id'] ?? '');
             $ticket = $ticketsById[$ticketId] ?? $ticketsByUserId[$userId] ?? null;
 
-            $row = array_merge($user, [
+            $row = $this->decorateTrafficAttribution(array_merge($user, [
                 'ticket_code' => (string) ($ticket['ticket_code'] ?? ''),
                 'ticket_status' => (string) ($ticket['status'] ?? ''),
                 'qr_version' => (string) ($ticket['qr_version'] ?? ''),
@@ -156,7 +172,7 @@ class AdminAnalyticsService
                 'ticket_updated_at' => $ticket['updated_at'] ?? null,
                 'has_ticket' => $ticket !== null,
                 'country_label' => $this->countryLabel($user['country'] ?? null),
-            ]);
+            ]));
 
             $rows[] = $row;
         }
@@ -401,6 +417,48 @@ class AdminAnalyticsService
         return self::COUNTRY_LABEL_FALLBACKS[$countryCode] ?? $countryCode;
     }
 
+    public function trafficSourceLabel(mixed $source): string
+    {
+        $normalizedSource = $this->normalizeTrafficSource($source, allowEmpty: true);
+
+        if ($normalizedSource === '') {
+            return 'Not Captured';
+        }
+
+        return self::TRAFFIC_SOURCE_LABELS[$normalizedSource] ?? $this->humanizeToken($normalizedSource, 'Other');
+    }
+
+    public function decorateTrafficAttribution(array $row): array
+    {
+        $trafficSource = $this->normalizeTrafficSource($row['traffic_source'] ?? null, allowEmpty: true);
+        $trafficSourceDetail = trim((string) ($row['traffic_source_detail'] ?? ''));
+        $trafficMedium = $this->normalizeTrafficToken($row['traffic_medium'] ?? null);
+        $trafficCampaign = trim((string) ($row['traffic_campaign'] ?? ''));
+        $trafficReferrerHost = strtolower(trim((string) ($row['traffic_referrer_host'] ?? '')));
+        $trafficLandingPath = trim((string) ($row['traffic_landing_path'] ?? ''));
+        $trafficCapturedAt = trim((string) ($row['traffic_captured_at'] ?? ''));
+
+        $row['traffic_source'] = $trafficSource;
+        $row['traffic_source_detail'] = $trafficSourceDetail;
+        $row['traffic_medium'] = $trafficMedium;
+        $row['traffic_medium_label'] = $this->trafficMediumLabel($trafficMedium);
+        $row['traffic_campaign'] = $trafficCampaign;
+        $row['traffic_referrer_host'] = $trafficReferrerHost;
+        $row['traffic_landing_path'] = $trafficLandingPath;
+        $row['traffic_captured_at'] = $trafficCapturedAt;
+        $row['traffic_source_label'] = $this->trafficSourceLabel($trafficSource);
+        $row['traffic_source_caption'] = $this->resolveTrafficSourceCaption(
+            $trafficSource,
+            $trafficSourceDetail,
+            $trafficMedium,
+            $trafficCampaign,
+            $trafficReferrerHost,
+            $trafficLandingPath,
+        );
+
+        return $row;
+    }
+
     public function supportedCountryCodes(): array
     {
         return array_keys(self::COUNTRY_LABEL_FALLBACKS);
@@ -563,14 +621,14 @@ class AdminAnalyticsService
 
         return [
             'daily' => [
-                'jumlah_scan' => count($history),
-                'jumlah_pengunjung' => count($uniqueAttendance),
-                'statistik_kehadiran' => $attendance['daily_attendance'],
+                'total_scans' => count($history),
+                'total_visitors' => count($uniqueAttendance),
+                'attendance_statistics' => $attendance['daily_attendance'],
             ],
             'overall' => [
-                'total_peserta' => count($userRows),
+                'total_participants' => count($userRows),
                 'total_attendance' => count($uniqueAttendance),
-                'statistik_kunjungan' => array_map(
+                'visitor_statistics' => array_map(
                     fn (string $date, array $keys) => [
                         'scan_date' => $date,
                         'unique_visitors' => count($keys),
@@ -597,8 +655,8 @@ class AdminAnalyticsService
             ),
             'attendance' => $this->buildAttendanceOverview($scanLogs, $filters)['history'],
             'admin-logs' => $this->buildActivityLogRows($activityLogs, $filters),
-            'daily-report' => $this->buildReports($users, $tickets, $scanLogs, $filters)['daily']['statistik_kehadiran'],
-            'overall-report' => $this->buildReports($users, $tickets, $scanLogs, $filters)['overall']['statistik_kunjungan'],
+            'daily-report' => $this->buildReports($users, $tickets, $scanLogs, $filters)['daily']['attendance_statistics'],
+            'overall-report' => $this->buildReports($users, $tickets, $scanLogs, $filters)['overall']['visitor_statistics'],
             default => [],
         };
     }
@@ -653,14 +711,24 @@ class AdminAnalyticsService
 
     private function resolveScanDate(array $scanLog): string
     {
+        $scannedAt = trim((string) ($scanLog['scanned_at'] ?? ''));
+        if ($scannedAt !== '') {
+            $parsed = $this->safeParseDate($scannedAt);
+
+            if ($parsed !== null) {
+                return $parsed->setTimezone($this->eventTimezone())->toDateString();
+            }
+        }
+
         $scanDate = trim((string) ($scanLog['scan_date'] ?? ''));
         if ($scanDate !== '') {
             return $scanDate;
         }
 
-        $parsed = $this->safeParseDate((string) ($scanLog['scanned_at'] ?? ''));
+        $parsed = $this->safeParseDate($scannedAt);
 
-        return $parsed?->toDateString() ?? CarbonImmutable::now()->toDateString();
+        return $parsed?->setTimezone($this->eventTimezone())->toDateString()
+            ?? CarbonImmutable::now($this->eventTimezone())->toDateString();
     }
 
     private function resolveAttendanceKey(array $scanLog): string
@@ -703,7 +771,115 @@ class AdminAnalyticsService
             (string) ($row['country'] ?? ''),
             (string) ($row['country_label'] ?? ''),
             (string) ($row['user_id'] ?? ''),
+            (string) ($row['traffic_source_label'] ?? ''),
+            (string) ($row['traffic_source_detail'] ?? ''),
+            (string) ($row['traffic_campaign'] ?? ''),
+            (string) ($row['traffic_medium_label'] ?? ''),
+            (string) ($row['traffic_referrer_host'] ?? ''),
         ])));
+    }
+
+    private function normalizeTrafficSource(mixed $value, bool $allowEmpty = false): string
+    {
+        $normalized = $this->normalizeTrafficToken($value);
+
+        if ($normalized === '') {
+            return $allowEmpty ? '' : 'other';
+        }
+
+        return match (true) {
+            $normalized === 'ig',
+            $normalized === 'insta',
+            str_contains($normalized, 'instagram'),
+            str_contains($normalized, 'ig-story') => 'instagram',
+            $normalized === 'wa',
+            str_contains($normalized, 'whatsapp'),
+            str_contains($normalized, 'wa-broadcast') => 'whatsapp',
+            $normalized === 'fb',
+            str_contains($normalized, 'facebook') => 'facebook',
+            $normalized === 'tt',
+            str_contains($normalized, 'tiktok') => 'tiktok',
+            $normalized === 'thread',
+            str_contains($normalized, 'threads') => 'threads',
+            $normalized === 'twitter',
+            $normalized === 'tweet',
+            $normalized === 'x',
+            str_contains($normalized, 'twitter') => 'x',
+            str_contains($normalized, 'linkedin') => 'linkedin',
+            str_contains($normalized, 'youtube') => 'youtube',
+            str_contains($normalized, 'google') => 'google',
+            $normalized === 'web',
+            $normalized === 'website',
+            $normalized === 'site',
+            $normalized === 'homepage',
+            $normalized === 'landing-page' => 'website',
+            default => $normalized,
+        };
+    }
+
+    private function normalizeTrafficToken(mixed $value): string
+    {
+        $normalized = strtolower(trim((string) $value));
+        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
+
+        return trim($normalized, '-');
+    }
+
+    private function humanizeToken(string $value, string $fallback = '-'): string
+    {
+        if ($value === '') {
+            return $fallback;
+        }
+
+        return ucwords(str_replace(['-', '_'], ' ', $value));
+    }
+
+    private function trafficMediumLabel(string $value): string
+    {
+        return match ($value) {
+            'social' => 'Social Media',
+            'search' => 'Search',
+            'referral' => 'Website Referral',
+            'website' => 'Website',
+            'direct' => 'Direct',
+            'other' => 'Other',
+            default => $this->humanizeToken($value, '-'),
+        };
+    }
+
+    private function resolveTrafficSourceCaption(
+        string $trafficSource,
+        string $trafficSourceDetail,
+        string $trafficMedium,
+        string $trafficCampaign,
+        string $trafficReferrerHost,
+        string $trafficLandingPath,
+    ): string {
+        if ($trafficCampaign !== '') {
+            return 'Promo Link: '.$trafficCampaign;
+        }
+
+        if ($trafficSourceDetail !== '' && $trafficSourceDetail !== 'direct' && $trafficSourceDetail !== $trafficSource) {
+            return 'Source Detail: '.$trafficSourceDetail;
+        }
+
+        if ($trafficReferrerHost !== '') {
+            return 'Referred By: '.$trafficReferrerHost;
+        }
+
+        if ($trafficMedium !== '') {
+            return 'Entry Method: '.$this->trafficMediumLabel($trafficMedium);
+        }
+
+        if ($trafficLandingPath !== '') {
+            return 'First Page: '.$trafficLandingPath;
+        }
+
+        if ($trafficSource === 'direct') {
+            return 'Opened the link directly';
+        }
+
+        return $trafficSource === '' ? 'Registrant source has not been captured yet' : 'Registrant source captured';
     }
 
     private function calculateRate(int $value, int $total): int
@@ -738,7 +914,7 @@ class AdminAnalyticsService
 
     private function eventWindow(): array
     {
-        $timezone = config('app.timezone');
+        $timezone = $this->eventTimezone();
         $eventStartDate = CarbonImmutable::parse(
             (string) config('admin.event.start_date', '2026-04-09'),
             $timezone
@@ -783,10 +959,10 @@ class AdminAnalyticsService
         $hasDateFilter = $normalizedFrom !== null || $normalizedTo !== null;
 
         $endDate = $normalizedTo !== null
-            ? CarbonImmutable::parse($normalizedTo)->startOfDay()
+            ? CarbonImmutable::parse($normalizedTo, $this->eventTimezone())->startOfDay()
             : $referenceDate->startOfDay();
         $startDate = $normalizedFrom !== null
-            ? CarbonImmutable::parse($normalizedFrom)->startOfDay()
+            ? CarbonImmutable::parse($normalizedFrom, $this->eventTimezone())->startOfDay()
             : $endDate->subDays($days - 1);
 
         if ($startDate->gt($endDate)) {
@@ -829,5 +1005,10 @@ class AdminAnalyticsService
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function eventTimezone(): string
+    {
+        return (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
     }
 }

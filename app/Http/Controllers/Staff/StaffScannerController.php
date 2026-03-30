@@ -7,6 +7,7 @@ use App\Http\Requests\Staff\StaffManualConfirmRequest;
 use App\Http\Requests\Staff\StaffManualLookupRequest;
 use App\Http\Requests\Staff\StaffScanRequest;
 use App\Models\Admin;
+use App\Services\Scanner\ScannerGateService;
 use App\Services\Staff\StaffScannerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +17,7 @@ class StaffScannerController extends Controller
 {
     public function __construct(
         private readonly StaffScannerService $scanner,
+        private readonly ScannerGateService $gateService,
     ) {}
 
     public function scan(StaffScanRequest $request): JsonResponse
@@ -90,11 +92,13 @@ class StaffScannerController extends Controller
 
     private function scannerPostFromSession(): string
     {
-        $scannerPost = trim((string) session((string) config('scanner.session_post_key', 'staff.scanner_post')));
+        $scannerPost = $this->gateService->normalizeSelected(
+            (string) session((string) config('scanner.session_post_key', 'staff.scanner_post'))
+        );
 
         if ($scannerPost === '') {
             throw ValidationException::withMessages([
-                'scanner_post' => ['Select a scanner post before continuing.'],
+                'scanner_post' => ['Select an active gate before continuing.'],
             ]);
         }
 

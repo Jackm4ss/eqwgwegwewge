@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Admin\AdminFirestoreRepository;
+use App\Services\Scanner\ScannerGateService;
 use Illuminate\Console\Command;
 
 class ScannerPreflightCommand extends Command
@@ -12,17 +13,18 @@ class ScannerPreflightCommand extends Command
 
     protected $description = 'Validate scanner staff configuration before local usage or production deploys.';
 
-    public function handle(AdminFirestoreRepository $repository): int
+    public function handle(AdminFirestoreRepository $repository, ScannerGateService $gateService): int
     {
         $production = (bool) $this->option('production');
         $issues = [];
+        $configuredGates = $gateService->names();
 
         if (trim((string) config('scanner.bootstrap_password', '')) === '') {
             $issues[] = 'SCANNER_BOOTSTRAP_PASSWORD is missing.';
         }
 
-        if (count(array_filter(config('scanner.posts', []), fn (mixed $value): bool => trim((string) $value) !== '')) === 0) {
-            $issues[] = 'At least one scanner post must be configured.';
+        if ($configuredGates === []) {
+            $issues[] = 'At least one scanner gate must be configured.';
         }
 
         if ($production && trim((string) config('firebase.project_id', '')) === '') {
@@ -38,7 +40,7 @@ class ScannerPreflightCommand extends Command
         }
 
         $this->line('Scanner path: /'.trim((string) config('scanner.path', 'staff'), '/'));
-        $this->line('Configured posts: '.implode(', ', array_values(config('scanner.posts', []))));
+        $this->line('Configured gates: '.implode(', ', $configuredGates));
         $this->line('Redis mode: '.(string) config('scanner.redis_mode', 'disabled'));
 
         if ($issues !== []) {

@@ -5,6 +5,7 @@ namespace App\Services\Auth;
 use App\Contracts\UserRepositoryInterface;
 use App\Exceptions\RegistrationConflictException;
 use App\Mail\VerifyRegistrationMail;
+use App\Services\Tickets\TicketQrCodeService;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
@@ -14,9 +15,8 @@ class RegistrationService
     public function __construct(
         private readonly UserRepositoryInterface $users,
         private readonly TicketDeliveryService $ticketDelivery,
-        private readonly \App\Services\Tickets\TicketQrCodeService $ticketQrCodeService,
-    ) {
-    }
+        private readonly TicketQrCodeService $ticketQrCodeService,
+    ) {}
 
     public function register(array $data, string $ip): array
     {
@@ -54,6 +54,8 @@ class RegistrationService
             if ($phoneNationalNumber !== '') {
                 $payload['phone_national_number'] = $phoneNationalNumber;
             }
+
+            $this->appendTrafficAttribution($payload, $data);
 
             $user = $this->users->create($payload);
         } catch (RegistrationConflictException $exception) {
@@ -145,6 +147,57 @@ class RegistrationService
     private function normalizeName(string $name): string
     {
         return trim((string) preg_replace('/\s+/u', ' ', $name));
+    }
+
+    private function normalizeOptionalValue(mixed $value): string
+    {
+        return trim((string) preg_replace('/\s+/u', ' ', (string) $value));
+    }
+
+    private function normalizeTrafficToken(mixed $value): string
+    {
+        $normalized = strtolower(trim((string) $value));
+        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
+
+        return trim($normalized, '-');
+    }
+
+    private function appendTrafficAttribution(array &$payload, array $data): void
+    {
+        $trafficSource = $this->normalizeTrafficToken($data['traffic_source'] ?? '');
+        if ($trafficSource !== '') {
+            $payload['traffic_source'] = $trafficSource;
+        }
+
+        $trafficSourceDetail = $this->normalizeOptionalValue($data['traffic_source_detail'] ?? '');
+        if ($trafficSourceDetail !== '') {
+            $payload['traffic_source_detail'] = $trafficSourceDetail;
+        }
+
+        $trafficMedium = $this->normalizeTrafficToken($data['traffic_medium'] ?? '');
+        if ($trafficMedium !== '') {
+            $payload['traffic_medium'] = $trafficMedium;
+        }
+
+        $trafficCampaign = $this->normalizeOptionalValue($data['traffic_campaign'] ?? '');
+        if ($trafficCampaign !== '') {
+            $payload['traffic_campaign'] = $trafficCampaign;
+        }
+
+        $trafficReferrerHost = strtolower($this->normalizeOptionalValue($data['traffic_referrer_host'] ?? ''));
+        if ($trafficReferrerHost !== '') {
+            $payload['traffic_referrer_host'] = $trafficReferrerHost;
+        }
+
+        $trafficLandingPath = $this->normalizeOptionalValue($data['traffic_landing_path'] ?? '');
+        if ($trafficLandingPath !== '') {
+            $payload['traffic_landing_path'] = $trafficLandingPath;
+        }
+
+        $trafficCapturedAt = $this->normalizeOptionalValue($data['traffic_captured_at'] ?? '');
+        if ($trafficCapturedAt !== '') {
+            $payload['traffic_captured_at'] = $trafficCapturedAt;
+        }
     }
 
     private function ensureIdentityTypeAllowedForCountry(string $identityType, string $country): void

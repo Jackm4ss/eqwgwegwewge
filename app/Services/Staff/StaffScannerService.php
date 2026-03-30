@@ -269,6 +269,7 @@ class StaffScannerService
     private function makeScanEntry(Admin $operator, string $scannerPost, array $extra = [], ?string $ipAddress = null): array
     {
         $scannedAt = now()->toISOString();
+        $eventTimezone = (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
 
         return array_merge([
             'scanner_id' => 'scanner-post:'.Str::slug($scannerPost),
@@ -278,7 +279,7 @@ class StaffScannerService
             'operator_email' => (string) $operator->email,
             'ip_address' => $ipAddress,
             'scanned_at' => $scannedAt,
-            'scan_date' => now()->setTimezone(config('app.timezone'))->toDateString(),
+            'scan_date' => now($eventTimezone)->toDateString(),
         ], $extra);
     }
 

@@ -9,6 +9,7 @@ use RuntimeException;
 class AdminPanelService
 {
     public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v2';
+    private const ACTIVITY_LOG_MAX_PER_PAGE = 100;
 
     public function __construct(
         private readonly AdminFirestoreRepository $repository,
@@ -141,15 +142,41 @@ class AdminPanelService
 
     public function activityLogs(array $filters = []): LengthAwarePaginator
     {
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        $perPage = $this->sanitizeActivityLogPerPage(
+            (int) ($filters['per_page'] ?? config('admin.per_page', 10)),
+        );
+
+        if ($this->shouldUseOptimizedActivityLogQuery($filters)) {
+            try {
+                $pageResult = $this->repository->paginateAdminActivityLogs($filters, $page, $perPage);
+
+                return new LengthAwarePaginator(
+                    $pageResult['items'] ?? [],
+                    (int) ($pageResult['total'] ?? 0),
+                    $perPage,
+                    $page,
+                    [
+                        'path' => request()->url(),
+                        'query' => request()->query(),
+                        'pageName' => 'page',
+                    ],
+                );
+            } catch (RuntimeException) {
+                // Fall back to the in-memory implementation if query indexes
+                // are not ready yet in a new Firestore project.
+            }
+        }
+
         $rows = $this->analytics->buildActivityLogRows(
-            $this->repository->allAdminActivityLogs(),
+            $this->repository->queryAdminActivityLogs($filters),
             $filters,
         );
 
         return $this->makePaginator(
             $rows,
-            (int) ($filters['page'] ?? 1),
-            (int) ($filters['per_page'] ?? config('admin.per_page', 10)),
+            $page,
+            $perPage,
             request()->url(),
             request()->query(),
         );
@@ -167,14 +194,41 @@ class AdminPanelService
 
     public function exportRows(string $type, array $filters = []): array
     {
-        return $this->analytics->buildExportDataset(
-            $type,
-            $this->repository->allUsers(),
-            $this->repository->allTickets(),
-            $this->repository->allScanLogs(),
-            $this->repository->allAdminActivityLogs(),
-            $filters,
-        );
+        return match ($type) {
+            'users' => $this->analytics->buildExportDataset(
+                $type,
+                $this->repository->allUsers(),
+                $this->repository->allTickets(),
+                [],
+                [],
+                $filters,
+            ),
+            'attendance' => $this->analytics->buildExportDataset(
+                $type,
+                [],
+                [],
+                $this->repository->allScanLogs(),
+                [],
+                $filters,
+            ),
+            'admin-logs' => $this->analytics->buildExportDataset(
+                $type,
+                [],
+                [],
+                [],
+                $this->repository->queryAdminActivityLogs($filters),
+                $filters,
+            ),
+            'daily-report', 'overall-report' => $this->analytics->buildExportDataset(
+                $type,
+                $this->repository->allUsers(),
+                $this->repository->allTickets(),
+                $this->repository->allScanLogs(),
+                [],
+                $filters,
+            ),
+            default => [],
+        };
     }
 
     public function backupSnapshot(): array
@@ -329,6 +383,11 @@ class AdminPanelService
             && trim((string) ($filters['attendance_status'] ?? '')) === '';
     }
 
+    private function shouldUseOptimizedActivityLogQuery(array $filters): bool
+    {
+        return trim((string) ($filters['q'] ?? '')) === '';
+    }
+
     private function hydrateUser(array $user, ?array $ticketOverride = null): array
     {
         $ticket = $ticketOverride;
@@ -338,10 +397,10 @@ class AdminPanelService
             $ticket = $ticketId !== '' ? $this->repository->findTicket($ticketId) : null;
         }
 
-        return array_merge($user, [
+        return $this->analytics->decorateTrafficAttribution(array_merge($user, [
             'ticket' => $ticket,
             'country_label' => $this->analytics->countryLabel($user['country'] ?? null),
-        ]);
+        ]));
     }
 
     private function calculateRate(int $portion, int $total): float
@@ -351,6 +410,11 @@ class AdminPanelService
         }
 
         return round(($portion / $total) * 100, 2);
+    }
+
+    private function sanitizeActivityLogPerPage(int $perPage): int
+    {
+        return min(max(1, $perPage), self::ACTIVITY_LOG_MAX_PER_PAGE);
     }
 
     private function makePaginator(

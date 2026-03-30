@@ -19,7 +19,7 @@ const TILT: CSSProperties = {
 };
 
 const TITLE_HIGHLIGHT_TEXT_STYLE: CSSProperties = {
-  color: "#35d8f7",
+  color: "#349CD2",
   textShadow: "2px 3px 0 rgba(31, 52, 71, 0.22), 0 3px 8px rgba(31, 52, 71, 0.10)",
 };
 
@@ -184,9 +184,8 @@ function TiltCard({ activity }: { activity: Activity }) {
       }}
       whileHover={{ scale: 1.015, y: -4, zIndex: 10 }}
       transition={{ duration: 0.28, ease: "easeOut" }}
-      className={`group relative h-[380px] flex-shrink-0 cursor-pointer select-none overflow-hidden rounded-[24px] ${
-        isWide ? "w-[420px] md:w-[480px]" : "w-[300px] md:w-[340px]"
-      }`}
+      className={`group relative h-[380px] flex-shrink-0 cursor-pointer select-none overflow-hidden rounded-[24px] ${isWide ? "w-[420px] md:w-[480px]" : "w-[300px] md:w-[340px]"
+        }`}
     >
       <div
         className="absolute inset-0 transition-transform duration-700 ease-out"
@@ -198,16 +197,14 @@ function TiltCard({ activity }: { activity: Activity }) {
           src={activity.image}
           alt={activity.title}
           onLoad={() => setImgLoaded(true)}
-          className={`h-full w-full object-cover transition-all duration-500 ${
-            isHovered ? "brightness-100 grayscale-0" : "brightness-95 grayscale-[10%]"
-          } ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+          className={`h-full w-full object-cover transition-all duration-500 ${isHovered ? "brightness-100 grayscale-0" : "brightness-95 grayscale-[10%]"
+            } ${imgLoaded ? "opacity-100" : "opacity-0"}`}
         />
       </div>
 
       <div
-        className={`absolute inset-0 transition-opacity duration-500 ${
-          isHovered ? "opacity-95" : "opacity-88"
-        }`}
+        className={`absolute inset-0 transition-opacity duration-500 ${isHovered ? "opacity-95" : "opacity-88"
+          }`}
         style={{
           background:
             "linear-gradient(to top, rgba(240,248,255,0.90) 0%, rgba(240,248,255,0.44) 42%, rgba(240,248,255,0.06) 100%)",

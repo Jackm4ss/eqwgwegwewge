@@ -225,6 +225,7 @@
 
 @section('content')
   @php
+    $adminEventTimezone = (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
     $initials = static function (?string $name): string {
       $parts = preg_split('/\s+/u', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
       $letters = collect($parts)
@@ -235,13 +236,13 @@
       return $letters !== '' ? $letters : 'U';
     };
 
-    $formatDateTime = static function (?string $value): string {
+    $formatDateTime = static function (?string $value) use ($adminEventTimezone): string {
       if (!$value) {
         return '-';
       }
 
       try {
-        return \Carbon\CarbonImmutable::parse($value)->timezone(config('app.timezone'))->format('d M Y, h:i A');
+        return \Carbon\CarbonImmutable::parse($value)->timezone($adminEventTimezone)->format('d M Y, h:i A');
       } catch (\Throwable) {
         return (string) $value;
       }
@@ -305,11 +306,11 @@
 
     $eventStartDate = \Carbon\CarbonImmutable::parse(
       config('admin.event.start_date', '2026-04-09'),
-      config('app.timezone')
+      $adminEventTimezone
     )->startOfDay();
     $eventEndDate = \Carbon\CarbonImmutable::parse(
       config('admin.event.end_date', '2026-04-19'),
-      config('app.timezone')
+      $adminEventTimezone
     )->startOfDay();
     $eventTotalDays = max(1, $eventStartDate->diffInDays($eventEndDate) + 1);
     $exportQuery = request()->except('page');
@@ -455,7 +456,7 @@
             </div>
             <div class="d-flex flex-column">
               <span class="fw-semibold">{{ number_format($users->total()) }} participants found</span>
-              <small class="text-muted">Search includes name, email, identity number, ticket code, and country.</small>
+              <small class="text-muted">Search includes name, email, identity number, ticket code, country, and traffic source.</small>
             </div>
           </div>
 
@@ -498,6 +499,7 @@
           <tr>
             <th>Participant</th>
             <th>Country</th>
+            <th>Registrant Source</th>
             <th>Attendance</th>
             <th>Check-In Status</th>
             <th>Status</th>
@@ -527,12 +529,19 @@
                 'phone_number' => filled($user['phone_number'] ?? null) ? (string) $user['phone_number'] : '-',
                 'country_label' => (string) ($user['country_label'] ?? ($user['country'] ?? '-')),
                 'country_flag' => $countryFlagClass($user['country'] ?? null),
-                'identity_label' => ($user['identity_type'] ?? 'passport') === 'national_id' ? 'IC / National ID' : 'Passport',
+                'identity_label' => ($user['identity_type'] ?? 'passport') === 'national_id' ? 'Malaysia IC (MyKad)' : 'Passport',
                 'identity_number' => filled($user['identity_number'] ?? null) ? (string) $user['identity_number'] : '-',
                 'ticket_code' => filled($user['ticket_code'] ?? null) ? (string) $user['ticket_code'] : 'No ticket yet',
                 'qr_meta' => $qrMeta($user),
                 'checked_in_at' => filled($user['checked_in_at'] ?? null) ? $formatDateTime($user['checked_in_at']) : '-',
                 'attendance_count_label' => $attendanceDaysCount . ' / ' . $attendanceTotalDays . ' Days',
+                'traffic_source_label' => (string) ($user['traffic_source_label'] ?? 'Not Captured'),
+                'traffic_source_caption' => (string) ($user['traffic_source_caption'] ?? 'Registrant source has not been captured yet'),
+                'traffic_medium_label' => (string) ($user['traffic_medium_label'] ?? '-'),
+                'traffic_campaign' => filled($user['traffic_campaign'] ?? null) ? (string) $user['traffic_campaign'] : '-',
+                'traffic_referrer_host' => filled($user['traffic_referrer_host'] ?? null) ? (string) $user['traffic_referrer_host'] : '-',
+                'traffic_landing_path' => filled($user['traffic_landing_path'] ?? null) ? (string) $user['traffic_landing_path'] : '-',
+                'traffic_captured_at' => filled($user['traffic_captured_at'] ?? null) ? $formatDateTime($user['traffic_captured_at']) : '-',
                 'attendance' => $attendance,
                 'account' => $account,
                 'verification' => $verification,
@@ -565,6 +574,13 @@
                     <span class="fi fis fi-{{ $countryFlagClass($user['country'] ?? null) }} user-country-flag"></span>
                     <span>{{ $user['country_label'] ?? ($user['country'] ?? '-') }}</span>
                   </span>
+                </div>
+              </td>
+
+              <td>
+                <div class="d-flex flex-column">
+                  <span class="fw-medium">{{ $user['traffic_source_label'] ?? 'Not Captured' }}</span>
+                  <small class="text-muted">{{ $user['traffic_source_caption'] ?? 'Registrant source has not been captured yet' }}</small>
                 </div>
               </td>
 
@@ -640,7 +656,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="6" class="text-center py-8">
+              <td colspan="7" class="text-center py-8">
                 <div class="d-flex flex-column align-items-center gap-2 text-muted">
                   <i class="icon-base ti tabler-users-minus fs-1"></i>
                   <span class="fw-medium">No participants match the current filters.</span>
@@ -673,7 +689,7 @@
           </div>
         </div>
 
-        <div class="user-overview-body">
+        <div class="modal-body user-overview-body">
           <div class="user-overview-profile mb-4">
             <div class="d-flex flex-column flex-sm-row align-items-sm-start gap-3">
               <div class="avatar">
@@ -732,6 +748,12 @@
             </div>
 
             <div class="user-overview-item">
+              <span class="user-overview-item-label">Registrant Source</span>
+              <div class="user-overview-item-value" data-detail-traffic-source>-</div>
+              <small class="text-muted d-block mt-1" data-detail-traffic-caption>-</small>
+            </div>
+
+            <div class="user-overview-item">
               <span class="user-overview-item-label">QR Info</span>
               <div class="user-overview-item-value" data-detail-qr-meta>-</div>
               <a href="#" target="_blank" rel="noopener" class="user-qr-preview-link is-disabled" data-detail-qr-link
@@ -742,13 +764,28 @@
             </div>
 
             <div class="user-overview-item">
-              <span class="user-overview-item-label">Waktu Check-In</span>
+              <span class="user-overview-item-label">Check-In Time</span>
               <div class="user-overview-item-value" data-detail-checked-in-at>-</div>
+            </div>
+
+            <div class="user-overview-item">
+              <span class="user-overview-item-label">Source Details</span>
+              <div class="user-overview-item-value">
+                <div><span class="text-muted">Promo link:</span> <span data-detail-traffic-campaign>-</span></div>
+                <div><span class="text-muted">Source website / app:</span> <span data-detail-traffic-referrer>-</span></div>
+                <div><span class="text-muted">Entry method:</span> <span data-detail-traffic-medium>-</span></div>
+              </div>
             </div>
 
             <div class="user-overview-item">
               <span class="user-overview-item-label">Attendance Count</span>
               <div class="user-overview-item-value" data-detail-attendance-count>-</div>
+            </div>
+
+            <div class="user-overview-item">
+              <span class="user-overview-item-label">First Page</span>
+              <div class="user-overview-item-value" data-detail-traffic-landing>-</div>
+              <small class="text-muted d-block mt-1">Captured at: <span data-detail-traffic-captured-at>-</span></small>
             </div>
           </div>
 
@@ -858,6 +895,13 @@
           setText('[data-detail-qr-meta]', payload.qr_meta);
           setText('[data-detail-checked-in-at]', payload.checked_in_at);
           setText('[data-detail-attendance-count]', payload.attendance_count_label);
+          setText('[data-detail-traffic-source]', payload.traffic_source_label);
+          setText('[data-detail-traffic-caption]', payload.traffic_source_caption);
+          setText('[data-detail-traffic-campaign]', payload.traffic_campaign);
+          setText('[data-detail-traffic-referrer]', payload.traffic_referrer_host);
+          setText('[data-detail-traffic-medium]', payload.traffic_medium_label);
+          setText('[data-detail-traffic-landing]', payload.traffic_landing_path);
+          setText('[data-detail-traffic-captured-at]', payload.traffic_captured_at);
 
           const countryFlag = detailModal.querySelector('[data-detail-country-flag]');
 

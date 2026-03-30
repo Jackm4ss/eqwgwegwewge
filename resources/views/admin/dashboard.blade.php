@@ -20,7 +20,52 @@
     $registrationBadge = data_get($dashboard, 'date_range.registration_badge', 'All Time');
     $rangeDays = (int) data_get($dashboard, 'date_range.days', 7);
     $isFilteredRange = (bool) data_get($dashboard, 'date_range.is_filtered', false);
+    $campaignLinkSummary = $campaignLinkSummary ?? ['storage_ready' => false, 'total' => 0, 'active' => 0, 'homepage' => 0, 'register' => 0];
   @endphp
+
+  <div class="card mb-6">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-4">
+        <div>
+          <span class="badge bg-label-primary mb-2">Share Links</span>
+          <h5 class="mb-1">Campaign Links</h5>
+          <p class="text-muted mb-0">
+            Create trackable links for Songkran promotions and copy them when the team needs to share a homepage or registration link.
+          </p>
+        </div>
+        <a href="{{ route('admin.campaign-links.index') }}" class="btn btn-primary">
+          Open Link Builder
+        </a>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Total links</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($campaignLinkSummary, 'total', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Active links</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($campaignLinkSummary, 'active', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Homepage links</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($campaignLinkSummary, 'homepage', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Register page links</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($campaignLinkSummary, 'register', 0)) }}</h4>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="card mb-6">
     <div class="card-body">

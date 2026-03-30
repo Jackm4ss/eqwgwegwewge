@@ -309,6 +309,62 @@ class AdminFirestoreRepositoryTest extends TestCase
         $this->assertFalse(Cache::has(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY));
     }
 
+    public function test_paginate_admin_activity_logs_uses_firestore_range_query_for_date_filters(): void
+    {
+        $restApi = Mockery::mock(FirestoreRestApi::class);
+        $timestamps = Mockery::mock(FirestoreTimestampNormalizer::class);
+        $ticketQrCodeService = Mockery::mock(TicketQrCodeService::class);
+
+        $repository = $this->makeRepository($restApi, $timestamps, $ticketQrCodeService);
+
+        $expectedFrom = '2026-03-28T17:00:00.000000Z';
+        $expectedTo = '2026-03-30T16:59:59.999999Z';
+
+        $restApi->shouldReceive('available')->atLeast()->once()->andReturnTrue();
+        $restApi->shouldReceive('runQuery')
+            ->once()
+            ->withArgs(function (array $structuredQuery) use ($expectedFrom, $expectedTo): bool {
+                $filters = data_get($structuredQuery, 'where.compositeFilter.filters', []);
+
+                return data_get($structuredQuery, 'from.0.collectionId') === 'admin_activity_logs'
+                    && data_get($structuredQuery, 'limit') === 20
+                    && data_get($structuredQuery, 'offset') === 20
+                    && data_get($filters, '0.fieldFilter.field.fieldPath') === 'created_at'
+                    && data_get($filters, '0.fieldFilter.op') === 'GREATER_THAN_OR_EQUAL'
+                    && data_get($filters, '0.fieldFilter.value.timestampValue') === $expectedFrom
+                    && data_get($filters, '1.fieldFilter.field.fieldPath') === 'created_at'
+                    && data_get($filters, '1.fieldFilter.op') === 'LESS_THAN_OR_EQUAL'
+                    && data_get($filters, '1.fieldFilter.value.timestampValue') === $expectedTo
+                    && data_get($structuredQuery, 'orderBy.0.field.fieldPath') === 'created_at'
+                    && data_get($structuredQuery, 'orderBy.1.field.fieldPath') === '__name__';
+            })
+            ->andReturn([]);
+        $restApi->shouldReceive('runCountQuery')
+            ->once()
+            ->withArgs(function (array $structuredQuery, string $alias) use ($expectedFrom, $expectedTo): bool {
+                $filters = data_get($structuredQuery, 'where.compositeFilter.filters', []);
+
+                return $alias === 'count'
+                    && data_get($structuredQuery, 'from.0.collectionId') === 'admin_activity_logs'
+                    && ! array_key_exists('limit', $structuredQuery)
+                    && ! array_key_exists('offset', $structuredQuery)
+                    && ! array_key_exists('orderBy', $structuredQuery)
+                    && data_get($filters, '0.fieldFilter.value.timestampValue') === $expectedFrom
+                    && data_get($filters, '1.fieldFilter.value.timestampValue') === $expectedTo;
+            })
+            ->andReturn(84);
+
+        $result = $repository->paginateAdminActivityLogs([
+            'from' => '2026-03-29',
+            'to' => '2026-03-30',
+        ], 2, 20);
+
+        $this->assertSame([
+            'items' => [],
+            'total' => 84,
+        ], $result);
+    }
+
     private function makeRepository(
         FirestoreRestApi $restApi,
         FirestoreTimestampNormalizer $timestamps,

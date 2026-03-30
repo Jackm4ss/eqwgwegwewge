@@ -12,6 +12,7 @@ import { DontsSection } from "../sections/DontsSection";
 import { FAQ } from "../sections/FAQ";
 import { SponsorSection } from "../sections/SponsorSection";
 import { Footer } from "../sections/Footer";
+import { captureTrafficAttribution } from "@/lib/trafficAttribution";
 
 // Komponen Global Scroll Indicator (Panah Bawah -> Mentok Bawah jadi Panah Atas)
 function ScrollIndicator() {
@@ -65,6 +66,10 @@ function ScrollIndicator() {
 }
 
 export function LandingPage() {
+  useEffect(() => {
+    captureTrafficAttribution();
+  }, []);
+
   return (
     <div className="min-h-screen" style={{ fontFamily: "'Tilt Warp', sans-serif" }}>
       <GrainOverlay />

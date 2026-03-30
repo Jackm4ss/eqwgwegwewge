@@ -3,9 +3,9 @@
 namespace Tests\Feature;
 
 use App\Contracts\UserRepositoryInterface;
-use App\Mail\VerifyRegistrationMail;
-use Illuminate\Support\Facades\Http;
+use App\Mail\TicketReadyMail;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Tests\Fakes\InMemoryUserRepository;
 use Tests\TestCase;
@@ -24,7 +24,7 @@ class RegisterApiTest extends TestCase
             'services.recaptcha.site_key' => null,
             'services.recaptcha.secret_key' => null,
         ]);
-        $this->repository = new InMemoryUserRepository();
+        $this->repository = new InMemoryUserRepository;
         $this->app->instance(UserRepositoryInterface::class, $this->repository);
     }
 
@@ -44,7 +44,7 @@ class RegisterApiTest extends TestCase
             ]);
     }
 
-    public function test_register_creates_pending_user_and_indexes_and_sends_verification_mail(): void
+    public function test_register_creates_ticket_ready_user_and_sends_ticket_email(): void
     {
         Mail::fake();
 
@@ -54,16 +54,18 @@ class RegisterApiTest extends TestCase
 
         $response->assertCreated()
             ->assertJson([
-                'message' => 'Registration successful. Verification email has been sent.',
-                'status' => 'pending_verification',
+                'message' => 'Registration successful. Your QR ticket has been sent to your email.',
+                'status' => 'ticket_ready',
+                'email_sent' => true,
             ]);
 
         $user = $this->repository->firstUser();
 
         $this->assertNotNull($user);
-        $this->assertSame('pending_verification', $user['account_status']);
-        $this->assertSame('unverified', $user['verification_status']);
-        $this->assertNull($user['ticket_id']);
+        $this->assertSame('active', $user['account_status']);
+        $this->assertSame('verified', $user['verification_status']);
+        $this->assertNotNull($user['ticket_id']);
+        $this->assertNotEmpty($user['ticket_ready_email_sent_at']);
         $this->assertSame('test@example.com', $user['email']);
         $this->assertSame('+62', $user['phone_country_code']);
         $this->assertSame('8123456789', $user['phone_national_number']);
@@ -77,7 +79,7 @@ class RegisterApiTest extends TestCase
             $payload['identity_number'],
         ));
 
-        Mail::assertSent(VerifyRegistrationMail::class, function (VerifyRegistrationMail $mail) use ($payload) {
+        Mail::assertSent(TicketReadyMail::class, function (TicketReadyMail $mail) use ($payload) {
             return $mail->hasTo(strtolower($payload['email']));
         });
     }
@@ -90,6 +92,7 @@ class RegisterApiTest extends TestCase
 
         $duplicatePayload = array_merge($this->validPayload(), [
             'identity_number' => 'A7654321',
+            'phone_national_number' => '8123456790',
         ]);
 
         $response = $this->postJson('/api/register', $duplicatePayload);
@@ -98,7 +101,7 @@ class RegisterApiTest extends TestCase
             ->assertJsonValidationErrors(['email']);
 
         $this->assertCount(1, $this->repository->users);
-        $this->assertCount(0, $this->repository->tickets);
+        $this->assertCount(1, $this->repository->tickets);
     }
 
     public function test_register_rejects_duplicate_identity_number_with_structured_error(): void
@@ -109,6 +112,7 @@ class RegisterApiTest extends TestCase
 
         $duplicatePayload = array_merge($this->validPayload(), [
             'email' => 'other@example.com',
+            'phone_national_number' => '8123456791',
         ]);
 
         $response = $this->postJson('/api/register', $duplicatePayload);
@@ -117,7 +121,7 @@ class RegisterApiTest extends TestCase
             ->assertJsonValidationErrors(['identity_number']);
 
         $this->assertCount(1, $this->repository->users);
-        $this->assertCount(0, $this->repository->tickets);
+        $this->assertCount(1, $this->repository->tickets);
     }
 
     public function test_register_rejects_duplicate_phone_number_with_structured_error(): void
@@ -154,6 +158,7 @@ class RegisterApiTest extends TestCase
             'country' => 'MY',
             'identity_type' => 'national_id',
             'identity_number' => 'A1234567',
+            'phone_national_number' => '8123456792',
         ]));
 
         $response->assertCreated();
@@ -175,6 +180,7 @@ class RegisterApiTest extends TestCase
             'identity_type' => 'passport',
             'country' => 'MY',
             'identity_number' => 'A1234567',
+            'phone_national_number' => '8123456793',
         ]));
 
         $response->assertCreated();
@@ -216,7 +222,7 @@ class RegisterApiTest extends TestCase
         $response = $this->postJson('/api/register', $this->validPayload());
 
         $response->assertCreated()
-            ->assertJsonStructure(['message', 'status'])
+            ->assertJsonStructure(['message', 'status', 'email_sent', 'ticket_url', 'ticket_qr_url', 'ticket_code'])
             ->assertJsonMissing(['redirect']);
     }
 
@@ -235,6 +241,33 @@ class RegisterApiTest extends TestCase
         $this->assertSame('+628123456789', $user['phone_number']);
         $this->assertArrayNotHasKey('phone_country_code', $user);
         $this->assertArrayNotHasKey('phone_national_number', $user);
+    }
+
+    public function test_register_persists_first_touch_traffic_attribution(): void
+    {
+        Mail::fake();
+
+        $payload = array_merge($this->validPayload(), [
+            'traffic_source' => 'threads',
+            'traffic_source_detail' => 'threads-bio',
+            'traffic_medium' => 'social',
+            'traffic_campaign' => 'songkran-launch',
+            'traffic_referrer_host' => 'www.threads.net',
+            'traffic_landing_path' => '/register?utm_source=threads&utm_campaign=songkran-launch',
+            'traffic_captured_at' => '2026-03-30T08:15:00Z',
+        ]);
+
+        $this->postJson('/api/register', $payload)->assertCreated();
+
+        $user = $this->repository->firstUser();
+
+        $this->assertSame('threads', $user['traffic_source']);
+        $this->assertSame('threads-bio', $user['traffic_source_detail']);
+        $this->assertSame('social', $user['traffic_medium']);
+        $this->assertSame('songkran-launch', $user['traffic_campaign']);
+        $this->assertSame('www.threads.net', $user['traffic_referrer_host']);
+        $this->assertSame('/register?utm_source=threads&utm_campaign=songkran-launch', $user['traffic_landing_path']);
+        $this->assertSame('2026-03-30T08:15:00Z', $user['traffic_captured_at']);
     }
 
     public function test_register_requires_recaptcha_token_when_recaptcha_is_enabled(): void
@@ -303,8 +336,9 @@ class RegisterApiTest extends TestCase
 
         $response->assertCreated()
             ->assertJson([
-                'message' => 'Registration successful. Verification email has been sent.',
-                'status' => 'pending_verification',
+                'message' => 'Registration successful. Your QR ticket has been sent to your email.',
+                'status' => 'ticket_ready',
+                'email_sent' => true,
             ]);
 
         $this->assertCount(1, $this->repository->users);

@@ -36,6 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/Select';
+import {
+  captureTrafficAttribution,
+  type TrafficAttributionPayload,
+} from '@/lib/trafficAttribution';
 
 interface FormData {
   full_name: string;
@@ -200,7 +204,6 @@ const MEDIA_WOB_URL = '/images/wob.png';
 const MEDIA_NOODOU_URL = '/images/noodou.png';
 const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/yWaPZYTBoHXgpXKn8';
 const ENABLE_LEGACY_SUCCESS_SCREEN = true;
-
 function MapsPinIcon() {
   return (
     <svg
@@ -840,6 +843,7 @@ export function RegisterPage() {
     identityNumber: '',
   });
   const [ticketEmailSent, setTicketEmailSent] = useState(true);
+  const [trafficAttribution, setTrafficAttribution] = useState<TrafficAttributionPayload | null>(null);
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
   const previousCountryRef = useRef('');
 
@@ -979,6 +983,10 @@ export function RegisterPage() {
     };
   }, [recaptchaEnabled, recaptchaSiteKey]);
 
+  useEffect(() => {
+    setTrafficAttribution(captureTrafficAttribution());
+  }, []);
+
   const countryVal = watch('country');
   const phoneCountryCodeVal = watch('phone_country_code');
   const phoneNationalNumberVal = watch('phone_national_number');
@@ -1117,12 +1125,14 @@ export function RegisterPage() {
       }
 
       const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+      const resolvedTrafficAttribution = trafficAttribution ?? captureTrafficAttribution();
       const payload = {
         ...data,
         recaptcha_token: recaptchaToken ?? '',
         phone_country_code: normalizePhoneCountryCode(data.phone_country_code),
         phone_national_number: normalizePhoneNationalNumber(data.phone_national_number),
         phone_number: phoneNumber,
+        ...(resolvedTrafficAttribution ?? {}),
       };
 
       const response = await fetch('/api/register', {

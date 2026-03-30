@@ -34,6 +34,13 @@ class RegistrationServiceTest extends TestCase
             'country' => 'ID',
             'identity_type' => 'passport',
             'identity_number' => 'A1234567',
+            'traffic_source' => 'tiktok',
+            'traffic_source_detail' => 'tiktok-bio',
+            'traffic_medium' => 'social',
+            'traffic_campaign' => 'songkran-2026',
+            'traffic_referrer_host' => 'www.tiktok.com',
+            'traffic_landing_path' => '/register?utm_source=tiktok',
+            'traffic_captured_at' => '2026-03-30T08:15:00Z',
         ], '127.0.0.1');
 
         $ticket = $result['ticket'];
@@ -52,6 +59,13 @@ class RegistrationServiceTest extends TestCase
         );
         $this->assertSame('active', $ticket['status']);
         $this->assertSame('v1', $ticket['qr_version']);
+        $this->assertSame('tiktok', $user['traffic_source']);
+        $this->assertSame('tiktok-bio', $user['traffic_source_detail']);
+        $this->assertSame('social', $user['traffic_medium']);
+        $this->assertSame('songkran-2026', $user['traffic_campaign']);
+        $this->assertSame('www.tiktok.com', $user['traffic_referrer_host']);
+        $this->assertSame('/register?utm_source=tiktok', $user['traffic_landing_path']);
+        $this->assertSame('2026-03-30T08:15:00Z', $user['traffic_captured_at']);
 
         Mail::assertSent(TicketReadyMail::class, function (TicketReadyMail $mail) use ($ticket): bool {
             return ($mail->ticket['ticket_code'] ?? null) === $ticket['ticket_code']
