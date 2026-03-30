@@ -1,5 +1,5 @@
-import { useState, type CSSProperties } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { memo, useCallback, useState, type CSSProperties } from "react";
+import { motion } from "motion/react";
 import { SECTION_BACKGROUND } from "./sectionContrastTheme";
 
 const TILT: CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
@@ -37,6 +37,15 @@ type FAQItem = {
   a: string[];
   list?: boolean;
 };
+
+type FAQAccordionItemProps = {
+  faq: FAQItem;
+  index: number;
+  isOpen: boolean;
+  onToggle: (index: number) => void;
+};
+
+const FAQ_PANEL_TRANSITION = "260ms cubic-bezier(0.22, 1, 0.36, 1)";
 
 const faqs: FAQItem[] = [
   {
@@ -155,8 +164,126 @@ const faqs: FAQItem[] = [
   },
 ];
 
+const FAQAccordionItem = memo(function FAQAccordionItem({
+  faq,
+  index,
+  isOpen,
+  onToggle,
+}: FAQAccordionItemProps) {
+  const answerId = `faq-answer-${index}`;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ delay: index * 0.04, duration: 0.6 }}
+      className="overflow-hidden rounded-2xl"
+      style={{
+        background: isOpen ? "rgba(255,255,255,0.42)" : "rgba(255,255,255,0.28)",
+        border: `1px solid ${isOpen ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.30)"}`,
+        boxShadow: isOpen ? "0 10px 28px rgba(0,0,0,0.08)" : "none",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => onToggle(index)}
+        aria-expanded={isOpen}
+        aria-controls={answerId}
+        className="group flex w-full items-start justify-between gap-6 px-5 py-6 text-left md:px-6"
+      >
+        <div className="flex items-start gap-5">
+          <span
+            style={{
+              ...TILT,
+              fontSize: "0.72rem",
+              color: isOpen ? "rgba(0,0,0,0.72)" : "rgba(0,0,0,0.42)",
+              letterSpacing: "0.08em",
+              minWidth: 28,
+              paddingTop: 2,
+              transition: "color 0.22s ease",
+            }}
+          >
+            {String(index + 1).padStart(2, "0")}
+          </span>
+
+          <span
+            style={{
+              ...TILT,
+              fontSize: "clamp(0.92rem,1.4vw,1.08rem)",
+              ...QUESTION_TEXT_STYLE,
+              lineHeight: 1.45,
+            }}
+          >
+            {faq.q}
+          </span>
+        </div>
+
+        <span
+          aria-hidden="true"
+          className="mt-0.5 flex-shrink-0"
+          style={{
+            color: isOpen ? "#111111" : "rgba(0,0,0,0.42)",
+            fontSize: "1.3rem",
+            lineHeight: 1,
+            transform: isOpen ? "rotate(45deg)" : "rotate(0deg)",
+            transition: "transform 0.22s ease, color 0.22s ease",
+            willChange: "transform",
+          }}
+        >
+          +
+        </span>
+      </button>
+
+      <div
+        id={answerId}
+        className="grid"
+        style={{
+          gridTemplateRows: isOpen ? "1fr" : "0fr",
+          opacity: isOpen ? 1 : 0,
+          transition: `grid-template-rows ${FAQ_PANEL_TRANSITION}, opacity 160ms ease`,
+        }}
+      >
+        <div style={{ overflow: "hidden", minHeight: 0 }}>
+          <div
+            style={{
+              ...TILT,
+              fontSize: "0.76rem",
+              ...ANSWER_TEXT_STYLE,
+              lineHeight: 1.8,
+              paddingLeft: 52,
+              paddingRight: 24,
+              paddingBottom: 24,
+              transform: isOpen ? "translateY(0)" : "translateY(-8px)",
+              transition: `transform ${FAQ_PANEL_TRANSITION}, opacity 160ms ease`,
+              opacity: isOpen ? 1 : 0,
+              pointerEvents: isOpen ? "auto" : "none",
+            }}
+          >
+            <div className="space-y-3">
+              {faq.a.map((line, lineIndex) =>
+                faq.list ? (
+                  <div key={`${faq.q}-${lineIndex}`} className="flex gap-3">
+                    <span className="pt-1 text-[0.9em] leading-none text-black/45">-</span>
+                    <p>{line}</p>
+                  </div>
+                ) : (
+                  <p key={`${faq.q}-${lineIndex}`}>{line}</p>
+                ),
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
 export function FAQ() {
   const [open, setOpen] = useState<number | null>(null);
+  const handleToggle = useCallback((index: number) => {
+    setOpen((current) => (current === index ? null : index));
+  }, []);
 
   return (
     <section
@@ -241,103 +368,13 @@ export function FAQ() {
 
           <div className="space-y-3">
             {faqs.map((faq, i) => (
-              <motion.div
+              <FAQAccordionItem
                 key={faq.q}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ delay: i * 0.04, duration: 0.6 }}
-                className="overflow-hidden rounded-2xl"
-                style={{
-                  background: open === i ? "rgba(255,255,255,0.42)" : "rgba(255,255,255,0.28)",
-                  border: `1px solid ${open === i ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.30)"
-                    }`,
-                  boxShadow: open === i ? "0 10px 28px rgba(0,0,0,0.08)" : "none",
-                }}
-              >
-                <button
-                  onClick={() => setOpen(open === i ? null : i)}
-                  className="group flex w-full items-start justify-between gap-6 px-5 py-6 text-left md:px-6"
-                >
-                  <div className="flex items-start gap-5">
-                    <span
-                      style={{
-                        ...TILT,
-                        fontSize: "0.72rem",
-                        color: open === i ? "rgba(0,0,0,0.72)" : "rgba(0,0,0,0.42)",
-                        letterSpacing: "0.08em",
-                        minWidth: 28,
-                        paddingTop: 2,
-                        transition: "color 0.3s",
-                      }}
-                    >
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-
-                    <span
-                      style={{
-                        ...TILT,
-                        fontSize: "clamp(0.92rem,1.4vw,1.08rem)",
-                        ...QUESTION_TEXT_STYLE,
-                        lineHeight: 1.45,
-                        transition: "color 0.3s",
-                      }}
-                    >
-                      {faq.q}
-                    </span>
-                  </div>
-
-                  <motion.div
-                    animate={{ rotate: open === i ? 45 : 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="mt-0.5 flex-shrink-0"
-                    style={{
-                      color: open === i ? "#111111" : "rgba(0,0,0,0.42)",
-                      fontSize: "1.3rem",
-                      lineHeight: 1,
-                    }}
-                  >
-                    +
-                  </motion.div>
-                </button>
-
-                <AnimatePresence>
-                  {open === i && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                      style={{ overflow: "hidden" }}
-                    >
-                      <div
-                        style={{
-                          ...TILT,
-                          fontSize: "0.76rem",
-                          ...ANSWER_TEXT_STYLE,
-                          lineHeight: 1.8,
-                          paddingLeft: 52,
-                          paddingRight: 24,
-                          paddingBottom: 24,
-                        }}
-                      >
-                        <div className="space-y-3">
-                          {faq.a.map((line, lineIndex) =>
-                            faq.list ? (
-                              <div key={`${faq.q}-${lineIndex}`} className="flex gap-3">
-                                <span className="pt-1 text-[0.9em] leading-none text-black/45">-</span>
-                                <p>{line}</p>
-                              </div>
-                            ) : (
-                              <p key={`${faq.q}-${lineIndex}`}>{line}</p>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
+                faq={faq}
+                index={i}
+                isOpen={open === i}
+                onToggle={handleToggle}
+              />
             ))}
           </div>
         </div>

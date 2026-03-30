@@ -87,8 +87,9 @@ export const Stack: React.FC<StackProps> = ({
                 cursor: isTop && sendToBackOnClick ? 'pointer' : (isTop ? 'grab' : 'auto'),
               }}
               // Posisi awal saat kartu baru muncul (di tumpukan paling belakang)
-              initial={{ scale: 0.8, y: 40, opacity: 0 }}
+              initial={{ x: 0, scale: 0.8, y: 40, opacity: 0 }}
               animate={{
+                x: 0,
                 scale: 1 - indexFromTop * 0.05,
                 y: indexFromTop * 15,
                 rotate: randomRotation ? (Number(card.id) % 2 === 0 ? 3 : -3) * indexFromTop : 0,
@@ -106,6 +107,7 @@ export const Stack: React.FC<StackProps> = ({
               drag={isTop ? 'x' : false}
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.8}
+              dragSnapToOrigin={true}
               onDragEnd={isTop ? handleDragEnd : undefined}
               onClick={isTop ? handleClick : undefined}
             >
