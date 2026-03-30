@@ -73,19 +73,21 @@ export function LandingPage() {
   return (
     <div className="min-h-screen" style={{ fontFamily: "'Tilt Warp', sans-serif" }}>
       <GrainOverlay />
-      {/* <CustomCursor /> */}
-      <Navbar />
-      <ScrollIndicator />
-      <HeroSection />
+      <div className="relative isolate">
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+          <img
+            src="/images/BACKGROUND.jpg"
+            alt=""
+            aria-hidden="true"
+            className="h-full w-full object-cover object-center"
+          />
+        </div>
 
-      <div
-        style={{
-          backgroundImage: "url('/images/BACKGROUND.jpg')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
+        <div className="relative z-10">
+        {/* <CustomCursor /> */}
+        <Navbar />
+        <ScrollIndicator />
+        <HeroSection />
         <SectionDivider />
         <AboutFestival />
         <SectionDivider reverse />
@@ -99,6 +101,7 @@ export function LandingPage() {
         <FAQ />
         <SponsorSection />
         <SectionDivider reverse />
+        </div>
       </div>
 
       <Footer />

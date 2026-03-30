@@ -67,36 +67,25 @@ export function HeroSection() {
   return (
     <section
       className="relative min-h-screen overflow-hidden"
-      style={{ background: "#0a0f14" }}
+      style={{ background: "transparent" }}
       onMouseMove={handleMouse}
     >
-      {/* BG IMAGE */}
-      <div className="absolute inset-0">
-        <img
-          src="/images/BACKGROUND.jpg"
-          className="w-full h-full"
-          style={{
-            objectFit: "cover",
-            objectPosition: "center center",
-            opacity: 1,
-            filter: "brightness(1.05) contrast(1.05)"
-          }}
-        />
-
-        <div
-          style={{
-            position: "absolute",
-            inset: 0
-          }}
-        />
-
-        {/* OPTIONAL: glow tipis biar ga flat */}
+      <div className="absolute inset-0 pointer-events-none">
         <div
           style={{
             position: "absolute",
             inset: 0,
             background:
-              "radial-gradient(ellipse at 60% 40%, rgba(24,199,204,0.04) 0%, transparent 85%)"
+              "linear-gradient(180deg, rgba(3,12,20,0.18) 0%, rgba(3,12,20,0.08) 45%, rgba(3,12,20,0.24) 100%)",
+          }}
+        />
+
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "radial-gradient(ellipse at 50% 18%, rgba(255,255,255,0.08) 0%, transparent 52%), radial-gradient(ellipse at 60% 40%, rgba(24,199,204,0.04) 0%, transparent 85%)"
           }}
         />
       </div>

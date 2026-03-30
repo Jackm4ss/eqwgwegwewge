@@ -7,10 +7,7 @@ export const INK_MUTED = "rgba(0,0,0,0.58)";
 export const INK_SOFT = "rgba(0,0,0,0.45)";
 
 export const SECTION_BACKGROUND: CSSProperties = {
-  backgroundImage: "url('/images/BACKGROUND.jpg')",
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  backgroundRepeat: "no-repeat",
+  background: "transparent",
 };
 
 export const PANEL_BACKGROUND =
