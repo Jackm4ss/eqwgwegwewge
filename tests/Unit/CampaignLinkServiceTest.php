@@ -14,7 +14,7 @@ class CampaignLinkServiceTest extends TestCase
     public function test_present_builds_labels_and_generated_url(): void
     {
         config([
-            'admin.future_urls.landing' => 'https://songkran.test',
+            'app.frontend_homepage_url' => 'https://songkran.test',
             'admin.future_urls.register' => 'https://register.songkran.test',
         ]);
 
@@ -23,6 +23,7 @@ class CampaignLinkServiceTest extends TestCase
 
         $presented = $service->present([
             'name' => 'TikTok Bio April',
+            'slug' => 'fb',
             'destination' => 'register',
             'source' => 'tiktok',
             'medium' => 'bio',
@@ -37,9 +38,10 @@ class CampaignLinkServiceTest extends TestCase
         $this->assertSame('Bio', $presented['medium_label']);
         $this->assertSame('April2026', $presented['campaign_label']);
         $this->assertSame('Video A', $presented['utm_content_label']);
+        $this->assertSame('https://songkran.test/fb', $presented['short_url']);
         $this->assertSame(
             'https://register.songkran.test?utm_source=tiktok&utm_medium=bio&utm_campaign=april2026&utm_content=video-a',
-            $presented['generated_url']
+            $presented['final_url']
         );
     }
 
@@ -50,6 +52,7 @@ class CampaignLinkServiceTest extends TestCase
 
         CampaignLink::query()->create([
             'name' => 'Homepage Link',
+            'slug' => 'home-link',
             'destination' => 'homepage',
             'source' => 'instagram',
             'medium' => 'bio',
@@ -57,10 +60,12 @@ class CampaignLinkServiceTest extends TestCase
             'utm_content' => null,
             'notes' => null,
             'is_active' => true,
+            'visit_count' => 3,
         ]);
 
         CampaignLink::query()->create([
             'name' => 'Register Link',
+            'slug' => 'register-link',
             'destination' => 'register',
             'source' => 'tiktok',
             'medium' => 'ads',
@@ -68,6 +73,7 @@ class CampaignLinkServiceTest extends TestCase
             'utm_content' => 'creative-a',
             'notes' => null,
             'is_active' => false,
+            'visit_count' => 4,
         ]);
 
         $this->assertSame([
@@ -76,6 +82,7 @@ class CampaignLinkServiceTest extends TestCase
             'active' => 1,
             'homepage' => 1,
             'register' => 1,
+            'visits' => 7,
         ], $service->dashboardSummary());
     }
 }

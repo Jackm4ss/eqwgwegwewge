@@ -21,7 +21,7 @@ const CARD_VALUE: React.CSSProperties = {
 
 const SPONSOR_LOGOS = [
   { src: "/images/Royal_Thai_Embassy_Seal.svg.png", alt: "Royal Thai Embassy", className: "h-9 md:h-10 lg:h-11 w-auto object-contain" },
-  { src: "/images/ditp.jpeg", alt: "DITP", className: "h-7 md:h-8 lg:h-9 w-auto rounded-md bg-white p-1 object-contain" },
+  { src: "/images/ditp-new.png", alt: "DITP", className: "h-7 md:h-8 lg:h-9 w-auto object-contain" },
   { src: "/images/amazing thailand.png", alt: "Amazing Thailand", className: "h-8 md:h-9 lg:h-10 w-auto object-contain" },
   { src: "/images/singha-seeklogo.png", alt: "Singha", className: "h-8 md:h-9 lg:h-10 w-auto object-contain" },
   { src: "/images/Snake-Brand-Logo.png", alt: "Snake Brand", className: "h-8 md:h-9 lg:h-10 w-auto object-contain" },

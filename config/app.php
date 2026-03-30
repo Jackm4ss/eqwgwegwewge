@@ -1,5 +1,6 @@
 <?php
 
+use App\Providers\AppServiceProvider;
 use Illuminate\Support\ServiceProvider;
 
 return [
@@ -7,6 +8,7 @@ return [
     'env' => env('APP_ENV', 'production'),
     'debug' => (bool) env('APP_DEBUG', false),
     'url' => env('APP_URL', 'http://localhost'),
+    'frontend_homepage_url' => rtrim((string) env('FRONTEND_HOMEPAGE_URL', env('APP_URL', 'http://localhost')), '/'),
     'timezone' => env('APP_TIMEZONE', 'Asia/Kuala_Lumpur'),
     'locale' => env('APP_LOCALE', 'en'),
     'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
@@ -19,6 +21,6 @@ return [
     ],
 
     'providers' => ServiceProvider::defaultProviders()->merge([
-        App\Providers\AppServiceProvider::class,
+        AppServiceProvider::class,
     ])->toArray(),
 ];

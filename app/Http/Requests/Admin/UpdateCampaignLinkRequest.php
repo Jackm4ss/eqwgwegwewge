@@ -25,12 +25,22 @@ class UpdateCampaignLinkRequest extends FormRequest
             'max:120',
         ];
 
+        $slugRules = [
+            'required',
+            'string',
+            'max:120',
+            'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+            Rule::notIn($campaignLinkService->reservedSlugs()),
+        ];
+
         if ($campaignLinkService->storageReady()) {
             $nameRules[] = Rule::unique(CampaignLink::class, 'name')->ignore($this->route('campaignLink'));
+            $slugRules[] = Rule::unique(CampaignLink::class, 'slug')->ignore($this->route('campaignLink'));
         }
 
         return [
             'name' => $nameRules,
+            'slug' => $slugRules,
             'destination' => ['required', Rule::in(array_keys($campaignLinkService->destinationOptions()))],
             'source' => ['required', 'string', 'max:120'],
             'medium' => ['required', 'string', 'max:120'],
@@ -48,6 +58,7 @@ class UpdateCampaignLinkRequest extends FormRequest
 
         $this->merge([
             'name' => $campaignLinkService->normalizeName($this->input('name')),
+            'slug' => $campaignLinkService->normalizeSlug($this->input('slug')),
             'destination' => $campaignLinkService->normalizeDestination($this->input('destination')),
             'source' => $campaignLinkService->normalizeToken($this->input('source')),
             'medium' => $campaignLinkService->normalizeToken($this->input('medium')),
@@ -56,5 +67,15 @@ class UpdateCampaignLinkRequest extends FormRequest
             'notes' => $campaignLinkService->normalizeNotes($this->input('notes')),
             'is_active' => $this->boolean('is_active'),
         ]);
+    }
+
+    public function messages(): array
+    {
+        return [
+            'slug.required' => 'Please enter the public slug after the slash.',
+            'slug.regex' => 'The public slug must use lowercase letters, numbers, and hyphens only.',
+            'slug.not_in' => 'That public slug is reserved by another route. Please choose a different slug.',
+            'slug.unique' => 'That public slug is already in use.',
+        ];
     }
 }

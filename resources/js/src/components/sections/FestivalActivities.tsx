@@ -113,7 +113,7 @@ const activities: Activity[] = [
     title: "Kids Fashion Show",
     description: "Thai-inspired looks by our youngest stars",
     schedule: "11th April",
-    image: "/images/foto-5.png",
+    image: "/images/foto-5.jpeg",
   },
   {
     id: 6,

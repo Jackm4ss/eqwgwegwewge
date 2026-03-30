@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Api\Auth\ForgotPasswordController;
 use App\Http\Controllers\Api\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\CampaignShortLinkRedirectController;
 use App\Http\Controllers\Staff\Auth\AuthenticatedStaffSessionController;
 use App\Http\Controllers\Staff\StaffScannerController;
 use App\Http\Controllers\Staff\StaffScannerSessionController;
@@ -161,7 +162,7 @@ $publicRoutes = static function () use ($renderSpa, $isSubdomainMode, $adminLogi
             $result = $service->register($request->validated(), $request->ip());
 
             return redirect()->route('register.success', ['email' => data_get($result, 'user.email')]);
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             return back()->withInput($request->except('password', 'password_confirmation'))->withErrors(['error' => $e->getMessage()]);
         }
     })->name('register.submit');
@@ -466,3 +467,8 @@ if ($isSubdomainMode) {
             });
         });
 }
+
+$groupForDomain(AppRouting::hostFor('public'), static function () {
+    Route::get('/{slug}', CampaignShortLinkRedirectController::class)
+        ->name('campaign-links.redirect');
+});

@@ -20,7 +20,7 @@ class AdminCampaignLinkManagementTest extends TestCase
         config([
             'admin.bootstrap_password' => 'LocalAdmin123!',
             'admin.seed_count' => 1,
-            'admin.future_urls.landing' => 'https://songkran.test',
+            'app.frontend_homepage_url' => 'https://songkran.test',
             'admin.future_urls.register' => 'https://register.songkran.test',
         ]);
 
@@ -49,6 +49,7 @@ class AdminCampaignLinkManagementTest extends TestCase
             ->post('/admin/campaign-links', [
                 '_token' => 'csrf-token',
                 'name' => 'TikTok Bio April',
+                'slug' => 'fb',
                 'destination' => 'register',
                 'source' => 'TikTok',
                 'medium' => 'Bio',
@@ -63,6 +64,7 @@ class AdminCampaignLinkManagementTest extends TestCase
         $campaignLink = CampaignLink::query()->where('name', 'TikTok Bio April')->firstOrFail();
 
         $this->assertSame('register', $campaignLink->destination);
+        $this->assertSame('fb', $campaignLink->slug);
         $this->assertSame('tiktok', $campaignLink->source);
         $this->assertSame('bio', $campaignLink->medium);
         $this->assertSame('april-2026', $campaignLink->campaign);
@@ -75,6 +77,7 @@ class AdminCampaignLinkManagementTest extends TestCase
                 '_token' => 'csrf-token',
                 'campaign_link_id' => (string) $campaignLink->id,
                 'name' => 'Instagram Story May',
+                'slug' => 'wa',
                 'destination' => 'homepage',
                 'source' => 'Instagram',
                 'medium' => 'Story',
@@ -88,6 +91,7 @@ class AdminCampaignLinkManagementTest extends TestCase
         $this->assertDatabaseHas('campaign_links', [
             'id' => $campaignLink->id,
             'name' => 'Instagram Story May',
+            'slug' => 'wa',
             'destination' => 'homepage',
             'source' => 'instagram',
             'medium' => 'story',
@@ -126,6 +130,7 @@ class AdminCampaignLinkManagementTest extends TestCase
             ->post('/admin/campaign-links', [
                 '_token' => 'csrf-token',
                 'name' => 'Broken Link',
+                'slug' => 'broken-link',
                 'destination' => 'homepage',
                 'source' => 'instagram',
                 'medium' => 'bio',

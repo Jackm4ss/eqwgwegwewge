@@ -10,7 +10,7 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>{{ $title ?? 'Admin Panel' }} | Event System</title>
 
-  <link rel="icon" type="image/x-icon" href="{{ asset('assets-vuexy/img/favicon/favicon.ico') }}" />
+  <link rel="icon" href="/favicon.ico">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&display=swap"

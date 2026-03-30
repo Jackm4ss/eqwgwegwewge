@@ -16,8 +16,7 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Register | Event System</title>
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="{{ asset('assets-vuexy/img/favicon/favicon.ico') }}" />
+    <link rel="icon" href="/favicon.ico">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
