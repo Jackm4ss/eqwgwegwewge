@@ -82,6 +82,13 @@ export function LandingPage() {
             className="h-full w-full object-cover object-center"
           />
         </div>
+        <div
+          className="pointer-events-none fixed inset-0 z-[1]"
+          style={{
+            background:
+              "radial-gradient(circle at 22% 14%, rgba(255,255,255,0.18) 0%, transparent 34%), radial-gradient(circle at 82% 20%, rgba(83,211,244,0.08) 0%, transparent 30%), linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 42%, rgba(255,255,255,0.10) 100%)",
+          }}
+        />
 
         <div className="relative z-10">
         {/* <CustomCursor /> */}

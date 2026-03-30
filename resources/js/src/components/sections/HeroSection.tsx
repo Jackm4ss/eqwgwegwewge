@@ -76,7 +76,7 @@ export function HeroSection() {
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(180deg, rgba(3,12,20,0.18) 0%, rgba(3,12,20,0.08) 45%, rgba(3,12,20,0.24) 100%)",
+              "",
           }}
         />
 
@@ -85,7 +85,7 @@ export function HeroSection() {
             position: "absolute",
             inset: 0,
             background:
-              "radial-gradient(ellipse at 50% 18%, rgba(255,255,255,0.08) 0%, transparent 52%), radial-gradient(ellipse at 60% 40%, rgba(24,199,204,0.04) 0%, transparent 85%)"
+              ","
           }}
         />
       </div>

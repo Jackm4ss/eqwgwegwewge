@@ -27,9 +27,9 @@ export function GrainOverlay() {
           left: -25%;
           width: 150%;
           height: 150%;
-          opacity: 0.13;
+          opacity: 0.05;
           animation: grain-move 8s steps(10) infinite;
-          mix-blend-mode: overlay;
+          mix-blend-mode: soft-light;
         }
       `}</style>
       <div className="grain-wrap">
