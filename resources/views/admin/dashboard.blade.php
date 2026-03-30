@@ -1,0 +1,254 @@
+@extends('admin.layouts.app')
+
+@php
+  $title = 'Dashboard';
+@endphp
+
+@push('vendor-styles')
+  <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/libs/apex-charts/apex-charts.css') }}" />
+@endpush
+
+@push('vendor-scripts')
+  <script src="{{ asset('assets-vuexy/vendor/libs/apex-charts/apexcharts.js') }}"></script>
+@endpush
+
+@section('content')
+  @php
+    $hasDateFilters = filled($filters['from'] ?? null) || filled($filters['to'] ?? null);
+    $dateRangeLabel = data_get($dashboard, 'date_range.label', '-');
+    $dateRangeBadge = data_get($dashboard, 'date_range.badge', 'Last 7 Days');
+    $registrationBadge = data_get($dashboard, 'date_range.registration_badge', 'All Time');
+    $rangeDays = (int) data_get($dashboard, 'date_range.days', 7);
+    $isFilteredRange = (bool) data_get($dashboard, 'date_range.is_filtered', false);
+    $campaignLinkSummary = $campaignLinkSummary ?? ['storage_ready' => false, 'total' => 0, 'active' => 0, 'homepage' => 0, 'register' => 0];
+  @endphp
+
+  <div class="card mb-6">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-4">
+        <div>
+          <span class="badge bg-label-primary mb-2">Share Links</span>
+          <h5 class="mb-1">Campaign Links</h5>
+          <p class="text-muted mb-0">
+            Create trackable links for Songkran promotions and copy them when the team needs to share a homepage or registration link.
+          </p>
+        </div>
+        <a href="{{ route('admin.campaign-links.index') }}" class="btn btn-primary">
+          Open Link Builder
+        </a>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Total links</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($campaignLinkSummary, 'total', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Active links</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($campaignLinkSummary, 'active', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Homepage links</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($campaignLinkSummary, 'homepage', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Register page links</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($campaignLinkSummary, 'register', 0)) }}</h4>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-6">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 mb-4">
+        <div>
+          <h5 class="mb-1">Dashboard Filters</h5>
+          <small class="text-muted">Use a date range to update the dashboard metrics and visitor trend.</small>
+        </div>
+        <div class="small text-muted">
+          Showing scan data for <span class="fw-semibold text-heading">{{ $dateRangeLabel }}</span>
+        </div>
+      </div>
+
+      <form method="GET" action="{{ route('admin.dashboard') }}" class="row g-3 align-items-end">
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="from">From date</label>
+          <input type="date" class="form-control" id="from" name="from" value="{{ $filters['from'] ?? '' }}" />
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="to">To date</label>
+          <input type="date" class="form-control" id="to" name="to" value="{{ $filters['to'] ?? '' }}" />
+        </div>
+        <div class="col-sm-6 col-lg-2 d-grid">
+          <button type="submit" class="btn btn-primary">Apply</button>
+        </div>
+        @if ($hasDateFilters)
+          <div class="col-sm-6 col-lg-2 d-grid">
+            <a href="{{ route('admin.dashboard') }}" class="btn btn-label-secondary">Reset</a>
+          </div>
+        @endif
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-6 mb-6">
+    <div class="col-sm-6 col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="avatar flex-shrink-0">
+              <span class="avatar-initial rounded bg-label-primary"><i class="icon-base ti tabler-users"></i></span>
+            </div>
+            <span class="badge bg-label-primary">{{ $registrationBadge }}</span>
+          </div>
+          <span class="fw-medium d-block mb-1">Total Registrations</span>
+          <h3 class="card-title mb-0">{{ number_format($dashboard['total_registrations'] ?? 0) }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="avatar flex-shrink-0">
+              <span class="avatar-initial rounded bg-label-success"><i class="icon-base ti tabler-qrcode"></i></span>
+            </div>
+            <span class="badge bg-label-success">{{ $dateRangeBadge }}</span>
+          </div>
+          <span class="fw-medium d-block mb-1">Total Scans</span>
+          <h3 class="card-title mb-0">{{ number_format(data_get($dashboard, 'daily_scan_statistics.total_scans', 0)) }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="avatar flex-shrink-0">
+              <span class="avatar-initial rounded bg-label-info"><i class="icon-base ti tabler-user-check"></i></span>
+            </div>
+            <span class="badge bg-label-info">Valid</span>
+          </div>
+          <span class="fw-medium d-block mb-1">Unique Attendees</span>
+          <h3 class="card-title mb-0">{{ number_format(data_get($dashboard, 'daily_scan_statistics.unique_visitors', 0)) }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div class="avatar flex-shrink-0">
+              <span class="avatar-initial rounded bg-label-warning"><i class="icon-base ti tabler-alert-triangle"></i></span>
+            </div>
+            <span class="badge bg-label-warning">Duplicate</span>
+          </div>
+          <span class="fw-medium d-block mb-1">Duplicate Scans</span>
+          <h3 class="card-title mb-0">{{ number_format(data_get($dashboard, 'daily_scan_statistics.duplicate_scans', 0)) }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-6">
+    <div class="col-12 col-xl-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="mb-1">{{ $isFilteredRange ? 'Visitor Trend' : 'Visitor Trend, Last '.$rangeDays.' Days' }}</h5>
+            <small class="text-muted">Based on unique successful scans per day for {{ $dateRangeLabel }}</small>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="visitorChart" style="min-height: 320px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="mb-1">Scan Statistics</h5>
+          <small class="text-muted">Showing data for {{ $dateRangeLabel }}</small>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-4">
+            <span class="text-heading">Successful Scans</span>
+            <span class="badge bg-label-success">{{ number_format(data_get($dashboard, 'daily_scan_statistics.successful_scans', 0)) }}</span>
+          </div>
+          <div class="d-flex align-items-center justify-content-between mb-4">
+            <span class="text-heading">Unique Visitors</span>
+            <span class="badge bg-label-info">{{ number_format(data_get($dashboard, 'daily_scan_statistics.unique_visitors', 0)) }}</span>
+          </div>
+          <div class="d-flex align-items-center justify-content-between mb-4">
+            <span class="text-heading">Duplicate</span>
+            <span class="badge bg-label-warning">{{ number_format(data_get($dashboard, 'daily_scan_statistics.duplicate_scans', 0)) }}</span>
+          </div>
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-heading">Invalid / Other</span>
+            <span class="badge bg-label-danger">{{ number_format(data_get($dashboard, 'daily_scan_statistics.invalid_scans', 0)) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+@endsection
+
+@push('page-scripts')
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const chartEl = document.querySelector('#visitorChart');
+
+      if (!chartEl || typeof ApexCharts === 'undefined') {
+        return;
+      }
+
+      const options = {
+        chart: {
+          type: 'area',
+          height: 320,
+          toolbar: { show: false }
+        },
+        series: [{
+          name: 'Visitors',
+          data: @json(data_get($dashboard, 'visitor_chart.series', []))
+        }],
+        xaxis: {
+          categories: @json(data_get($dashboard, 'visitor_chart.labels', []))
+        },
+        stroke: {
+          curve: 'smooth',
+          width: 3
+        },
+        fill: {
+          type: 'gradient',
+          gradient: {
+            shadeIntensity: 1,
+            opacityFrom: 0.45,
+            opacityTo: 0.05
+          }
+        },
+        colors: ['#0284c7'],
+        dataLabels: { enabled: false },
+        yaxis: {
+          min: 0,
+          forceNiceScale: true
+        }
+      };
+
+      new ApexCharts(chartEl, options).render();
+    });
+  </script>
+@endpush

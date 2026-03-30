@@ -1,0 +1,208 @@
+/* ================= RESET ================= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* ================= BACKGROUND ================= */
+body {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #0b1f3a, #020b1a);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  padding: 20px;
+}
+
+/* ================= CARD ================= */
+.card {
+  width: 100%;
+  max-width: 850px;
+  padding: 40px;
+  border-radius: 20px;
+  background: rgba(10, 25, 50, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 200, 255, 0.2);
+
+  box-shadow: 
+    0 0 15px rgba(0, 200, 255, 0.3),
+    0 0 40px rgba(0, 200, 255, 0.2),
+    inset 0 0 20px rgba(0, 200, 255, 0.1);
+}
+
+/* ================= TYPO ================= */
+.title {
+  font-size: 36px;
+  font-weight: bold;
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #a0c4ff;
+  margin-bottom: 25px;
+}
+
+.muted {
+  color: #6ea8dc;
+  font-size: 13px;
+}
+
+/* ================= GRID ================= */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.full {
+  grid-column: span 2;
+}
+
+/* ================= FORM ================= */
+input, select, textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 200, 255, 0.3);
+  background: rgba(0, 20, 40, 0.6);
+  color: #fff;
+  outline: none;
+  transition: 0.3s;
+}
+
+/* FOCUS */
+input:focus, select:focus, textarea:focus {
+  border-color: #00d4ff;
+  box-shadow: 0 0 10px #00d4ff;
+}
+
+/* PLACEHOLDER */
+::placeholder {
+  color: #7aa7d9;
+}
+
+/* ================= BUTTON ================= */
+button {
+  padding: 14px;
+  border: none;
+  border-radius: 25px;
+  background: linear-gradient(90deg, #00d4ff, #3a7bff);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+/* full width button */
+.full button {
+  width: 100%;
+}
+
+/* hover */
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px #00d4ff;
+}
+
+/* disabled */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* secondary button */
+.secondary-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(0,200,255,0.3);
+}
+
+/* ================= ERROR ================= */
+.error {
+  color: #ff6b6b;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* ================= SUCCESS ICON ================= */
+.success-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(0, 255, 150, 0.1);
+  color: #00ffa2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+/* ================= ACTION BUTTON ROW ================= */
+.action-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.action-row button {
+  min-width: 140px;
+}
+
+/* ================= CHECKBOX ================= */
+.checkbox {
+  grid-column: span 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #9ccfff;
+}
+
+/* ================= SMALL TEXT ================= */
+.small {
+  font-size: 11px;
+  color: #6ea8dc;
+}
+
+/* ================= FORM MESSAGE ================= */
+.form-message {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+/* ================= LINKS ================= */
+a {
+  color: #00d4ff;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 25px;
+  }
+
+  .action-row {
+    flex-direction: column;
+  }
+
+  .action-row button {
+    width: 100%;
+  }
+}
