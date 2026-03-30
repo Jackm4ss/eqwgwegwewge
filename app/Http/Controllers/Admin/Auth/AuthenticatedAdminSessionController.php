@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminLoginRequest;
 use App\Models\Admin;
 use App\Services\Admin\AdminAuditLogger;
+use App\Services\Auth\LocalAuthBootstrapService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,10 +17,13 @@ class AuthenticatedAdminSessionController extends Controller
 {
     public function __construct(
         private readonly AdminAuditLogger $auditLogger,
+        private readonly LocalAuthBootstrapService $localAuthBootstrap,
     ) {}
 
     public function store(AdminLoginRequest $request): JsonResponse|RedirectResponse
     {
+        $this->localAuthBootstrap->ensureAdminAccounts();
+
         $credentials = [
             'email' => (string) $request->input('email'),
             'password' => (string) $request->input('password'),

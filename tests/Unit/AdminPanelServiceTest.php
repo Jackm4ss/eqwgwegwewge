@@ -6,6 +6,8 @@ use App\Services\Admin\AdminAnalyticsService;
 use App\Services\Admin\AdminFirestoreRepository;
 use App\Services\Admin\AdminPanelService;
 use App\Services\Admin\AdminParticipantNotificationService;
+use App\Services\Scanner\ScannerGateService;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
 use Tests\TestCase;
@@ -60,7 +62,7 @@ class AdminPanelServiceTest extends TestCase
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
 
-        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
 
         $page = $service->userManagementPage([]);
 
@@ -94,7 +96,7 @@ class AdminPanelServiceTest extends TestCase
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
 
-        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
 
         $logs = $service->activityLogs($filters);
 
@@ -140,7 +142,7 @@ class AdminPanelServiceTest extends TestCase
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
 
-        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
 
         $logs = $service->activityLogs($filters);
 
@@ -150,25 +152,50 @@ class AdminPanelServiceTest extends TestCase
 
     public function test_attendance_data_hydrates_participant_details_for_history_cards(): void
     {
+        config(['scanner.posts' => ['Gate AB']]);
+
+        $log = [
+            'scan_id' => 'scan-1',
+            'ticket_id' => 'ticket-123',
+            'ticket_code' => '01KMYH3W10ECD5BV9F8APYPHTZ',
+            'user_id' => 'user-123',
+            'scanner_name' => 'Gate AB',
+            'scanner_role' => 'staff',
+            'scanner_id' => 'scanner-post:gate-ab',
+            'scanned_at' => '2026-03-30T05:15:38Z',
+            'scan_date' => '2026-03-30',
+            'result' => 'duplicate',
+        ];
+
         $repository = Mockery::mock(AdminFirestoreRepository::class);
-        $repository->shouldReceive('allScanLogs')
+        $repository->shouldReceive('latestNonFutureScanLogDate')
             ->once()
+            ->andReturn('2026-03-30');
+        $repository->shouldReceive('paginateScanLogs')
+            ->once()
+            ->with([
+                'scanner_post' => 'Gate AB',
+                'from' => '2026-03-30',
+                'to' => '2026-03-30',
+            ], 1, 10)
+            ->andReturn([
+                'items' => [$log],
+                'total' => 1,
+            ]);
+        $repository->shouldReceive('findTicketsByIds')
+            ->once()
+            ->with(['ticket-123'])
             ->andReturn([
                 [
-                    'scan_id' => 'scan-1',
                     'ticket_id' => 'ticket-123',
-                    'ticket_code' => '01KMYH3W10ECD5BV9F8APYPHTZ',
                     'user_id' => 'user-123',
-                    'scanner_name' => 'Gate AB',
-                    'scanner_role' => 'staff',
-                    'scanner_id' => 'scanner-post:gate-ab',
-                    'scanned_at' => '2026-03-30T05:15:38Z',
-                    'scan_date' => '2026-03-30',
-                    'result' => 'duplicate',
+                    'ticket_code' => '01KMYH3W10ECD5BV9F8APYPHTZ',
+                    'entry_code_display' => '2RCA-GYXF',
                 ],
             ]);
-        $repository->shouldReceive('allUsers')
+        $repository->shouldReceive('findUsersByIds')
             ->once()
+            ->with(['user-123'])
             ->andReturn([
                 [
                     'user_id' => 'user-123',
@@ -178,21 +205,31 @@ class AdminPanelServiceTest extends TestCase
                     'country' => 'MY',
                 ],
             ]);
-        $repository->shouldReceive('allTickets')
+        $repository->shouldReceive('countScanLogs')
+            ->times(6)
+            ->andReturnUsing(function (array $filters): int {
+                return match ($filters['result'] ?? null) {
+                    'success' => 0,
+                    'duplicate' => 1,
+                    default => 1,
+                };
+            });
+        $repository->shouldReceive('latestScanLog')
             ->once()
-            ->andReturn([
-                [
-                    'ticket_id' => 'ticket-123',
-                    'user_id' => 'user-123',
-                    'ticket_code' => '01KMYH3W10ECD5BV9F8APYPHTZ',
-                    'entry_code_display' => '2RCA-GYXF',
-                ],
-            ]);
+            ->with([
+                'scanner_post' => 'Gate AB',
+                'from' => '2026-03-30',
+                'to' => '2026-03-30',
+            ])
+            ->andReturn($log);
+        $repository->shouldNotReceive('allScanLogs');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
 
-        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
 
         $attendance = $service->attendanceData(['scanner_post' => 'Gate AB']);
         $history = $attendance['history']->items();
@@ -204,7 +241,92 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame('+603298592389', $history[0]['participant']['phone_number']);
         $this->assertSame('Malaysia', $history[0]['participant']['country_label']);
         $this->assertSame('2RCA-GYXF', $history[0]['participant']['entry_code_display']);
+        $this->assertCount(1, $attendance['daily_attendance']);
+        $this->assertSame('Gate AB', $attendance['scanner_activity'][0]['scanner_name']);
         $this->assertSame('Gate AB', $attendance['scan_post_options'][0]['value']);
+    }
+
+    public function test_attendance_data_defaults_to_latest_non_future_scan_date_when_opened_without_date_filters(): void
+    {
+        CarbonImmutable::setTestNow('2026-03-30 12:00:00');
+
+        try {
+            config(['scanner.posts' => ['Gate AB']]);
+
+            $log = [
+                'scan_id' => 'scan-current',
+                'ticket_id' => 'ticket-current',
+                'ticket_code' => 'CURRENT-1',
+                'user_id' => 'user-current',
+                'scanner_name' => 'Gate AB',
+                'scanner_role' => 'staff',
+                'scanner_id' => 'scanner-post:gate-ab',
+                'scanned_at' => '2026-03-30T05:15:38Z',
+                'scan_date' => '2026-03-30',
+                'result' => 'duplicate',
+            ];
+
+            $repository = Mockery::mock(AdminFirestoreRepository::class);
+            $repository->shouldReceive('latestNonFutureScanLogDate')
+                ->once()
+                ->andReturn('2026-03-30');
+            $repository->shouldReceive('paginateScanLogs')
+                ->once()
+                ->with([
+                    'from' => '2026-03-30',
+                    'to' => '2026-03-30',
+                ], 1, 10)
+                ->andReturn([
+                    'items' => [$log],
+                    'total' => 1,
+                ]);
+            $repository->shouldReceive('findTicketsByIds')
+                ->once()
+                ->with(['ticket-current'])
+                ->andReturn([]);
+            $repository->shouldReceive('findUsersByIds')
+                ->once()
+                ->with(['user-current'])
+                ->andReturn([]);
+            $repository->shouldReceive('countScanLogs')
+                ->times(6)
+                ->andReturnUsing(function (array $filters): int {
+                    return match ($filters['result'] ?? null) {
+                        'success' => 0,
+                        'duplicate' => 1,
+                        default => 1,
+                    };
+                });
+            $repository->shouldReceive('latestScanLog')
+                ->once()
+                ->with([
+                    'from' => '2026-03-30',
+                    'to' => '2026-03-30',
+                    'scanner_post' => 'Gate AB',
+                ])
+                ->andReturn($log);
+            $repository->shouldNotReceive('allScanLogs');
+            $repository->shouldNotReceive('allUsers');
+            $repository->shouldNotReceive('allTickets');
+
+            $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+            $notifications->shouldIgnoreMissing();
+
+            $service = $this->makeService($repository, $notifications, ['Gate AB']);
+
+            $attendance = $service->attendanceData([]);
+            $history = $attendance['history']->items();
+
+            $this->assertCount(1, $history);
+            $this->assertSame('2026-03-30', $history[0]['scan_date']);
+            $this->assertSame('2026-03-30T05:15:38Z', $history[0]['scanned_at']);
+            $this->assertCount(1, $attendance['daily_attendance']);
+            $this->assertSame('2026-03-30', $attendance['daily_attendance'][0]['scan_date']);
+            $this->assertCount(1, $attendance['scanner_activity']);
+            $this->assertSame('Gate AB', $attendance['scanner_activity'][0]['scanner_name']);
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
     }
 
     public function test_export_rows_for_admin_logs_only_queries_activity_logs_dataset(): void
@@ -233,7 +355,7 @@ class AdminPanelServiceTest extends TestCase
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
 
-        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+        $service = $this->makeService($repository, $notifications);
 
         $rows = $service->exportRows('admin-logs', $filters);
 
@@ -293,7 +415,7 @@ class AdminPanelServiceTest extends TestCase
                     && ($ticket['ticket_code'] ?? null) === 'TICKET-123';
             });
 
-        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+        $service = $this->makeService($repository, $notifications);
 
         $user = $service->updateUserByAdmin('user-123', [
             'account_status' => 'active',
@@ -334,7 +456,7 @@ class AdminPanelServiceTest extends TestCase
                     && ($ticket['qr_version'] ?? null) === 'v2';
             });
 
-        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+        $service = $this->makeService($repository, $notifications);
 
         $result = $service->regenerateQrCode('user-123');
 
@@ -369,11 +491,28 @@ class AdminPanelServiceTest extends TestCase
                     && ($ticket['ticket_code'] ?? null) === 'TICKET-123';
             });
 
-        $service = new AdminPanelService($repository, new AdminAnalyticsService, $notifications);
+        $service = $this->makeService($repository, $notifications);
 
         $result = $service->deleteUserByAdmin('user-123');
 
         $this->assertSame('user-123', $result['user']['user_id']);
         $this->assertSame('TICKET-123', $result['ticket']['ticket_code']);
+    }
+
+    private function makeService(
+        AdminFirestoreRepository $repository,
+        AdminParticipantNotificationService $notifications,
+        array $scannerGateNames = ['Gate A'],
+    ): AdminPanelService {
+        $scannerGates = Mockery::mock(ScannerGateService::class);
+        $scannerGates->shouldReceive('names')
+            ->andReturn($scannerGateNames);
+
+        return new AdminPanelService(
+            $repository,
+            new AdminAnalyticsService,
+            $notifications,
+            $scannerGates,
+        );
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Staff\StaffLoginRequest;
 use App\Models\Admin;
 use App\Services\Admin\AdminAuditLogger;
+use App\Services\Auth\LocalAuthBootstrapService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,10 +17,13 @@ class AuthenticatedStaffSessionController extends Controller
 {
     public function __construct(
         private readonly AdminAuditLogger $auditLogger,
+        private readonly LocalAuthBootstrapService $localAuthBootstrap,
     ) {}
 
     public function store(StaffLoginRequest $request): JsonResponse|RedirectResponse
     {
+        $this->localAuthBootstrap->ensureScannerAccounts();
+
         $credentials = [
             'email' => (string) $request->input('email'),
             'password' => (string) $request->input('password'),

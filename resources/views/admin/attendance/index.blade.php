@@ -104,7 +104,7 @@
       border: 1px solid rgba(67, 89, 113, 0.12);
       border-radius: 1.1rem;
       background: rgba(248, 250, 252, 0.82);
-      padding: 1rem;
+      padding: 1rem 1.1rem 1.05rem;
     }
 
     .attendance-activity-header {
@@ -112,13 +112,14 @@
       align-items: flex-start;
       justify-content: space-between;
       gap: 0.75rem;
+      flex-wrap: wrap;
     }
 
     .attendance-activity-grid {
       display: grid;
       gap: 0.85rem;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       margin-top: 0.95rem;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .attendance-activity-field {
@@ -148,23 +149,22 @@
     }
 
     .attendance-activity-footer {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
+      display: grid;
       gap: 0.85rem;
-      flex-wrap: wrap;
       margin-top: 0.95rem;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .attendance-activity-code {
-      display: inline-flex;
+      display: flex;
       flex-direction: column;
+      justify-content: center;
       gap: 0.25rem;
       padding: 0.8rem 1rem;
-      border-radius: 999px;
+      border-radius: 1rem;
       border: 1px solid rgba(67, 89, 113, 0.12);
       background: #fff;
-      min-width: 150px;
+      min-width: 0;
     }
 
     .attendance-activity-code-value {
@@ -176,10 +176,38 @@
 
     .attendance-activity-post {
       display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 0.4rem;
-      text-align: right;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.55rem 0.85rem;
+      padding: 0.8rem 1rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(67, 89, 113, 0.12);
+      background: #fff;
+      min-width: 0;
+      text-align: left;
+    }
+
+    .attendance-activity-post small {
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    @media (min-width: 768px) {
+      .attendance-activity-grid--details,
+      .attendance-activity-grid--meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .attendance-activity-footer {
+        grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+        align-items: stretch;
+      }
+    }
+
+    @media (min-width: 1200px) {
+      .attendance-activity-grid--details {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
     }
   </style>
 @endpush
@@ -187,9 +215,9 @@
 @section('content')
   @php
     $adminEventTimezone = (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
-    $history = $attendance['history'];
-    $dailyAttendance = $attendance['daily_attendance'] ?? [];
-    $scannerActivity = $attendance['scanner_activity'] ?? [];
+    $history = $history ?? $attendance['history'];
+    $dailyAttendance = $dailyAttendance ?? ($attendance['daily_attendance'] ?? []);
+    $scannerActivity = $scannerActivity ?? ($attendance['scanner_activity'] ?? []);
     $scanPostOptions = $scanPostOptions ?? ($attendance['scan_post_options'] ?? []);
     $selectedScannerPost = trim((string) ($filters['scanner_post'] ?? ''));
     $selectedScannerOption = collect($scanPostOptions)->firstWhere('value', $selectedScannerPost);
@@ -200,13 +228,16 @@
       || filled($filters['to'] ?? null);
     $latestLog = collect(method_exists($history, 'items') ? $history->items() : [])->first();
 
-    $successfulAttendance = collect($dailyAttendance)->sum(fn (array $day): int => (int) ($day['successful_attendance'] ?? 0));
-    $duplicateScans = collect($dailyAttendance)->sum(fn (array $day): int => (int) ($day['duplicate_scans'] ?? 0));
-    $invalidScans = collect($dailyAttendance)->sum(fn (array $day): int => (int) ($day['invalid_scans'] ?? 0));
+    $dailyAttendanceItems = method_exists($dailyAttendance, 'items') ? $dailyAttendance->items() : $dailyAttendance;
+    $scannerActivityItems = method_exists($scannerActivity, 'items') ? $scannerActivity->items() : $scannerActivity;
+
+    $successfulAttendance = $successfulAttendance ?? collect($dailyAttendanceItems)->sum(fn (array $day): int => (int) ($day['successful_attendance'] ?? 0));
+    $duplicateScans = $duplicateScans ?? collect($dailyAttendanceItems)->sum(fn (array $day): int => (int) ($day['duplicate_scans'] ?? 0));
+    $invalidScans = $invalidScans ?? collect($dailyAttendanceItems)->sum(fn (array $day): int => (int) ($day['invalid_scans'] ?? 0));
     $totalScans = method_exists($history, 'total')
       ? (int) $history->total()
       : collect(method_exists($history, 'items') ? $history->items() : [])->count();
-    $activeScannerCount = count($scannerActivity);
+    $activeScannerCount = $activeScannerCount ?? count($scannerActivityItems);
 
     $formatDateTime = static function (mixed $value) use ($adminEventTimezone): string {
       if (blank($value)) {
@@ -466,7 +497,7 @@
                   </div>
 
                   @if ($participant)
-                    <div class="attendance-activity-grid">
+                    <div class="attendance-activity-grid attendance-activity-grid--details">
                       <div class="attendance-activity-field">
                         <span class="attendance-activity-label">Email</span>
                         <span class="attendance-activity-value">{{ $participant['email'] ?? '-' }}</span>
@@ -485,7 +516,7 @@
                       </div>
                     </div>
                   @else
-                    <div class="attendance-activity-grid">
+                    <div class="attendance-activity-grid attendance-activity-grid--meta">
                       <div class="attendance-activity-field">
                         <span class="attendance-activity-label">Ticket Code</span>
                         <span class="attendance-activity-value">{{ $log['ticket_code'] ?? '-' }}</span>
@@ -566,6 +597,11 @@
             </tbody>
           </table>
         </div>
+        @if ($dailyAttendance->hasPages())
+          <div class="card-body border-top">
+            {{ $dailyAttendance->withQueryString()->links('pagination::bootstrap-5') }}
+          </div>
+        @endif
       </div>
 
       <div class="card attendance-data-card">
@@ -622,6 +658,11 @@
             </tbody>
           </table>
         </div>
+        @if ($scannerActivity->hasPages())
+          <div class="card-body border-top">
+            {{ $scannerActivity->withQueryString()->links('pagination::bootstrap-5') }}
+          </div>
+        @endif
       </div>
     </div>
   </div>

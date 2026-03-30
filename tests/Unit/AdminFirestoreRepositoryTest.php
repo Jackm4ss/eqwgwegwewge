@@ -365,6 +365,106 @@ class AdminFirestoreRepositoryTest extends TestCase
         ], $result);
     }
 
+    public function test_paginate_scan_logs_uses_firestore_range_query_for_attendance_filters(): void
+    {
+        $restApi = Mockery::mock(FirestoreRestApi::class);
+        $timestamps = Mockery::mock(FirestoreTimestampNormalizer::class);
+        $ticketQrCodeService = Mockery::mock(TicketQrCodeService::class);
+
+        $repository = $this->makeRepository($restApi, $timestamps, $ticketQrCodeService);
+
+        $expectedFrom = '2026-03-28T16:00:00.000000Z';
+        $expectedTo = '2026-03-30T15:59:59.999999Z';
+
+        $restApi->shouldReceive('available')->atLeast()->once()->andReturnTrue();
+        $restApi->shouldReceive('runQuery')
+            ->once()
+            ->withArgs(function (array $structuredQuery) use ($expectedFrom, $expectedTo): bool {
+                $filters = data_get($structuredQuery, 'where.compositeFilter.filters', []);
+
+                return data_get($structuredQuery, 'from.0.collectionId') === 'scan_logs'
+                    && data_get($structuredQuery, 'limit') === 10
+                    && data_get($structuredQuery, 'offset') === 10
+                    && data_get($structuredQuery, 'orderBy.0.field.fieldPath') === 'scanned_at'
+                    && data_get($structuredQuery, 'orderBy.1.field.fieldPath') === '__name__'
+                    && data_get($filters, '0.fieldFilter.field.fieldPath') === 'scanner_name'
+                    && data_get($filters, '0.fieldFilter.value.stringValue') === 'Gate AB'
+                    && data_get($filters, '1.fieldFilter.field.fieldPath') === 'scanned_at'
+                    && data_get($filters, '1.fieldFilter.op') === 'GREATER_THAN_OR_EQUAL'
+                    && data_get($filters, '1.fieldFilter.value.timestampValue') === $expectedFrom
+                    && data_get($filters, '2.fieldFilter.field.fieldPath') === 'scanned_at'
+                    && data_get($filters, '2.fieldFilter.op') === 'LESS_THAN_OR_EQUAL'
+                    && data_get($filters, '2.fieldFilter.value.timestampValue') === $expectedTo;
+            })
+            ->andReturn([]);
+        $restApi->shouldReceive('runCountQuery')
+            ->once()
+            ->withArgs(function (array $structuredQuery, string $alias) use ($expectedFrom, $expectedTo): bool {
+                $filters = data_get($structuredQuery, 'where.compositeFilter.filters', []);
+
+                return $alias === 'count'
+                    && data_get($structuredQuery, 'from.0.collectionId') === 'scan_logs'
+                    && ! array_key_exists('limit', $structuredQuery)
+                    && ! array_key_exists('offset', $structuredQuery)
+                    && ! array_key_exists('orderBy', $structuredQuery)
+                    && data_get($filters, '0.fieldFilter.value.stringValue') === 'Gate AB'
+                    && data_get($filters, '1.fieldFilter.value.timestampValue') === $expectedFrom
+                    && data_get($filters, '2.fieldFilter.value.timestampValue') === $expectedTo;
+            })
+            ->andReturn(42);
+
+        $result = $repository->paginateScanLogs([
+            'scanner_post' => 'Gate AB',
+            'from' => '2026-03-29',
+            'to' => '2026-03-30',
+        ], 2, 10);
+
+        $this->assertSame([
+            'items' => [],
+            'total' => 42,
+        ], $result);
+    }
+
+    public function test_latest_non_future_scan_log_date_prefers_non_future_scan_log(): void
+    {
+        $restApi = Mockery::mock(FirestoreRestApi::class);
+        $timestamps = Mockery::mock(FirestoreTimestampNormalizer::class);
+        $ticketQrCodeService = Mockery::mock(TicketQrCodeService::class);
+
+        $repository = $this->makeRepository($restApi, $timestamps, $ticketQrCodeService);
+
+        $document = ['name' => 'scan_logs/scan-current', 'fields' => []];
+        $expectedTo = '2026-03-29T15:59:59.999999Z';
+
+        $restApi->shouldReceive('available')->atLeast()->once()->andReturnTrue();
+        $restApi->shouldReceive('runQuery')
+            ->once()
+            ->withArgs(function (array $structuredQuery) use ($expectedTo): bool {
+                $filters = data_get($structuredQuery, 'where.0.fieldFilter', [])
+                    ?: data_get($structuredQuery, 'where.fieldFilter', []);
+
+                return data_get($structuredQuery, 'from.0.collectionId') === 'scan_logs'
+                    && data_get($structuredQuery, 'limit') === 1
+                    && data_get($structuredQuery, 'orderBy.0.field.fieldPath') === 'scanned_at'
+                    && data_get($filters, 'field.fieldPath') === 'scanned_at'
+                    && data_get($filters, 'op') === 'LESS_THAN_OR_EQUAL'
+                    && data_get($filters, 'value.timestampValue') === $expectedTo;
+            })
+            ->andReturn([$document]);
+        $restApi->shouldReceive('decodeDocument')
+            ->once()
+            ->with($document)
+            ->andReturn([
+                'scan_date' => '2026-03-29',
+                'scanned_at' => '2026-03-29T09:00:00Z',
+            ]);
+        $timestamps->shouldReceive('normalizeFromStorage')
+            ->once()
+            ->andReturnUsing(fn (array $payload): array => $payload);
+
+        $this->assertSame('2026-03-29', $repository->latestNonFutureScanLogDate());
+    }
+
     private function makeRepository(
         FirestoreRestApi $restApi,
         FirestoreTimestampNormalizer $timestamps,

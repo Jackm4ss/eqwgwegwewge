@@ -2,6 +2,8 @@
 
 namespace App\Services\Admin;
 
+use App\Services\Scanner\ScannerGateService;
+use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
@@ -15,6 +17,7 @@ class AdminPanelService
         private readonly AdminFirestoreRepository $repository,
         private readonly AdminAnalyticsService $analytics,
         private readonly AdminParticipantNotificationService $participantNotifications,
+        private readonly ScannerGateService $scannerGates,
     ) {}
 
     public function firestoreAvailable(): bool
@@ -120,28 +123,18 @@ class AdminPanelService
 
     public function attendanceData(array $filters = []): array
     {
-        $scanLogs = $this->repository->allScanLogs();
-        $overview = $this->analytics->buildAttendanceOverview($scanLogs, $filters);
-        $overview['history'] = $this->hydrateAttendanceHistory(
-            $overview['history'],
-            $this->repository->allUsers(),
-            $this->repository->allTickets(),
-        );
+        $filters = $this->normalizeAttendanceFilters($filters);
 
-        $historyPaginator = $this->makePaginator(
-            $overview['history'],
-            (int) ($filters['page'] ?? 1),
-            (int) ($filters['per_page'] ?? config('admin.per_page', 10)),
-            request()->url(),
-            request()->query(),
-        );
+        if ($this->shouldUseOptimizedAttendanceQuery($filters)) {
+            try {
+                return $this->optimizedAttendanceData($filters);
+            } catch (RuntimeException) {
+                // Fall back to the legacy in-memory implementation if Firestore
+                // indexes are not ready yet in a new project.
+            }
+        }
 
-        return [
-            'history' => $historyPaginator,
-            'daily_attendance' => $overview['daily_attendance'],
-            'scanner_activity' => $overview['scanner_activity'],
-            'scan_post_options' => $this->buildAttendanceScanPostOptions($scanLogs),
-        ];
+        return $this->legacyAttendanceData($filters);
     }
 
     public function activityLogs(array $filters = []): LengthAwarePaginator
@@ -238,6 +231,64 @@ class AdminPanelService
     public function backupSnapshot(): array
     {
         return $this->repository->snapshotCollections();
+    }
+
+    private function legacyAttendanceData(array $filters = []): array
+    {
+        $scanLogs = $this->repository->allScanLogs();
+        $overview = $this->analytics->buildAttendanceOverview($scanLogs, $filters);
+        $overview['history'] = $this->hydrateAttendanceHistory(
+            $overview['history'],
+            $this->repository->allUsers(),
+            $this->repository->allTickets(),
+        );
+
+        $historyPaginator = $this->makePaginator(
+            $overview['history'],
+            (int) ($filters['page'] ?? 1),
+            (int) ($filters['per_page'] ?? config('admin.per_page', 10)),
+            request()->url(),
+            request()->query(),
+        );
+
+        return [
+            'history' => $historyPaginator,
+            'daily_attendance' => $overview['daily_attendance'],
+            'scanner_activity' => $overview['scanner_activity'],
+            'scan_post_options' => $this->buildAttendanceScanPostOptions(
+                $overview['history'],
+                [$filters['scanner_post'] ?? null],
+            ),
+        ];
+    }
+
+    private function optimizedAttendanceData(array $filters = []): array
+    {
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        $perPage = max(1, (int) ($filters['per_page'] ?? config('admin.per_page', 10)));
+        $pageResult = $this->repository->paginateScanLogs($filters, $page, $perPage);
+        $historyItems = $this->hydrateAttendanceHistoryPage($pageResult['items'] ?? []);
+        $historyPaginator = new LengthAwarePaginator(
+            $historyItems,
+            (int) ($pageResult['total'] ?? 0),
+            $perPage,
+            $page,
+            [
+                'path' => request()->url(),
+                'query' => request()->query(),
+                'pageName' => 'page',
+            ],
+        );
+
+        return [
+            'history' => $historyPaginator,
+            'daily_attendance' => $this->buildAttendanceDailySummary($filters),
+            'scanner_activity' => $this->buildAttendanceScannerActivity($filters, $historyItems),
+            'scan_post_options' => $this->buildAttendanceScanPostOptions(
+                $historyItems,
+                [$filters['scanner_post'] ?? null],
+            ),
+        ];
     }
 
     private function legacyUserManagementPage(array $filters = []): array
@@ -392,6 +443,11 @@ class AdminPanelService
         return trim((string) ($filters['q'] ?? '')) === '';
     }
 
+    private function shouldUseOptimizedAttendanceQuery(array $filters): bool
+    {
+        return trim((string) ($filters['q'] ?? '')) === '';
+    }
+
     private function hydrateUser(array $user, ?array $ticketOverride = null): array
     {
         $ticket = $ticketOverride;
@@ -414,6 +470,38 @@ class AdminPanelService
         }
 
         return round(($portion / $total) * 100, 2);
+    }
+
+    private function normalizeAttendanceFilters(array $filters): array
+    {
+        $from = trim((string) ($filters['from'] ?? ''));
+        $to = trim((string) ($filters['to'] ?? ''));
+
+        if ($from === '' && $to === '') {
+            $latestDate = $this->resolveAttendanceDefaultToDate();
+            $filters['from'] = $latestDate;
+            $filters['to'] = $latestDate;
+
+            return $filters;
+        }
+
+        if ($from === '' && $to !== '') {
+            $filters['from'] = $to;
+        }
+
+        if ($to === '' && $from !== '') {
+            $filters['to'] = $from;
+        }
+
+        return $filters;
+    }
+
+    private function resolveAttendanceDefaultToDate(): string
+    {
+        $timezone = (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
+        $today = CarbonImmutable::now($timezone)->toDateString();
+
+        return $this->repository->latestNonFutureScanLogDate() ?? $today;
     }
 
     private function sanitizeActivityLogPerPage(int $perPage): int
@@ -445,9 +533,22 @@ class AdminPanelService
         );
     }
 
-    private function buildAttendanceScanPostOptions(array $scanLogs): array
+    private function buildAttendanceScanPostOptions(array $scanLogs, array $extraNames = []): array
     {
         $options = [];
+        $scannerNames = array_values(array_unique(array_filter(array_map(
+            static fn (mixed $name): string => trim((string) $name),
+            array_merge($this->scannerGates->names(), $extraNames),
+        ))));
+
+        foreach ($scannerNames as $scannerName) {
+            $options[$scannerName] = [
+                'value' => $scannerName,
+                'label' => $scannerName,
+                'scanner_role' => '',
+                'scanner_id' => '',
+            ];
+        }
 
         foreach ($scanLogs as $scanLog) {
             $scannerName = trim((string) ($scanLog['scanner_name'] ?? ''));
@@ -469,6 +570,173 @@ class AdminPanelService
         ));
 
         return array_values($options);
+    }
+
+    private function hydrateAttendanceHistoryPage(array $history): array
+    {
+        $ticketIds = array_values(array_unique(array_filter(array_map(
+            fn (array $log): string => trim((string) ($log['ticket_id'] ?? '')),
+            $history,
+        ))));
+        $ticketRows = $this->repository->findTicketsByIds($ticketIds);
+
+        $ticketUserIds = array_filter(array_map(
+            fn (array $ticket): string => trim((string) ($ticket['user_id'] ?? '')),
+            $ticketRows,
+        ));
+        $logUserIds = array_filter(array_map(
+            fn (array $log): string => trim((string) ($log['user_id'] ?? '')),
+            $history,
+        ));
+        $userRows = $this->repository->findUsersByIds(array_values(array_unique(array_merge(
+            $logUserIds,
+            $ticketUserIds,
+        ))));
+
+        return $this->hydrateAttendanceHistory($history, $userRows, $ticketRows);
+    }
+
+    private function buildAttendanceDailySummary(array $filters): array
+    {
+        $rows = [];
+
+        foreach ($this->attendanceFilterDates($filters) as $scanDate) {
+            $dayFilters = array_merge($filters, [
+                'from' => $scanDate,
+                'to' => $scanDate,
+            ]);
+            $totalScans = $this->repository->countScanLogs($dayFilters);
+
+            if ($totalScans <= 0) {
+                continue;
+            }
+
+            $successfulAttendance = $this->repository->countScanLogs(array_merge($dayFilters, [
+                'result' => 'success',
+            ]));
+            $duplicateScans = $this->repository->countScanLogs(array_merge($dayFilters, [
+                'result' => 'duplicate',
+            ]));
+
+            $rows[] = [
+                'scan_date' => $scanDate,
+                'total_scans' => $totalScans,
+                'successful_attendance' => $successfulAttendance,
+                'duplicate_scans' => $duplicateScans,
+                'invalid_scans' => max(0, $totalScans - $successfulAttendance - $duplicateScans),
+            ];
+        }
+
+        usort($rows, fn (array $left, array $right): int => strcmp(
+            (string) ($right['scan_date'] ?? ''),
+            (string) ($left['scan_date'] ?? ''),
+        ));
+
+        return $rows;
+    }
+
+    private function buildAttendanceScannerActivity(array $filters, array $history): array
+    {
+        $rows = [];
+
+        foreach ($this->resolveAttendanceScannerNames($filters, $history) as $scannerName) {
+            $scannerFilters = array_merge($filters, ['scanner_post' => $scannerName]);
+            $totalScans = $this->repository->countScanLogs($scannerFilters);
+
+            if ($totalScans <= 0) {
+                continue;
+            }
+
+            $successfulScans = $this->repository->countScanLogs(array_merge($scannerFilters, [
+                'result' => 'success',
+            ]));
+            $duplicateScans = $this->repository->countScanLogs(array_merge($scannerFilters, [
+                'result' => 'duplicate',
+            ]));
+            $latestLog = $this->repository->latestScanLog($scannerFilters);
+
+            $rows[] = [
+                'scanner_id' => (string) ($latestLog['scanner_id'] ?? ''),
+                'scanner_name' => (string) ($latestLog['scanner_name'] ?? $scannerName),
+                'scanner_role' => (string) ($latestLog['scanner_role'] ?? ''),
+                'total_scans' => $totalScans,
+                'successful_scans' => $successfulScans,
+                'duplicate_scans' => $duplicateScans,
+                'invalid_scans' => max(0, $totalScans - $successfulScans - $duplicateScans),
+                'last_scanned_at' => $latestLog['scanned_at'] ?? null,
+            ];
+        }
+
+        usort($rows, function (array $left, array $right): int {
+            $byLastScannedAt = strcmp(
+                (string) ($right['last_scanned_at'] ?? ''),
+                (string) ($left['last_scanned_at'] ?? ''),
+            );
+
+            if ($byLastScannedAt !== 0) {
+                return $byLastScannedAt;
+            }
+
+            $byTotalScans = ($right['total_scans'] ?? 0) <=> ($left['total_scans'] ?? 0);
+            if ($byTotalScans !== 0) {
+                return $byTotalScans;
+            }
+
+            return strcmp(
+                (string) ($left['scanner_name'] ?? ''),
+                (string) ($right['scanner_name'] ?? ''),
+            );
+        });
+
+        return $rows;
+    }
+
+    private function attendanceFilterDates(array $filters): array
+    {
+        $from = trim((string) ($filters['from'] ?? ''));
+        $to = trim((string) ($filters['to'] ?? ''));
+        $timezone = (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
+
+        if ($from === '' && $to === '') {
+            return [];
+        }
+
+        try {
+            $fromDate = CarbonImmutable::parse($from !== '' ? $from : $to, $timezone)->startOfDay();
+            $toDate = CarbonImmutable::parse($to !== '' ? $to : $from, $timezone)->startOfDay();
+        } catch (\Throwable) {
+            return [];
+        }
+
+        if ($fromDate->greaterThan($toDate)) {
+            [$fromDate, $toDate] = [$toDate, $fromDate];
+        }
+
+        $dates = [];
+        for ($cursor = $fromDate; $cursor->lessThanOrEqualTo($toDate); $cursor = $cursor->addDay()) {
+            $dates[] = $cursor->toDateString();
+        }
+
+        return $dates;
+    }
+
+    private function resolveAttendanceScannerNames(array $filters, array $history): array
+    {
+        $selectedScannerPost = trim((string) ($filters['scanner_post'] ?? ''));
+
+        if ($selectedScannerPost !== '') {
+            return [$selectedScannerPost];
+        }
+
+        $historyScannerNames = array_map(
+            fn (array $log): string => trim((string) ($log['scanner_name'] ?? '')),
+            $history,
+        );
+
+        return array_values(array_unique(array_filter(array_merge(
+            $this->scannerGates->names(),
+            $historyScannerNames,
+        ))));
     }
 
     private function hydrateAttendanceHistory(array $history, array $users, array $tickets): array

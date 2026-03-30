@@ -63,6 +63,36 @@ class AdminAuthenticationTest extends TestCase
         $this->assertGuest('admin');
     }
 
+    public function test_admin_login_reseeds_local_bootstrap_accounts_when_admins_are_missing(): void
+    {
+        $this->app['env'] = 'local';
+        Admin::query()->delete();
+
+        $this->assertSame(0, Admin::query()->where('role', 'admin')->count());
+
+        $response = $this->withSession(['_token' => 'csrf-token'])
+            ->postJson('/admin/login', [
+                'email' => 'admin01@songkran.local',
+                'password' => 'LocalAdmin123!',
+            ], [
+                'X-CSRF-TOKEN' => 'csrf-token',
+            ]);
+
+        $response->assertOk()
+            ->assertJson([
+                'message' => 'Login successful.',
+                'redirect' => route('admin.dashboard'),
+            ]);
+
+        $this->assertAuthenticated('admin');
+        $this->assertGreaterThan(0, Admin::query()->where('role', 'admin')->count());
+        $this->assertDatabaseHas('admins', [
+            'email' => 'admin01@songkran.local',
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+    }
+
     public function test_admin_dashboard_requires_authenticated_admin(): void
     {
         $response = $this->get('/admin/dashboard');
@@ -453,5 +483,88 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('Daily Summary')
             ->assertSee('Scan Posts / Staff')
             ->assertSee('Download CSV');
+    }
+
+    public function test_admin_attendance_page_paginates_daily_summary_and_scanner_activity_sections(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        $dailyAttendance = [];
+        foreach (range(1, 12) as $index) {
+            $dailyAttendance[] = [
+                'scan_date' => sprintf('2026-03-%02d', 31 - $index),
+                'total_scans' => $index <= 10 ? $index * 10 : ($index - 10) * 1111,
+                'successful_attendance' => $index,
+                'duplicate_scans' => max(0, $index - 1),
+                'invalid_scans' => 0,
+            ];
+        }
+
+        $scannerActivity = [];
+        foreach (range(1, 12) as $index) {
+            $scannerActivity[] = [
+                'scanner_name' => $index <= 10 ? 'Gate First '.$index : 'Gate Last '.$index,
+                'scanner_role' => 'staff',
+                'scanner_id' => 'scanner-'.$index,
+                'total_scans' => 50 + $index,
+                'successful_scans' => 20 + $index,
+                'duplicate_scans' => $index,
+                'invalid_scans' => 0,
+                'last_scanned_at' => sprintf('2026-03-%02dT09:00:00Z', 31 - $index),
+            ];
+        }
+
+        $this->mock(AdminPanelService::class, function ($mock) use ($dailyAttendance, $scannerActivity): void {
+            $mock->shouldReceive('attendanceData')
+                ->once()
+                ->andReturn([
+                    'history' => new LengthAwarePaginator(
+                        [
+                            [
+                                'scanned_at' => '2026-03-30T09:00:00Z',
+                                'scan_date' => '2026-03-30',
+                                'ticket_code' => 'TICKET-123',
+                                'entry_code_display' => 'ABCD-1234',
+                                'user_id' => 'user-123',
+                                'scanner_name' => 'Gate A',
+                                'scanner_role' => 'staff',
+                                'scanner_id' => 'scanner-1',
+                                'result' => 'success',
+                                'participant' => [
+                                    'email' => 'alya@example.test',
+                                    'full_name' => 'Alya Putri',
+                                    'phone_number' => '+60123456789',
+                                    'country_label' => 'Malaysia',
+                                    'entry_code_display' => 'ABCD-1234',
+                                ],
+                            ],
+                        ],
+                        1,
+                        10,
+                        1,
+                        [
+                            'path' => route('admin.attendance.index'),
+                            'pageName' => 'page',
+                        ],
+                    ),
+                    'daily_attendance' => $dailyAttendance,
+                    'scanner_activity' => $scannerActivity,
+                    'scan_post_options' => [],
+                ]);
+
+            $mock->shouldReceive('firestoreAvailable')
+                ->once()
+                ->andReturnTrue();
+        });
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get('/admin/attendance?daily_page=2&scanner_page=2');
+
+        $response->assertOk()
+            ->assertSee('1,111')
+            ->assertSee('2,222')
+            ->assertSee('Gate Last 11')
+            ->assertSee('Gate Last 12')
+            ->assertDontSee('Gate First 1');
     }
 }
