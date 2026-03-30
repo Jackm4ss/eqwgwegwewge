@@ -4,8 +4,7 @@ Laravel 11 + React project untuk kebutuhan registrasi peserta, ticket QR, admin 
 
 README ini ditulis untuk:
 
-- intern yang baru pertama kali pegang project Laravel
-- junior developer yang akan ikut develop fitur
+
 - tim yang akan deploy langsung ke VPS lewat SSH
 - orang non-DevOps yang perlu menyalakan aplikasi tanpa Docker
 
@@ -213,7 +212,7 @@ Kalau pakai Windows:
 
 ---
 
-## 7. Setup Local Development untuk Intern / Junior Dev
+
 
 Ikuti urutan ini tanpa loncat langkah.
 
@@ -406,7 +405,7 @@ npm run dev
 
 ---
 
-## 8. Aturan Kerja Tim untuk Intern dan Junior Dev
+
 
 Supaya kolaborasi rapi, ikuti aturan sederhana ini:
 
@@ -491,7 +490,6 @@ Kenapa ini direkomendasikan?
 - tidak perlu Redis
 - tidak perlu Supervisor
 - tidak perlu cron scheduler untuk saat ini
-- lebih gampang di-maintain intern / junior dev
 
 Catatan penting:
 
@@ -1138,7 +1136,8 @@ php artisan view:cache
 
 ## 18. Ringkasan Paling Penting untuk Tim Baru
 
-Kalau kamu intern atau junior dan cuma ingin tahu inti project ini:
+
+
 
 1. Laravel mengurus backend dan admin panel.
 2. React mengurus public pages dan staff scanner.
