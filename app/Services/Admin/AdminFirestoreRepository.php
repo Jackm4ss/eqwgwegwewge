@@ -15,6 +15,7 @@ use Google\Cloud\Firestore\FirestoreClient;
 use Google\Cloud\Firestore\Query;
 use Google\Cloud\Firestore\Transaction;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -1487,28 +1488,32 @@ class AdminFirestoreRepository
 
     private function paginateScanLogsUsingRest(array $filters, int $offset, int $limit): array
     {
-        $structuredQuery = $this->buildStructuredQuery(
-            $this->scanLogsCollection(),
-            $this->buildScanLogFilterClauses($filters),
-            $limit,
-            $offset,
-            orderField: 'scanned_at',
-        );
+        try {
+            $structuredQuery = $this->buildStructuredQuery(
+                $this->scanLogsCollection(),
+                $this->buildScanLogFilterClauses($filters),
+                $limit,
+                $offset,
+                orderField: 'scanned_at',
+            );
 
-        $documents = $this->restApi->runQuery($structuredQuery);
+            $documents = $this->restApi->runQuery($structuredQuery);
 
-        return [
-            'items' => array_map(function (array $document): array {
-                $decoded = $this->timestamps->normalizeFromStorage(
-                    $this->restApi->decodeDocument($document)
-                );
-                $decoded['__id'] = $this->documentIdFromName((string) ($document['name'] ?? ''));
-                $decoded['__path'] = $this->documentPathFromName((string) ($document['name'] ?? ''));
+            return [
+                'items' => array_map(function (array $document): array {
+                    $decoded = $this->timestamps->normalizeFromStorage(
+                        $this->restApi->decodeDocument($document)
+                    );
+                    $decoded['__id'] = $this->documentIdFromName((string) ($document['name'] ?? ''));
+                    $decoded['__path'] = $this->documentPathFromName((string) ($document['name'] ?? ''));
 
-                return $decoded;
-            }, $documents),
-            'total' => $this->countScanLogsUsingRest($filters),
-        ];
+                    return $decoded;
+                }, $documents),
+                'total' => $this->countScanLogsUsingRest($filters),
+            ];
+        } catch (RuntimeException $exception) {
+            return $this->fallbackPaginateScanLogsUsingRest($filters, $offset, $limit, $exception);
+        }
     }
 
     private function paginateScanLogsUsingGrpc(array $filters, int $offset, int $limit): array
@@ -1545,25 +1550,31 @@ class AdminFirestoreRepository
 
     private function latestScanLogUsingRest(array $filters): ?array
     {
-        $documents = $this->restApi->runQuery($this->buildStructuredQuery(
-            $this->scanLogsCollection(),
-            $this->buildScanLogFilterClauses($filters),
-            1,
-            orderField: 'scanned_at',
-        ));
+        try {
+            $documents = $this->restApi->runQuery($this->buildStructuredQuery(
+                $this->scanLogsCollection(),
+                $this->buildScanLogFilterClauses($filters),
+                1,
+                orderField: 'scanned_at',
+            ));
 
-        if ($documents === []) {
-            return null;
+            if ($documents === []) {
+                return null;
+            }
+
+            $document = $documents[0];
+            $decoded = $this->timestamps->normalizeFromStorage(
+                $this->restApi->decodeDocument($document)
+            );
+            $decoded['__id'] = $this->documentIdFromName((string) ($document['name'] ?? ''));
+            $decoded['__path'] = $this->documentPathFromName((string) ($document['name'] ?? ''));
+
+            return $decoded;
+        } catch (RuntimeException $exception) {
+            $rows = $this->fallbackScanLogRowsUsingRest($filters, $exception, 'latest');
+
+            return $rows[0] ?? null;
         }
-
-        $document = $documents[0];
-        $decoded = $this->timestamps->normalizeFromStorage(
-            $this->restApi->decodeDocument($document)
-        );
-        $decoded['__id'] = $this->documentIdFromName((string) ($document['name'] ?? ''));
-        $decoded['__path'] = $this->documentPathFromName((string) ($document['name'] ?? ''));
-
-        return $decoded;
     }
 
     private function latestScanLogUsingGrpc(array $filters): ?array
@@ -1657,13 +1668,129 @@ class AdminFirestoreRepository
 
     private function countScanLogsUsingRest(array $filters): int
     {
-        $structuredQuery = $this->buildStructuredQuery(
-            $this->scanLogsCollection(),
-            $this->buildScanLogFilterClauses($filters),
-            withOrdering: false,
-        );
+        try {
+            $structuredQuery = $this->buildStructuredQuery(
+                $this->scanLogsCollection(),
+                $this->buildScanLogFilterClauses($filters),
+                withOrdering: false,
+            );
 
-        return $this->restApi->runCountQuery($structuredQuery, 'count');
+            return $this->restApi->runCountQuery($structuredQuery, 'count');
+        } catch (RuntimeException $exception) {
+            return count($this->fallbackScanLogRowsUsingRest($filters, $exception, 'count'));
+        }
+    }
+
+    private function fallbackPaginateScanLogsUsingRest(
+        array $filters,
+        int $offset,
+        int $limit,
+        RuntimeException $exception,
+    ): array {
+        $rows = $this->fallbackScanLogRowsUsingRest($filters, $exception, 'paginate');
+
+        return [
+            'items' => array_slice($rows, $offset, $limit),
+            'total' => count($rows),
+        ];
+    }
+
+    private function fallbackScanLogRowsUsingRest(
+        array $filters,
+        RuntimeException $exception,
+        string $operation,
+    ): array {
+        Log::warning('Falling back to in-memory scan log filtering for Firestore REST queries.', [
+            'operation' => $operation,
+            'message' => $exception->getMessage(),
+            'code' => $exception->getCode(),
+            'scanner_name' => $filters['scanner_name'] ?? null,
+            'result' => $filters['result'] ?? null,
+            'scanned_at_from' => isset($filters['scanned_at_from'])
+                ? $this->formatStructuredQueryTimestamp($filters['scanned_at_from'])
+                : null,
+            'scanned_at_to' => isset($filters['scanned_at_to'])
+                ? $this->formatStructuredQueryTimestamp($filters['scanned_at_to'])
+                : null,
+        ]);
+
+        $rows = array_values(array_filter(
+            $this->listCollectionDocuments($this->scanLogsCollection()),
+            fn (array $row): bool => $this->scanLogMatchesFilters($row, $filters),
+        ));
+
+        usort($rows, function (array $left, array $right): int {
+            $scannedAtComparison = strcmp(
+                $this->scanLogSortValue($right),
+                $this->scanLogSortValue($left),
+            );
+
+            if ($scannedAtComparison !== 0) {
+                return $scannedAtComparison;
+            }
+
+            return strcmp(
+                (string) ($right['__id'] ?? ''),
+                (string) ($left['__id'] ?? ''),
+            );
+        });
+
+        return $rows;
+    }
+
+    private function scanLogMatchesFilters(array $row, array $filters): bool
+    {
+        if (isset($filters['scanner_name']) && (string) ($row['scanner_name'] ?? '') !== (string) $filters['scanner_name']) {
+            return false;
+        }
+
+        if (isset($filters['result']) && (string) ($row['result'] ?? '') !== (string) $filters['result']) {
+            return false;
+        }
+
+        if (! isset($filters['scanned_at_from']) && ! isset($filters['scanned_at_to'])) {
+            return true;
+        }
+
+        $scannedAt = $this->scanLogTimestamp($row);
+
+        if ($scannedAt === null) {
+            return false;
+        }
+
+        if (isset($filters['scanned_at_from']) && $scannedAt < $filters['scanned_at_from']) {
+            return false;
+        }
+
+        if (isset($filters['scanned_at_to']) && $scannedAt > $filters['scanned_at_to']) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function scanLogTimestamp(array $row): ?DateTimeImmutable
+    {
+        $scannedAt = trim((string) ($row['scanned_at'] ?? ''));
+
+        if ($scannedAt === '') {
+            return null;
+        }
+
+        try {
+            return (new DateTimeImmutable($scannedAt))->setTimezone($this->utcTimezone());
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function scanLogSortValue(array $row): string
+    {
+        $timestamp = $this->scanLogTimestamp($row);
+
+        return $timestamp === null
+            ? ''
+            : $timestamp->format('Y-m-d\TH:i:s.u\Z');
     }
 
     private function countScanLogsUsingGrpc(array $filters): int

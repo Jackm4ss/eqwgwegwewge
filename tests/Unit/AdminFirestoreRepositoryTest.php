@@ -425,6 +425,135 @@ class AdminFirestoreRepositoryTest extends TestCase
         ], $result);
     }
 
+    public function test_count_scan_logs_falls_back_to_collection_listing_when_rest_aggregation_fails(): void
+    {
+        $restApi = Mockery::mock(FirestoreRestApi::class);
+        $timestamps = Mockery::mock(FirestoreTimestampNormalizer::class);
+        $ticketQrCodeService = Mockery::mock(TicketQrCodeService::class);
+
+        $repository = $this->makeRepository($restApi, $timestamps, $ticketQrCodeService);
+
+        $documents = [
+            ['name' => 'projects/event-songkran-festival/databases/(default)/documents/scan_logs/scan-100', 'fields' => []],
+            ['name' => 'projects/event-songkran-festival/databases/(default)/documents/scan_logs/scan-200', 'fields' => []],
+            ['name' => 'projects/event-songkran-festival/databases/(default)/documents/scan_logs/scan-300', 'fields' => []],
+            ['name' => 'projects/event-songkran-festival/databases/(default)/documents/scan_logs/scan-400', 'fields' => []],
+        ];
+        $decodedRows = [
+            [
+                'scanner_name' => 'Gate A',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T01:00:00.000000Z',
+            ],
+            [
+                'scanner_name' => 'Gate A',
+                'result' => 'duplicate',
+                'scanned_at' => '2026-03-29T02:00:00.000000Z',
+            ],
+            [
+                'scanner_name' => 'Gate B',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T03:00:00.000000Z',
+            ],
+            [
+                'scanner_name' => 'Gate A',
+                'result' => 'success',
+                'scanned_at' => '2026-03-30T01:00:00.000000Z',
+            ],
+        ];
+
+        $restApi->shouldReceive('available')->atLeast()->once()->andReturnTrue();
+        $restApi->shouldReceive('runCountQuery')
+            ->once()
+            ->andThrow(new \RuntimeException('Aggregation query failed.', 400));
+        $restApi->shouldReceive('listAllDocuments')
+            ->once()
+            ->withArgs(fn (string $collectionPath, ?string $orderBy = null): bool => $collectionPath === 'scan_logs' && $orderBy === null)
+            ->andReturn($documents);
+        $restApi->shouldReceive('decodeDocument')
+            ->times(4)
+            ->andReturn(...$decodedRows);
+        $timestamps->shouldReceive('normalizeFromStorage')
+            ->times(4)
+            ->andReturnUsing(fn (array $payload): array => $payload);
+
+        $count = $repository->countScanLogs([
+            'scanner_post' => 'Gate A',
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ]);
+
+        $this->assertSame(2, $count);
+    }
+
+    public function test_paginate_scan_logs_falls_back_to_collection_listing_when_rest_query_fails(): void
+    {
+        $restApi = Mockery::mock(FirestoreRestApi::class);
+        $timestamps = Mockery::mock(FirestoreTimestampNormalizer::class);
+        $ticketQrCodeService = Mockery::mock(TicketQrCodeService::class);
+
+        $repository = $this->makeRepository($restApi, $timestamps, $ticketQrCodeService);
+
+        $documents = [
+            ['name' => 'projects/event-songkran-festival/databases/(default)/documents/scan_logs/scan-100', 'fields' => []],
+            ['name' => 'projects/event-songkran-festival/databases/(default)/documents/scan_logs/scan-200', 'fields' => []],
+            ['name' => 'projects/event-songkran-festival/databases/(default)/documents/scan_logs/scan-300', 'fields' => []],
+            ['name' => 'projects/event-songkran-festival/databases/(default)/documents/scan_logs/scan-400', 'fields' => []],
+        ];
+        $decodedRows = [
+            [
+                'scanner_name' => 'Gate A',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T01:00:00.000000Z',
+                'ticket_code' => 'TICKET-100',
+            ],
+            [
+                'scanner_name' => 'Gate A',
+                'result' => 'duplicate',
+                'scanned_at' => '2026-03-29T04:00:00.000000Z',
+                'ticket_code' => 'TICKET-200',
+            ],
+            [
+                'scanner_name' => 'Gate A',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T03:00:00.000000Z',
+                'ticket_code' => 'TICKET-300',
+            ],
+            [
+                'scanner_name' => 'Gate B',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T05:00:00.000000Z',
+                'ticket_code' => 'TICKET-400',
+            ],
+        ];
+
+        $restApi->shouldReceive('available')->atLeast()->once()->andReturnTrue();
+        $restApi->shouldReceive('runQuery')
+            ->once()
+            ->andThrow(new \RuntimeException('Structured query failed.', 400));
+        $restApi->shouldReceive('listAllDocuments')
+            ->once()
+            ->withArgs(fn (string $collectionPath, ?string $orderBy = null): bool => $collectionPath === 'scan_logs' && $orderBy === null)
+            ->andReturn($documents);
+        $restApi->shouldReceive('decodeDocument')
+            ->times(4)
+            ->andReturn(...$decodedRows);
+        $timestamps->shouldReceive('normalizeFromStorage')
+            ->times(4)
+            ->andReturnUsing(fn (array $payload): array => $payload);
+
+        $result = $repository->paginateScanLogs([
+            'scanner_post' => 'Gate A',
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ], 1, 2);
+
+        $this->assertSame(3, $result['total']);
+        $this->assertCount(2, $result['items']);
+        $this->assertSame('scan-200', $result['items'][0]['__id']);
+        $this->assertSame('scan-300', $result['items'][1]['__id']);
+    }
+
     public function test_latest_non_future_scan_log_date_prefers_non_future_scan_log(): void
     {
         $restApi = Mockery::mock(FirestoreRestApi::class);

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Admin;
+use App\Models\ScannerGate;
 use Database\Seeders\AdminSeeder;
 use Database\Seeders\ScannerStaffSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -26,6 +27,15 @@ class StaffAuthenticationTest extends TestCase
 
         $this->seed(AdminSeeder::class);
         $this->seed(ScannerStaffSeeder::class);
+
+        ScannerGate::query()->delete();
+
+        foreach (config('scanner.posts', ['Gate A']) as $index => $gateName) {
+            ScannerGate::query()->create([
+                'name' => (string) $gateName,
+                'sort_order' => $index,
+            ]);
+        }
     }
 
     public function test_staff_login_page_loads_the_spa_shell(): void
