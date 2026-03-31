@@ -2,7 +2,7 @@
 @php
   $shareImagePath = implode('/', array_map('rawurlencode', explode('/', 'images/Songkran logo.png')));
   $metaTitle = 'Songkran Festival 2026';
-  $metaDescription = "Malaysia's Premier Songkran Festival. Join us for 11 days of pure celebration!";
+  $metaDescription = "Malaysia's Premier Songkran Festival.";
   $metaImage = asset($shareImagePath);
   $metaUrl = url()->current();
 @endphp

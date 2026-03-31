@@ -5,7 +5,7 @@
     $siteTitle = 'Songkran Festival 2026';
     $pageTitle = $title ?? $siteTitle;
     $metaTitle = $metaTitle ?? $siteTitle;
-    $metaDescription = $metaDescription ?? "Malaysia's Premier Songkran Festival. Join us for 11 days of pure celebration!";
+    $metaDescription = $metaDescription ?? "Malaysia's Premier Songkran Festival.";
     $metaImage = $metaImage ?? asset($shareImagePath);
     $metaUrl = $metaUrl ?? url()->current();
 @endphp
