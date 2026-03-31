@@ -23,6 +23,11 @@
     @endphp
 
     <style>
+        html,
+        body {
+            color-scheme: light;
+        }
+
         body {
             margin: 0;
             background: linear-gradient(180deg, #d9f4fb 0%, #ecfbff 100%);

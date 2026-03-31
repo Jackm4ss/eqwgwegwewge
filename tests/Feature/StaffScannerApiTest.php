@@ -253,7 +253,7 @@ class StaffScannerApiTest extends TestCase
                     return $operator->is($scanner)
                         && $scannerPost === 'Gate A'
                         && $page === 1
-                        && $perPage === 20;
+                        && $perPage === 5;
                 })
                 ->andReturn([
                     'stats' => [
@@ -276,7 +276,7 @@ class StaffScannerApiTest extends TestCase
                         ],
                         'meta' => [
                             'page' => 1,
-                            'per_page' => 20,
+                            'per_page' => 5,
                             'total' => 21,
                             'has_more' => true,
                             'scope_date' => '2026-03-31',
@@ -290,7 +290,7 @@ class StaffScannerApiTest extends TestCase
                     return $operator->is($scanner)
                         && $scannerPost === 'Gate A'
                         && $page === 2
-                        && $perPage === 20;
+                        && $perPage === 5;
                 })
                 ->andReturn([
                     'items' => [
@@ -306,7 +306,7 @@ class StaffScannerApiTest extends TestCase
                     ],
                     'meta' => [
                         'page' => 2,
-                        'per_page' => 20,
+                        'per_page' => 5,
                         'total' => 21,
                         'has_more' => false,
                         'scope_date' => '2026-03-31',
@@ -328,7 +328,7 @@ class StaffScannerApiTest extends TestCase
 
         $this->actingAs($scanner, 'admin')
             ->withSession(['staff.scanner_post' => 'Gate A'])
-            ->getJson('/staff/dashboard?per_page=20')
+            ->getJson('/staff/dashboard?per_page=5')
             ->assertOk()
             ->assertJson([
                 'stats' => [
@@ -346,7 +346,7 @@ class StaffScannerApiTest extends TestCase
                     ],
                     'meta' => [
                         'page' => 1,
-                        'per_page' => 20,
+                        'per_page' => 5,
                         'total' => 21,
                         'has_more' => true,
                         'scope_date' => '2026-03-31',
@@ -356,7 +356,7 @@ class StaffScannerApiTest extends TestCase
 
         $this->actingAs($scanner, 'admin')
             ->withSession(['staff.scanner_post' => 'Gate A'])
-            ->getJson('/staff/history?page=2&per_page=20')
+            ->getJson('/staff/history?page=2&per_page=5')
             ->assertOk()
             ->assertJson([
                 'items' => [
@@ -367,7 +367,7 @@ class StaffScannerApiTest extends TestCase
                 ],
                 'meta' => [
                     'page' => 2,
-                    'per_page' => 20,
+                    'per_page' => 5,
                     'total' => 21,
                     'has_more' => false,
                     'scope_date' => '2026-03-31',

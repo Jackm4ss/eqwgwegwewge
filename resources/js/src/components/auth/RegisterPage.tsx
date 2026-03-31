@@ -1317,6 +1317,7 @@ export function RegisterPage() {
       onCanvasReady={handleCanvasReady}
       onPageClick={handlePageClick}
       backgroundImageUrl="/images/BACKGROUND.jpg"
+      fixedTheme="light"
     >
       <Toaster position="top-center" richColors />
 

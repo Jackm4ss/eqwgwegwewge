@@ -106,6 +106,19 @@ class AdminFirestoreRepository
             : $this->paginateScanLogsUsingGrpc($normalizedFilters, $offset, $perPage);
     }
 
+    public function queryScanLogs(array $filters = []): array
+    {
+        if (! $this->available()) {
+            return [];
+        }
+
+        $normalizedFilters = $this->normalizeScanLogFilters($filters);
+
+        return $this->usingRest()
+            ? $this->queryScanLogsUsingRest($normalizedFilters)
+            : $this->queryScanLogsUsingGrpc($normalizedFilters);
+    }
+
     public function countScanLogs(array $filters = []): int
     {
         $normalizedFilters = $this->normalizeScanLogFilters($filters);
@@ -1549,6 +1562,57 @@ class AdminFirestoreRepository
             ];
         } catch (\Throwable $exception) {
             return $this->fallbackPaginateScanLogsUsingRest($filters, $offset, $limit, $exception);
+        }
+    }
+
+    private function queryScanLogsUsingRest(array $filters): array
+    {
+        try {
+            $documents = $this->restApi->runQuery($this->buildStructuredQuery(
+                $this->scanLogsCollection(),
+                $this->buildScanLogFilterClauses($filters),
+                orderField: 'scanned_at',
+            ));
+
+            return array_map(function (array $document): array {
+                $decoded = $this->timestamps->normalizeFromStorage(
+                    $this->restApi->decodeDocument($document)
+                );
+                $decoded['__id'] = $this->documentIdFromName((string) ($document['name'] ?? ''));
+                $decoded['__path'] = $this->documentPathFromName((string) ($document['name'] ?? ''));
+
+                return $decoded;
+            }, $documents);
+        } catch (\Throwable $exception) {
+            return $this->fallbackScanLogRowsUsingRest($filters, $exception, 'query');
+        }
+    }
+
+    private function queryScanLogsUsingGrpc(array $filters): array
+    {
+        try {
+            $query = $this->applyScanLogFilters(
+                $this->client()->collection($this->scanLogsCollection()),
+                $filters,
+            )->orderBy('scanned_at', Query::DIR_DESCENDING)
+                ->orderBy(Query::DOCUMENT_ID, Query::DIR_DESCENDING);
+
+            $rows = [];
+
+            foreach ($query->documents() as $documentSnapshot) {
+                if (! $documentSnapshot->exists()) {
+                    continue;
+                }
+
+                $row = $this->timestamps->normalizeFromStorage($documentSnapshot->data());
+                $row['__id'] = $documentSnapshot->id();
+                $row['__path'] = $this->scanLogsCollection().'/'.$documentSnapshot->id();
+                $rows[] = $row;
+            }
+
+            return $rows;
+        } catch (\Throwable $exception) {
+            return $this->fallbackScanLogRowsUsingRest($filters, $exception, 'query');
         }
     }
 

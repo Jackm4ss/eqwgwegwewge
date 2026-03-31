@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="color-scheme: light;">
 @php
     $shareImagePath = implode('/', array_map('rawurlencode', explode('/', 'images/Songkran logo.png')));
     $metaTitle = 'Songkran Festival 2026';
@@ -14,6 +14,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
     <title>{{ $metaTitle }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -63,7 +65,7 @@
     @viteReactRefresh
     @vite('resources/js/src/main.tsx')
 </head>
-<body class="antialiased">
+<body class="antialiased" style="color-scheme: light; background-color: #e0f7ff;">
     <div id="root"></div>
 </body>
 </html>

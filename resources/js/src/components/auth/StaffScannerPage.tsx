@@ -141,7 +141,7 @@ type ExtendedMediaTrackSettings = MediaTrackSettings & {
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
 const PWA_APP_ICON_URL = '/pwa/icons/icon-192.png';
 const SCANNER_REGION_ID = 'staff-html5-qrcode-region';
-const DEFAULT_HISTORY_PER_PAGE = 20;
+const DEFAULT_HISTORY_PER_PAGE = 5;
 const EMPTY_STATS: ScannerStats = { total_scans: 0, successful_scans: 0, duplicate_scans: 0, invalid_scans: 0 };
 const EMPTY_HISTORY_META: HistoryMeta = {
   page: 1,
@@ -1674,7 +1674,7 @@ export function StaffScannerPage() {
 
   if (loading) {
     return (
-      <AuthPageShell onCanvasReady={handleCanvasReady} onPageClick={handlePageClick}>
+      <AuthPageShell fixedTheme="light" onCanvasReady={handleCanvasReady} onPageClick={handlePageClick}>
         <div className="flex min-h-screen items-center justify-center px-4">
           <div className="rounded-[2rem] border border-white/20 bg-white/95 px-8 py-10 text-center shadow-[0_30px_80px_rgba(0,0,0,0.3)]">
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-sky-600" aria-hidden="true" />
@@ -1713,6 +1713,7 @@ export function StaffScannerPage() {
 
   return (
     <AuthPageShell
+      fixedTheme="light"
       skipHref="#staff-scanner-main"
       skipLabel="Skip to scanner controls"
       onCanvasReady={handleCanvasReady}
@@ -1810,15 +1811,15 @@ export function StaffScannerPage() {
 
                   <div className="mt-5 space-y-4">
                     <div className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-slate-950">
-                      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-sm text-sky-50"><span className="font-semibold">Live Camera Feed</span><span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] ${scannerActive ? 'border-emerald-300/40 bg-emerald-400/10 text-emerald-200' : 'border-white/15 bg-white/5 text-sky-100/80'}`}>{scannerActive ? 'Active' : 'Standby'}</span></div>
-                      <div className="relative aspect-[5/6] min-h-[24rem] sm:aspect-[4/3] sm:min-h-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.18),_transparent_55%),linear-gradient(135deg,_rgba(12,74,110,0.92),_rgba(15,23,42,0.96))]">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3 text-sm text-sky-50"><span className="font-semibold">Live Camera Feed</span><span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] ${scannerActive ? 'border-emerald-300/40 bg-emerald-400/10 text-emerald-200' : 'border-white/15 bg-white/5 text-sky-100/80'}`}>{scannerActive ? 'Active' : 'Standby'}</span></div>
+                      <div className="relative aspect-[5/6] min-h-[20rem] max-[380px]:min-h-[17.5rem] sm:aspect-[4/3] sm:min-h-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.18),_transparent_55%),linear-gradient(135deg,_rgba(12,74,110,0.92),_rgba(15,23,42,0.96))]">
                         <div
                           id={SCANNER_REGION_ID}
                           ref={scannerRegionRef}
                           className="h-full w-full [&_canvas]:h-full [&_canvas]:w-full [&_canvas]:object-cover [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
                         />
-                        {!scannerActive ? <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center text-sky-100"><div className="rounded-full border border-white/15 bg-white/10 p-5"><Camera className="h-10 w-10" aria-hidden="true" /></div><div><p className="text-lg font-black tracking-tight" style={{ fontFamily: '"Kanit", sans-serif' }}>Camera waiting</p><p className="mt-2 text-sm leading-relaxed text-sky-100/80">Start Scan to open the camera. Use Manual Entry below if this device cannot decode QR live.</p></div></div> : null}
-                        <div className="pointer-events-none absolute inset-x-[8%] inset-y-[12%] rounded-[1.4rem] border-2 border-dashed border-white/35 shadow-[0_0_0_9999px_rgba(2,6,23,0.12)] sm:inset-[15%]" />
+                        {!scannerActive ? <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 px-5 text-center text-sky-100 max-[380px]:gap-3 max-[380px]:px-3.5"><div className="rounded-full border border-white/15 bg-white/10 p-5 max-[380px]:p-4"><Camera className="h-10 w-10 max-[380px]:h-8 max-[380px]:w-8" aria-hidden="true" /></div><div className="max-w-[18rem] max-[380px]:max-w-[12rem]"><p className="text-lg font-black tracking-tight max-[380px]:text-base" style={{ fontFamily: '"Kanit", sans-serif' }}>Camera waiting</p><p className="mt-2 text-sm leading-relaxed text-sky-100/80 max-[380px]:mt-1.5 max-[380px]:text-[13px] max-[380px]:leading-5">Start Scan to open the camera. Use Manual Entry below if this device cannot decode QR live.</p></div></div> : null}
+                        <div className="pointer-events-none absolute inset-x-[8%] inset-y-[12%] z-0 rounded-[1.4rem] border-2 border-dashed border-white/35 shadow-[0_0_0_9999px_rgba(2,6,23,0.12)] max-[380px]:inset-x-[6%] max-[380px]:inset-y-[10%] sm:inset-[15%]" />
                       </div>
                     </div>
 

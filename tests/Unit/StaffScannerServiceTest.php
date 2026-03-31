@@ -228,7 +228,7 @@ class StaffScannerServiceTest extends TestCase
                 'scanner_post' => 'Gate A',
                 'from' => '2026-03-31',
                 'to' => '2026-03-31',
-            ], 2, 20)
+            ], 2, 5)
             ->andReturn([
                 'items' => [
                     [
@@ -292,13 +292,13 @@ class StaffScannerServiceTest extends TestCase
             'role' => 'scanner',
         ]);
 
-        $history = $service->history($operator, 'Gate A', 2, 20);
+        $history = $service->history($operator, 'Gate A', 2, 5);
 
         $this->assertSame([
             'page' => 2,
-            'per_page' => 20,
+            'per_page' => 5,
             'total' => 21,
-            'has_more' => false,
+            'has_more' => true,
             'scope_date' => '2026-03-31',
         ], $history['meta']);
         $this->assertCount(2, $history['items']);

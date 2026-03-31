@@ -23,7 +23,7 @@ class StaffScannerHistoryRequest extends FormRequest
     {
         $this->merge([
             'page' => (int) $this->input('page', 1),
-            'per_page' => (int) $this->input('per_page', 20),
+            'per_page' => (int) $this->input('per_page', 5),
         ]);
     }
 }

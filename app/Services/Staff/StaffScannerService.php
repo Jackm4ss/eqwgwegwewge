@@ -167,7 +167,7 @@ class StaffScannerService
         );
     }
 
-    public function dashboard(Admin $operator, string $scannerPost, int $page = 1, int $perPage = 20): array
+    public function dashboard(Admin $operator, string $scannerPost, int $page = 1, int $perPage = 5): array
     {
         return [
             'stats' => $this->stats($operator, $scannerPost),
@@ -175,7 +175,7 @@ class StaffScannerService
         ];
     }
 
-    public function history(Admin $operator, string $scannerPost, int $page = 1, int $perPage = 20): array
+    public function history(Admin $operator, string $scannerPost, int $page = 1, int $perPage = 5): array
     {
         $filters = $this->scannerActivityFilters($scannerPost);
         $page = max(1, $page);

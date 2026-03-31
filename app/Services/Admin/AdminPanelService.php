@@ -268,6 +268,8 @@ class AdminPanelService
         $perPage = max(1, (int) ($filters['per_page'] ?? config('admin.per_page', 10)));
         $pageResult = $this->repository->paginateScanLogs($filters, $page, $perPage);
         $historyItems = $this->hydrateAttendanceHistoryPage($pageResult['items'] ?? []);
+        $summaryLogs = $this->repository->queryScanLogs($filters);
+        $overview = $this->analytics->buildAttendanceOverview($summaryLogs, $filters);
         $historyPaginator = new LengthAwarePaginator(
             $historyItems,
             (int) ($pageResult['total'] ?? 0),
@@ -282,10 +284,10 @@ class AdminPanelService
 
         return [
             'history' => $historyPaginator,
-            'daily_attendance' => $this->buildAttendanceDailySummary($filters),
-            'scanner_activity' => $this->buildAttendanceScannerActivity($filters, $historyItems),
+            'daily_attendance' => $overview['daily_attendance'],
+            'scanner_activity' => $overview['scanner_activity'],
             'scan_post_options' => $this->buildAttendanceScanPostOptions(
-                $historyItems,
+                $summaryLogs,
                 [$filters['scanner_post'] ?? null],
             ),
         ];

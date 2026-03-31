@@ -498,12 +498,13 @@ export function ForgotQrPage() {
         <div className="w-full max-w-[560px]">
           <AuthCardFrame>
             <AuthCardHeader
+              className="text-center"
               eyebrow="Ticket Recovery"
               title="Forgot QR"
               description="Find your registration using the same data you used during signup, then jump straight to your ticket."
               note="Manual lookup only. Search will run after you press the button below."
               topSlot={(
-                <div className="flex items-center gap-4">
+                <div className="flex items-center justify-center gap-4">
                   <div className="rounded-[1.35rem] border border-white/15 bg-white/10 px-4 py-3 shadow-[0_14px_45px_rgba(12,74,110,0.22)] backdrop-blur-sm">
                     <img src={SONGKRAN_LOGO_URL} alt="Songkran Festival 2026 logo" className="h-12 w-auto sm:h-14" />
                   </div>

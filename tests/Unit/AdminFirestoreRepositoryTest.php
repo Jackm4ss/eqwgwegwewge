@@ -685,6 +685,70 @@ class AdminFirestoreRepositoryTest extends TestCase
         $this->assertSame('scan-300', $result['items'][1]['__id']);
     }
 
+    public function test_query_scan_logs_falls_back_to_collection_listing_when_grpc_query_fails(): void
+    {
+        config(['firebase.transport' => 'grpc']);
+
+        $restApi = Mockery::mock(FirestoreRestApi::class);
+        $timestamps = Mockery::mock(FirestoreTimestampNormalizer::class);
+        $ticketQrCodeService = Mockery::mock(TicketQrCodeService::class);
+        $factory = Mockery::mock(FirebaseClientFactory::class);
+        $client = Mockery::mock(FirestoreClient::class);
+        $filteredQuery = Mockery::mock();
+        $fallbackCollection = Mockery::mock();
+
+        $repository = $this->makeRepository($restApi, $timestamps, $ticketQrCodeService, $factory);
+
+        $factory->shouldReceive('make')->atLeast()->once()->andReturn($client);
+        $client->shouldReceive('collection')->with('scan_logs')->andReturn($filteredQuery, $fallbackCollection);
+        $filteredQuery->shouldReceive('where')->once()->with('scanner_name', '=', 'Gate A')->andReturnSelf();
+        $filteredQuery->shouldReceive('where')->once()->with('scanned_at', '>=', Mockery::on(
+            fn ($value): bool => $value instanceof \DateTimeInterface
+        ))->andReturnSelf();
+        $filteredQuery->shouldReceive('where')->once()->with('scanned_at', '<=', Mockery::on(
+            fn ($value): bool => $value instanceof \DateTimeInterface
+        ))->andReturnSelf();
+        $filteredQuery->shouldReceive('orderBy')->once()->with('scanned_at', Query::DIR_DESCENDING)->andReturnSelf();
+        $filteredQuery->shouldReceive('orderBy')->once()->with(Query::DOCUMENT_ID, Query::DIR_DESCENDING)->andReturnSelf();
+        $filteredQuery->shouldReceive('documents')->once()->andThrow(new \Exception('gRPC query failed.', 9));
+        $fallbackCollection->shouldReceive('documents')->once()->andReturn([
+            $this->fakeDocumentSnapshot('scan-100', [
+                'scanner_name' => 'Gate A',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T01:00:00.000000Z',
+            ]),
+            $this->fakeDocumentSnapshot('scan-200', [
+                'scanner_name' => 'Gate A',
+                'result' => 'duplicate',
+                'scanned_at' => '2026-03-29T04:00:00.000000Z',
+            ]),
+            $this->fakeDocumentSnapshot('scan-300', [
+                'scanner_name' => 'Gate A',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T03:00:00.000000Z',
+            ]),
+            $this->fakeDocumentSnapshot('scan-400', [
+                'scanner_name' => 'Gate B',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T05:00:00.000000Z',
+            ]),
+        ]);
+        $timestamps->shouldReceive('normalizeFromStorage')
+            ->times(4)
+            ->andReturnUsing(fn (array $payload): array => $payload);
+
+        $result = $repository->queryScanLogs([
+            'scanner_post' => 'Gate A',
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ]);
+
+        $this->assertCount(3, $result);
+        $this->assertSame('scan-200', $result[0]['__id']);
+        $this->assertSame('scan-300', $result[1]['__id']);
+        $this->assertSame('scan-100', $result[2]['__id']);
+    }
+
     public function test_latest_scan_log_falls_back_to_collection_listing_when_grpc_query_fails(): void
     {
         config(['firebase.transport' => 'grpc']);

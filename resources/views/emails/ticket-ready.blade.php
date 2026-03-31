@@ -55,11 +55,13 @@
 @endphp
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="color-scheme: light;">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
     <title>{{ $emailDocumentTitle }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
@@ -76,6 +78,7 @@
             margin: 0;
             padding: 0;
             background-color: #e5f5f9;
+            color-scheme: light;
             -webkit-text-size-adjust: 100%;
             -ms-text-size-adjust: 100%;
         }
@@ -471,7 +474,7 @@
     </style>
 </head>
 
-<body>
+<body style="margin:0; padding:0; background-color:#e5f5f9; color-scheme:light;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
         style="width:100%; background-color:#e5f5f9;">
         <tr>

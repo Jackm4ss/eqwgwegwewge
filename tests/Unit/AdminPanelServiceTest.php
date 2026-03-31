@@ -205,23 +205,14 @@ class AdminPanelServiceTest extends TestCase
                     'country' => 'MY',
                 ],
             ]);
-        $repository->shouldReceive('countScanLogs')
-            ->times(6)
-            ->andReturnUsing(function (array $filters): int {
-                return match ($filters['result'] ?? null) {
-                    'success' => 0,
-                    'duplicate' => 1,
-                    default => 1,
-                };
-            });
-        $repository->shouldReceive('latestScanLog')
+        $repository->shouldReceive('queryScanLogs')
             ->once()
             ->with([
                 'scanner_post' => 'Gate AB',
                 'from' => '2026-03-30',
                 'to' => '2026-03-30',
             ])
-            ->andReturn($log);
+            ->andReturn([$log]);
         $repository->shouldNotReceive('allScanLogs');
         $repository->shouldNotReceive('allUsers');
         $repository->shouldNotReceive('allTickets');
@@ -288,23 +279,13 @@ class AdminPanelServiceTest extends TestCase
                 ->once()
                 ->with(['user-current'])
                 ->andReturn([]);
-            $repository->shouldReceive('countScanLogs')
-                ->times(6)
-                ->andReturnUsing(function (array $filters): int {
-                    return match ($filters['result'] ?? null) {
-                        'success' => 0,
-                        'duplicate' => 1,
-                        default => 1,
-                    };
-                });
-            $repository->shouldReceive('latestScanLog')
+            $repository->shouldReceive('queryScanLogs')
                 ->once()
                 ->with([
                     'from' => '2026-03-30',
                     'to' => '2026-03-30',
-                    'scanner_post' => 'Gate AB',
                 ])
-                ->andReturn($log);
+                ->andReturn([$log]);
             $repository->shouldNotReceive('allScanLogs');
             $repository->shouldNotReceive('allUsers');
             $repository->shouldNotReceive('allTickets');

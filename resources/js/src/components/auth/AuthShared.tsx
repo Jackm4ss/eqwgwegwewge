@@ -1,4 +1,4 @@
-import type { MouseEventHandler, ReactNode } from 'react';
+import { useEffect, type MouseEventHandler, type ReactNode } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -13,6 +13,7 @@ type AuthPageShellProps = {
   onCanvasReady?: (addRipple: (x: number, y: number) => void) => void;
   contentClassName?: string;
   backgroundImageUrl?: string;
+  fixedTheme?: 'light' | 'dark';
 };
 
 type AuthCardFrameProps = {
@@ -72,6 +73,7 @@ export function AuthPageShell({
   onCanvasReady,
   contentClassName,
   backgroundImageUrl,
+  fixedTheme,
 }: AuthPageShellProps) {
   const pageBackgroundStyle = backgroundImageUrl
     ? {
@@ -85,10 +87,91 @@ export function AuthPageShell({
         background: 'linear-gradient(145deg, #0C4A6E 0%, #0369A1 30%, #0284C7 60%, #0EA5E9 100%)',
       };
 
+  useEffect(() => {
+    if (!fixedTheme) {
+      return undefined;
+    }
+
+    const html = document.documentElement;
+    const body = document.body;
+    const appRoot = document.getElementById('root');
+    const previous = {
+      htmlColorScheme: html.style.colorScheme,
+      bodyColorScheme: body.style.colorScheme,
+      appRootColorScheme: appRoot?.style.colorScheme ?? '',
+      htmlHadDark: html.classList.contains('dark'),
+      bodyHadDark: body.classList.contains('dark'),
+      appRootHadDark: appRoot?.classList.contains('dark') ?? false,
+    };
+
+    const syncMetaTag = (name: string) => {
+      let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+      const existed = Boolean(meta);
+      const previousContent = meta?.content ?? '';
+
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = name;
+        document.head.appendChild(meta);
+      }
+
+      meta.content = fixedTheme;
+
+      return () => {
+        if (!meta) {
+          return;
+        }
+
+        if (existed) {
+          meta.content = previousContent;
+          return;
+        }
+
+        meta.remove();
+      };
+    };
+
+    const restoreColorSchemeMeta = syncMetaTag('color-scheme');
+    const restoreSupportedColorSchemesMeta = syncMetaTag('supported-color-schemes');
+
+    html.classList.remove('dark');
+    body.classList.remove('dark');
+    appRoot?.classList.remove('dark');
+
+    html.style.colorScheme = fixedTheme;
+    body.style.colorScheme = fixedTheme;
+
+    if (appRoot) {
+      appRoot.style.colorScheme = fixedTheme;
+    }
+
+    return () => {
+      html.style.colorScheme = previous.htmlColorScheme;
+      body.style.colorScheme = previous.bodyColorScheme;
+
+      if (appRoot) {
+        appRoot.style.colorScheme = previous.appRootColorScheme;
+      }
+
+      if (previous.htmlHadDark) {
+        html.classList.add('dark');
+      }
+      if (previous.bodyHadDark) {
+        body.classList.add('dark');
+      }
+      if (appRoot && previous.appRootHadDark) {
+        appRoot.classList.add('dark');
+      }
+
+      restoreColorSchemeMeta();
+      restoreSupportedColorSchemesMeta();
+    };
+  }, [fixedTheme]);
+
   return (
     <div
       className="relative min-h-screen overflow-x-hidden"
-      style={pageBackgroundStyle}
+      style={{ ...pageBackgroundStyle, colorScheme: fixedTheme }}
       onClick={onPageClick}
     >
       {skipHref && skipLabel ? (

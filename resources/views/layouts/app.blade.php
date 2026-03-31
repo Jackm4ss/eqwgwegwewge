@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" style="color-scheme: light;">
 @php
     $shareImagePath = implode('/', array_map('rawurlencode', explode('/', 'images/Songkran logo.png')));
     $siteTitle = 'Songkran Festival 2026';
@@ -13,6 +13,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
     <title>{{ $pageTitle }}</title>
     <meta name="description" content="{{ $metaDescription }}">
     <link rel="canonical" href="{{ $metaUrl }}">
@@ -41,7 +43,7 @@
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
 </head>
-<body>
+<body style="color-scheme: light; background-color: #ffffff;">
     @yield('content')
 </body>
 </html>
