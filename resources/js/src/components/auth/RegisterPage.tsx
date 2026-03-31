@@ -104,56 +104,274 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-const COUNTRIES = [
+export const COUNTRIES = [
+  { code: 'AF', name: 'Afghanistan' },
+  { code: 'AL', name: 'Albania' },
+  { code: 'DZ', name: 'Algeria' },
+  { code: 'AD', name: 'Andorra' },
+  { code: 'AO', name: 'Angola' },
+  { code: 'AR', name: 'Argentina' },
+  { code: 'AM', name: 'Armenia' },
   { code: 'AU', name: 'Australia' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'AZ', name: 'Azerbaijan' },
+
+  { code: 'BH', name: 'Bahrain' },
+  { code: 'BD', name: 'Bangladesh' },
+  { code: 'BY', name: 'Belarus' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'BZ', name: 'Belize' },
+  { code: 'BJ', name: 'Benin' },
+  { code: 'BT', name: 'Bhutan' },
+  { code: 'BO', name: 'Bolivia' },
+  { code: 'BA', name: 'Bosnia and Herzegovina' },
+  { code: 'BW', name: 'Botswana' },
+  { code: 'BR', name: 'Brazil' },
   { code: 'BN', name: 'Brunei' },
+  { code: 'BG', name: 'Bulgaria' },
   { code: 'KH', name: 'Cambodia' },
+  { code: 'CM', name: 'Cameroon' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'CL', name: 'Chile' },
   { code: 'CN', name: 'China' },
+  { code: 'CO', name: 'Colombia' },
+  { code: 'CR', name: 'Costa Rica' },
+  { code: 'HR', name: 'Croatia' },
+  { code: 'CU', name: 'Cuba' },
+  { code: 'CY', name: 'Cyprus' },
+  { code: 'CZ', name: 'Czech Republic' },
+
+  { code: 'DK', name: 'Denmark' },
+  { code: 'DO', name: 'Dominican Republic' },
+
+  { code: 'EC', name: 'Ecuador' },
+  { code: 'EG', name: 'Egypt' },
+  { code: 'SV', name: 'El Salvador' },
+  { code: 'EE', name: 'Estonia' },
+
+  { code: 'FI', name: 'Finland' },
   { code: 'FR', name: 'France' },
+
+  { code: 'GE', name: 'Georgia' },
   { code: 'DE', name: 'Germany' },
+  { code: 'GH', name: 'Ghana' },
+  { code: 'GR', name: 'Greece' },
+
   { code: 'HK', name: 'Hong Kong' },
+  { code: 'HU', name: 'Hungary' },
+
+  { code: 'IS', name: 'Iceland' },
   { code: 'IN', name: 'India' },
   { code: 'ID', name: 'Indonesia' },
+  { code: 'IR', name: 'Iran' },
+  { code: 'IQ', name: 'Iraq' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'IL', name: 'Israel' },
+  { code: 'IT', name: 'Italy' },
+
   { code: 'JP', name: 'Japan' },
+  { code: 'JO', name: 'Jordan' },
+
+  { code: 'KZ', name: 'Kazakhstan' },
+  { code: 'KE', name: 'Kenya' },
+  { code: 'KR', name: 'South Korea' },
+  { code: 'KW', name: 'Kuwait' },
+
   { code: 'LA', name: 'Laos' },
+  { code: 'LV', name: 'Latvia' },
+  { code: 'LB', name: 'Lebanon' },
+  { code: 'LT', name: 'Lithuania' },
+  { code: 'LU', name: 'Luxembourg' },
+
   { code: 'MY', name: 'Malaysia' },
+  { code: 'MV', name: 'Maldives' },
+  { code: 'MX', name: 'Mexico' },
+  { code: 'MN', name: 'Mongolia' },
   { code: 'MM', name: 'Myanmar' },
+
+  { code: 'NP', name: 'Nepal' },
   { code: 'NL', name: 'Netherlands' },
   { code: 'NZ', name: 'New Zealand' },
+  { code: 'NG', name: 'Nigeria' },
+
+  { code: 'NO', name: 'Norway' },
+
+  { code: 'OM', name: 'Oman' },
+
+  { code: 'PK', name: 'Pakistan' },
+  { code: 'PA', name: 'Panama' },
+  { code: 'PY', name: 'Paraguay' },
+  { code: 'PE', name: 'Peru' },
   { code: 'PH', name: 'Philippines' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'PT', name: 'Portugal' },
+
+  { code: 'QA', name: 'Qatar' },
+
+  { code: 'RO', name: 'Romania' },
+  { code: 'RU', name: 'Russia' },
+
+  { code: 'SA', name: 'Saudi Arabia' },
   { code: 'SG', name: 'Singapore' },
-  { code: 'KR', name: 'South Korea' },
+  { code: 'SK', name: 'Slovakia' },
+  { code: 'SI', name: 'Slovenia' },
+  { code: 'ZA', name: 'South Africa' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'LK', name: 'Sri Lanka' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'CH', name: 'Switzerland' },
+
+  { code: 'TW', name: 'Taiwan' },
   { code: 'TH', name: 'Thailand' },
+  { code: 'TR', name: 'Turkey' },
+
+  { code: 'UA', name: 'Ukraine' },
   { code: 'AE', name: 'UAE' },
   { code: 'GB', name: 'United Kingdom' },
   { code: 'US', name: 'United States' },
+  { code: 'UY', name: 'Uruguay' },
+
+  { code: 'UZ', name: 'Uzbekistan' },
+
+  { code: 'VE', name: 'Venezuela' },
   { code: 'VN', name: 'Vietnam' },
+
+  { code: 'YE', name: 'Yemen' },
 ];
 
-const PHONE_DIAL_CODES: Record<string, string> = {
+export const PHONE_DIAL_CODES: Record<string, string> = {
+  AF: '+93',
+  AL: '+355',
+  DZ: '+213',
+  AD: '+376',
+  AO: '+244',
+  AR: '+54',
+  AM: '+374',
   AU: '+61',
+  AT: '+43',
+  AZ: '+994',
+
+  BH: '+973',
+  BD: '+880',
+  BY: '+375',
+  BE: '+32',
+  BZ: '+501',
+  BJ: '+229',
+  BT: '+975',
+  BO: '+591',
+  BA: '+387',
+  BW: '+267',
+  BR: '+55',
   BN: '+673',
+  BG: '+359',
   KH: '+855',
+  CM: '+237',
+  CA: '+1',
+  CL: '+56',
   CN: '+86',
+  CO: '+57',
+  CR: '+506',
+  HR: '+385',
+  CU: '+53',
+  CY: '+357',
+  CZ: '+420',
+
+  DK: '+45',
+  DO: '+1',
+
+  EC: '+593',
+  EG: '+20',
+  SV: '+503',
+  EE: '+372',
+
+  FI: '+358',
   FR: '+33',
+
+  GE: '+995',
   DE: '+49',
+  GH: '+233',
+  GR: '+30',
+
   HK: '+852',
+  HU: '+36',
+
+  IS: '+354',
   IN: '+91',
   ID: '+62',
+  IR: '+98',
+  IQ: '+964',
+  IE: '+353',
+  IL: '+972',
+  IT: '+39',
+
   JP: '+81',
+  JO: '+962',
+
+  KZ: '+7',
+  KE: '+254',
+  KR: '+82',
+  KW: '+965',
+
   LA: '+856',
+  LV: '+371',
+  LB: '+961',
+  LT: '+370',
+  LU: '+352',
+
   MY: '+60',
+  MV: '+960',
+  MX: '+52',
+  MN: '+976',
   MM: '+95',
+
+  NP: '+977',
   NL: '+31',
   NZ: '+64',
+  NG: '+234',
+
+  NO: '+47',
+
+  OM: '+968',
+
+  PK: '+92',
+  PA: '+507',
+  PY: '+595',
+  PE: '+51',
   PH: '+63',
+  PL: '+48',
+  PT: '+351',
+
+  QA: '+974',
+
+  RO: '+40',
+  RU: '+7',
+
+  SA: '+966',
   SG: '+65',
-  KR: '+82',
+  SK: '+421',
+  SI: '+386',
+  ZA: '+27',
+  ES: '+34',
+  LK: '+94',
+  SE: '+46',
+  CH: '+41',
+
+  TW: '+886',
   TH: '+66',
+  TR: '+90',
+
+  UA: '+380',
   AE: '+971',
   GB: '+44',
   US: '+1',
+  UY: '+598',
+
+  UZ: '+998',
+
+  VE: '+58',
   VN: '+84',
+
+  YE: '+967',
 };
 
 const IDENTITY_TYPES = [
@@ -347,8 +565,6 @@ function TicketPreviewCard({
           <div className="mb-3 text-[1.3rem] font-extrabold md:text-[1.6rem]">Thank you for your registration.</div>
           <div className="mx-auto max-w-[520px] text-[0.85rem] font-bold leading-[1.5] md:text-[0.95rem]">
             Please present your QR code and registered valid ID / passport at the gate.
-            <br />
-            This code remains valid for the duration of the event, though scanning is required upon each day.
           </div>
           <a
             href={MAPS_LOCATION_URL}
@@ -847,7 +1063,7 @@ Changes: Organizers reserve the right to change schedules, lineups, or terms wit
 By entering the event, you consent to being photographed or recorded, with the content being used for promotional purposes`,
       `6. Security & Removal Clauses
 Right of Refusal: The Organiser reserves the absolute right to refuse entry or remove any visitor from the venue who fails to comply with security screenings, displays unruly behavior, or poses a safety risk to others.
-Prohibited Items: Visitors are prohibited from bringing weapons, illegal substances, or hazardous materials into the venue. All bags are subject to inspection upon entry (Ingress).
+Prohibited Items: Visitors are prohibited from bringing weapons, illegal substances, or hazardous materials into the venue. All bags are subject to inspection upon entry.
 CCTV Monitoring: For the safety of all attendees, 24-hour video surveillance is active. Footage is handled in accordance with our Privacy Policy and may be used as evidence in the event of an incident.`,
     ],
   },
@@ -1501,7 +1717,15 @@ export function RegisterPage() {
           */}
 
           {/* Form card */}
-          <AuthCardFrame className="w-full max-w-[520px]">
+          <AuthCardFrame className="relative w-full max-w-[520px]">
+  
+            {/* Back Button */}
+            <Link
+              to="/"
+              className="absolute top-4 right-4 z-10 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-sky-700 shadow-md backdrop-blur hover:bg-white hover:text-sky-900 transition-all"
+            >
+              ← Home
+            </Link>
             <AuthCardHeader
               eyebrow="Free Registration"
               title="Register Now"

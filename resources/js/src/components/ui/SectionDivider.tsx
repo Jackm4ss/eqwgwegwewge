@@ -7,25 +7,25 @@ const items = [
   { text: "FREE ENTRY", accent: true },
   { text: "SONGKRAN FESTIVAL", accent: false },
   { text: "EQ SOLUTIONS", accent: false },
-  { text: "THAI SONGKRAN", accent: true },
+  { text: "สงกรานต์", accent: true },
 ];
 
 export function SectionDivider({ reverse = false }: { reverse?: boolean }) {
-  const track = [...items, ...items, ...items];
+  const track = [...items, ...items];
 
   return (
     <>
       <style>{`
         @keyframes section-divider-fwd {
           from { transform: translateX(0); }
-          to { transform: translateX(-33.333%); }
+          to { transform: translateX(-50%); }
         }
         @keyframes section-divider-rev {
-          from { transform: translateX(-33.333%); }
+          from { transform: translateX(-50%); }
           to { transform: translateX(0); }
         }
-        .section-divider-track-fwd { animation: section-divider-fwd 28s linear infinite; }
-        .section-divider-track-rev { animation: section-divider-rev 28s linear infinite; }
+        .section-divider-track-fwd { animation: section-divider-fwd 10s linear infinite; }
+        .section-divider-track-rev { animation: section-divider-rev 10s linear infinite; }
       `}</style>
       <div
         className="overflow-hidden py-3"

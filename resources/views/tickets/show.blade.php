@@ -459,8 +459,7 @@
                 <div class="message-box">
                     <div class="msg-title">Thank you for your registration.</div>
                     <div class="msg-text">
-                        Please present your QR code and registered valid ID / passport at the gate.<br>
-                        This code remains valid for the duration of the event, though scanning is required upon each day.
+                        Please present your QR code and registered valid ID / passport at the gate.
                     </div>
                     <a href="https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw" target="_blank" rel="noopener noreferrer"
                         class="maps-location-note">

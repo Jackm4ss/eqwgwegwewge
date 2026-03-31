@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, useMotionValue, useSpring } from "motion/react";
+import { ArrowDown } from "lucide-react";
 import { buildRegisterUrl } from "@/lib/trafficAttribution";
 import { LazyImage } from "../ui/LazyImage";
 
@@ -58,8 +59,10 @@ export function HeroSection() {
   const mouseY = useMotionValue(0);
   const px = useSpring(mouseX, { stiffness: 80, damping: 30 });
   const py = useSpring(mouseY, { stiffness: 80, damping: 30 });
-  const px2 = useSpring(useMotionValue(0), { stiffness: 50, damping: 25 });
-  const py2 = useSpring(useMotionValue(0), { stiffness: 50, damping: 25 });
+  const px2Source = useMotionValue(0);
+  const py2Source = useMotionValue(0);
+  const px2 = useSpring(px2Source, { stiffness: 50, damping: 25 });
+  const py2 = useSpring(py2Source, { stiffness: 50, damping: 25 });
   const { days, hours, minutes, seconds, live } = useCountdown();
 
   const handleMouse = (event: React.MouseEvent) => {
@@ -67,14 +70,38 @@ export function HeroSection() {
     const cy = (event.clientY / window.innerHeight - 0.5) * 40;
     mouseX.set(cx);
     mouseY.set(cy);
+    px2Source.set(cx * 0.35);
+    py2Source.set(cy * 0.35);
   };
 
   const goToRegister = () => {
     window.location.assign(buildRegisterUrl());
   };
 
+  const goToNextSection = () => {
+    const heroSection = document.getElementById("home-hero-section");
+    if (!heroSection) return;
+
+    let nextSection = heroSection.nextElementSibling as HTMLElement | null;
+
+    while (nextSection && nextSection.tagName.toLowerCase() !== "section") {
+      nextSection = nextSection.nextElementSibling as HTMLElement | null;
+    }
+
+    if (nextSection) {
+      nextSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    window.scrollTo({
+      top: window.scrollY + window.innerHeight * 0.9,
+      behavior: "smooth",
+    });
+  };
+
   return (
     <section
+      id="home-hero-section"
       className="relative min-h-screen overflow-hidden"
       style={{ background: "transparent" }}
       onMouseMove={handleMouse}
@@ -91,7 +118,6 @@ export function HeroSection() {
             background: "radial-gradient(circle, rgba(24,199,204,0.08) 0%, transparent 80%)",
           }}
         />
-
         <div
           className="absolute bottom-[25%] left-[10%] h-24 w-24 rounded-full"
           style={{
@@ -100,11 +126,11 @@ export function HeroSection() {
         />
       </motion.div>
 
-      <motion.div className="relative z-10 flex min-h-screen flex-col items-center justify-start pt-20 md:justify-center md:pt-0">
-        <div className="flex w-full flex-col items-center px-4" style={{ gap: "8px" }}>
+      <motion.div className="relative z-10 flex min-h-screen flex-col items-center justify-start pt-16 md:justify-center md:py-10 lg:py-14">
+        <div className="flex w-full flex-col items-center gap-3 px-4 md:gap-5">
           <div
-            className="relative -mt-[2vh] flex items-start justify-center md:mt-0 md:items-center"
-            style={{ width: "100vw", height: "clamp(120px, 22vh, 300px)" }}
+            className="relative mt-1 mb-2 flex items-start justify-center md:mt-4 md:mb-5 md:items-center lg:mt-6 lg:mb-6"
+            style={{ width: "100vw", height: "clamp(130px, 22vh, 320px)" }}
           >
             <div
               className="absolute left-1/2 top-0 -translate-x-1/2"
@@ -117,10 +143,7 @@ export function HeroSection() {
             >
               <motion.div
                 className="h-full w-full"
-                style={{
-                  x: px,
-                  y: py,
-                }}
+                style={{ x: px, y: py }}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 0.92, scale: 1 }}
                 transition={{ duration: 1.1, ease: "easeOut" }}
@@ -239,6 +262,23 @@ export function HeroSection() {
           </button>
         </motion.div>
       </motion.div>
+
+      <motion.button
+        type="button"
+        onClick={goToNextSection}
+        initial={{ opacity: 0, x: 12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 1.1, duration: 0.45, ease: "easeOut" }}
+        className="absolute bottom-28 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white shadow-[0_8px_22px_rgba(0,0,0,0.22)] backdrop-blur-sm transition hover:scale-105 hover:bg-black/55 active:scale-95 md:hidden"
+        aria-label="Scroll to next section"
+      >
+        <motion.div
+        animate={{ y: [0, 6, 0] }}
+        transition={{ repeat: Infinity, duration: 1.2 }}
+      >
+        <ArrowDown className="h-5 w-5" />
+      </motion.div>
+      </motion.button>
 
       {false && (
         <motion.div
