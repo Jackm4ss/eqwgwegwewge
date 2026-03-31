@@ -33,7 +33,7 @@ Jika kamu hanya butuh jalur paling cepat, baca urutan ini dulu:
    - `npm ci && npm run build`
    - set permission `storage`, `bootstrap/cache`, dan `database`
    - pasang Nginx
-   - pasang SSL
+   - pasang SSL Let's Encrypt
    - test semua URL penting
 
 ---
@@ -114,7 +114,12 @@ SQLite dipakai untuk:
 
 ## 3. URL Penting
 
-Secara default, route pentingnya seperti ini:
+Project ini mendukung 2 mode routing:
+
+1. `path` mode untuk local/dev
+2. `subdomain` mode untuk production
+
+### A. Default local/dev (`APP_ROUTING_MODE=path`)
 
 | Area | URL |
 | --- | --- |
@@ -125,14 +130,32 @@ Secara default, route pentingnya seperti ini:
 | Staff scanner login | `/staff/login` |
 | Staff scanner dashboard | `/staff` |
 
+### B. Target production final (`APP_ROUTING_MODE=subdomain`)
+
+| Area | URL production |
+| --- | --- |
+| Landing page | `https://songkranfestival.my/` |
+| Register form | `https://register.songkranfestival.my/` |
+| Admin login | `https://portal.songkranfestival.my/login` |
+| Admin dashboard | `https://portal.songkranfestival.my/dashboard` |
+| Staff scanner login | `https://app.songkranfestival.my/login` |
+| Staff scanner app | `https://app.songkranfestival.my/` |
+
+Mapping domain yang dipakai klien sekarang adalah:
+
+| Host | Record | IP |
+| --- | --- | --- |
+| `songkranfestival.my` | `A` | `147.93.157.20` |
+| `app.songkranfestival.my` | `A` | `147.93.157.20` |
+| `portal.songkranfestival.my` | `A` | `147.93.157.20` |
+| `register.songkranfestival.my` | `A` | `147.93.157.20` |
+
 Catatan penting:
 
-- route project ini saat ini berbasis path, bukan host-based routing
-- artinya deploy paling aman adalah satu domain, lalu gunakan path:
-  - `https://domainkamu.com/register`
-  - `https://domainkamu.com/admin`
-  - `https://domainkamu.com/staff`
-- kalau kamu punya subdomain juga, boleh diarahkan ke server yang sama, tetapi project ini tetap bekerja dengan path yang sama
+- deploy production final untuk project ini harus memakai mode subdomain
+- semua host di atas tetap mengarah ke root Laravel yang sama
+- pembedaan landing, register, admin, dan scanner dilakukan oleh aplikasi berdasarkan `Host` request
+- SSL production diasumsikan memakai Let's Encrypt untuk keempat host tersebut
 
 ---
 
@@ -509,14 +532,24 @@ Sebelum login ke VPS, pastikan dari email kalian sudah punya:
 
 1. akses SSH ke VPS
 2. IP address VPS
-3. domain utama
-4. optional subdomain
-5. kredensial Firebase / service account JSON
-6. kredensial SMTP
-7. key reCAPTCHA site + secret
-8. akses DNS domain
+3. domain utama dan subdomain final
+4. kredensial Firebase / service account JSON
+5. kredensial SMTP
+6. key reCAPTCHA site + secret
+7. akses DNS domain
 
 Kalau salah satu dari ini belum ada, jangan mulai deploy dulu.
+
+Untuk deployment production yang sedang disiapkan sekarang, DNS dari client sudah diarahkan ke VPS ini:
+
+| Host | Record | Tujuan |
+| --- | --- | --- |
+| `songkranfestival.my` | `A` | `147.93.157.20` |
+| `app.songkranfestival.my` | `A` | `147.93.157.20` |
+| `portal.songkranfestival.my` | `A` | `147.93.157.20` |
+| `register.songkranfestival.my` | `A` | `147.93.157.20` |
+
+Jadi di tahap deploy, fokusnya bukan lagi membuat struktur domain baru, tetapi memverifikasi propagasi DNS, menyalakan Nginx, lalu menerbitkan SSL Let's Encrypt.
 
 ---
 
@@ -529,39 +562,47 @@ Bagian ini diasumsikan untuk:
 - web server Nginx
 - PHP 8.2
 
-### Step 0 - Tentukan domain yang dipakai dulu
+### Step 0 - Konfirmasi Mapping Domain Final
 
-Rekomendasi paling sederhana:
+Untuk project ini, target production finalnya sudah ditetapkan seperti ini:
 
-- satu domain utama saja, misalnya `https://event.example.com`
-- semua route gunakan path:
-  - `https://event.example.com/register`
-  - `https://event.example.com/login`
-  - `https://event.example.com/admin`
-  - `https://event.example.com/staff/login`
+- landing/public: `https://songkranfestival.my`
+- register: `https://register.songkranfestival.my`
+- admin dashboard: `https://portal.songkranfestival.my`
+- staff scanner: `https://app.songkranfestival.my`
 
-Kalau tim ingin subdomain juga, jangan jadikan itu blocker deploy pertama.  
-Yang paling penting: satu domain utama harus hidup dulu.
+Artinya:
 
-### Step 1 - Arahkan DNS ke VPS
+- `.env` production harus memakai `APP_ROUTING_MODE=subdomain`
+- Nginx harus menerima keempat host tersebut dalam satu vhost Laravel
+- SSL Let's Encrypt harus diterbitkan untuk empat domain itu sekaligus
 
-Di panel DNS domain:
+### Step 1 - Verifikasi DNS yang Sudah Dipoint ke VPS
 
-- buat `A record` untuk domain utama ke IP VPS
-- kalau mau alias subdomain, arahkan juga ke IP yang sama
+Client sudah mengarahkan DNS ini ke server production:
 
-Contoh:
+| Host | Record | IP |
+| --- | --- | --- |
+| `songkranfestival.my` | `A` | `147.93.157.20` |
+| `app.songkranfestival.my` | `A` | `147.93.157.20` |
+| `portal.songkranfestival.my` | `A` | `147.93.157.20` |
+| `register.songkranfestival.my` | `A` | `147.93.157.20` |
 
-- `event.example.com -> 123.123.123.123`
-- `admin.example.com -> 123.123.123.123`
-- `staff.example.com -> 123.123.123.123`
+Yang perlu dilakukan di tahap ini adalah verifikasi resolve DNS dari sisi publik, misalnya dengan:
 
-Setelah itu tunggu propagasi DNS.
+```bash
+dig +short songkranfestival.my
+dig +short portal.songkranfestival.my
+dig +short app.songkranfestival.my
+dig +short register.songkranfestival.my
+```
+
+Semua hasilnya harus kembali ke `147.93.157.20` sebelum lanjut ke Certbot / Let's Encrypt.
 
 ### Step 2 - SSH ke VPS
 
 ```bash
-ssh youruser@YOUR_SERVER_IP
+ssh youruser@147.93.157.20
 ```
 
 Kalau berhasil, baru lanjut.
@@ -694,7 +735,7 @@ MAIL_PORT=587
 MAIL_USERNAME=ISI_DARI_EMAIL
 MAIL_PASSWORD=ISI_DARI_EMAIL
 MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS="no-reply@event.example.com"
+MAIL_FROM_ADDRESS="no-reply@songkranfestival.my"
 MAIL_FROM_NAME="${APP_NAME}"
 
 RECAPTCHA_ENABLED=true
@@ -759,7 +800,7 @@ Setelah itu upload ke server memakai `scp`.
 Dari laptop:
 
 ```bash
-scp /path/ke/firebase-credentials.json youruser@YOUR_SERVER_IP:/tmp/firebase-credentials.production.json
+scp /path/ke/firebase-credentials.json youruser@147.93.157.20:/tmp/firebase-credentials.production.json
 ```
 
 Lalu di server:
@@ -908,11 +949,19 @@ sudo systemctl reload nginx
 
 ### Step 21 - Pasang SSL
 
-Setelah domain sudah resolve ke VPS:
+Karena deploy production ini memang akan memakai Let's Encrypt, pastikan keempat host sudah resolve ke `147.93.157.20` sebelum menjalankan Certbot.
+
+Setelah DNS resolve, jalankan:
 
 ```bash
 sudo certbot --nginx -d songkranfestival.my -d portal.songkranfestival.my -d app.songkranfestival.my -d register.songkranfestival.my
 ```
+
+Command di atas akan:
+
+- memvalidasi domain lewat HTTP challenge
+- membuat sertifikat Let's Encrypt untuk empat host sekaligus
+- memasang redirect HTTPS jika konfigurasi Nginx sudah sesuai
 
 Setelah SSL berhasil dibuat, ganti bootstrap config dengan file final:
 
