@@ -254,13 +254,13 @@ export function EventDetails() {
                   style={{
                     ...TILT,
                     ...BODY_TEXT_STYLE,
-                    fontSize: "1.8rem",
+                    fontSize: "1.5rem",
                     lineHeight: 1.2,
                     marginBottom: "0.3rem",
                     color: "#349CD2",
                   }}
                 >
-                  @Gf Forecourt Outdoor Carpark 1 Utama, Malaysia
+                  @GF Forecourt, Outdoor Carpark, 1 Utama, Malaysia
                 </p>
 
                 <p
@@ -275,7 +275,7 @@ export function EventDetails() {
                 </p>
 
                 <a
-                  href="https://maps.app.goo.gl/nV1FXduimtyZ2cbXA"
+                  href="https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group mt-3 flex cursor-pointer items-center gap-1.5"

@@ -208,7 +208,7 @@ const SPONSOR_THAIGO_URL = '/images/thaigo.png';
 const SPONSOR_LAYER_0_URL = '/images/Layer%200.png';
 const MEDIA_WOB_URL = '/images/wob.png';
 const MEDIA_NOODOU_URL = '/images/noodou.png';
-const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/yWaPZYTBoHXgpXKn8';
+const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw';
 const ENABLE_LEGACY_SUCCESS_SCREEN = true;
 function MapsPinIcon() {
   return (
@@ -1490,9 +1490,9 @@ export function RegisterPage() {
           {/* Form card */}
           <AuthCardFrame className="w-full max-w-[520px]">
             <AuthCardHeader
-              eyebrow="Festival Registration"
+              eyebrow="Free Registration"
               title="Register Now"
-              description="Join thousands of attendees at Songkran 2026."
+              description="Join thousands of attendees at Songkran Festival 2026."
               note="Complete all details, accept the terms, and submit your registration."
             />
 
@@ -1501,7 +1501,7 @@ export function RegisterPage() {
               <form
                 onSubmit={handleSubmit(onSubmit)}
                 noValidate
-                aria-label="Songkran Music Festival Registration Form"
+                aria-label="Songkran Festival Music Free Registration Form"
               >
                 <div className="px-7 py-6 relative overflow-hidden" style={{ minHeight: 360 }}>
                   <motion.div

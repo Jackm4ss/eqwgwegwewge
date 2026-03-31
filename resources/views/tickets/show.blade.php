@@ -464,7 +464,7 @@
                         Please present your QR code and registered valid ID / passport at the gate.<br>
                         This code remains valid for the duration of the event, though scanning is required upon each day.
                     </div>
-                    <a href="https://maps.app.goo.gl/yWaPZYTBoHXgpXKn8" target="_blank" rel="noopener noreferrer"
+                    <a href="https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw" target="_blank" rel="noopener noreferrer"
                         class="maps-location-note">
                         <svg class="maps-location-icon" viewBox="0 0 24 24" aria-hidden="true">
                             <path fill="#4285F4"

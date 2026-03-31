@@ -185,7 +185,7 @@ export function Footer() {
             </p>
             <div className="flex flex-col gap-4">
               {[
-                { icon: MapPin, text: "@Gf Forecourt Outdoor Carpark 1 Utama, Malaysia", color: "#2FA7D8", link: "https://maps.app.goo.gl/nV1FXduimtyZ2cbXA" },
+                { icon: MapPin, text: "@Gf Forecourt Outdoor Carpark 1 Utama, Malaysia", color: "#2FA7D8", link: "https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw" },
                 { icon: Calendar, text: "April 9–19, 2026", color: "#18C7CC" },
                 { icon: Clock, text: "12 PM – 12 AM Daily", color: "rgba(237,232,220,0.4)" },
               ].map(({ icon: Icon, text, color, link }, i) => (

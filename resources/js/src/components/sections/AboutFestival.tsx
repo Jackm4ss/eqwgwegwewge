@@ -13,7 +13,7 @@ import { SECTION_BACKGROUND } from "./sectionContrastTheme";
 const images = [
   { id: 1, src: "/images/foto-3.png" },
   { id: 2, src: "/images/foto-4.png" },
-  { id: 3, src: "/images/foto-5.png" },
+  { id: 3, src: "/images/foto-5.jpeg" },
 ];
 
 const stats = [

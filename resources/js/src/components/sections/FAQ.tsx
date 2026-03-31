@@ -59,6 +59,14 @@ const faqs: FAQItem[] = [
     ],
   },
   {
+    q: "Age Requirement",
+    a: ["Minors under the age of 13 require the presence of a parent or legal guardian."],
+  },
+  {
+    q: "Visiting with Family",
+    a: ["For families with children below the age of 17, registration is mandatory for parents only."],
+  },
+  {
     q: "Prohibited Items",
     list: true,
     a: [

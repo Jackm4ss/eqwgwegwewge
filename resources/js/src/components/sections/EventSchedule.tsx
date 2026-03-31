@@ -39,11 +39,11 @@ const schedule: Day[] = [
   },
   {
     date: "April 11th",
-    dayLabel: "Special Programme",
+    dayLabel: "Thai Kids Fashion Show",
     shortDate: "11",
     events: [
       { time: "12PM", name: "Festival Opens", icon: Star, color: "#2FA7D8" },
-      { time: "TBC", name: "Thai Kids Fashion Show", icon: Drama, color: "#f472b6", special: true },
+      { time: "2PM - 5PM", name: "Thai Kids Fashion Show", icon: Drama, color: "#f472b6", special: true },
       { time: "5PM", name: "Water Play", icon: Waves, color: "#18C7CC" },
       { time: "5PM", name: "Live Band", icon: Music, color: "#c084fc" },
       { time: "9PM", name: "DJ Performance", icon: Mic2, color: "#f472b6" },

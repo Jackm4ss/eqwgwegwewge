@@ -117,15 +117,6 @@ const activities: Activity[] = [
     image: "/images/foto-5.jpeg",
   },
   {
-    id: 6,
-    icon: <Zap size={20} />,
-    badge: "SPECIAL",
-    title: "Guest Appearance",
-    description: "A mystery guest that will light up the stage",
-    schedule: "11th April (TBC)",
-    image: "/images/foto-6.png",
-  },
-  {
     id: 7,
     icon: <Gamepad2 size={20} />,
     badge: "DAILY",

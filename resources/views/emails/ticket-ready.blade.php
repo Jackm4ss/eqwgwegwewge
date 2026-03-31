@@ -692,7 +692,7 @@
                                                         {!! $messageCopy !!}
                                                     </p>
                                                     @if($showMapsLink)
-                                                        <a href="https://maps.app.goo.gl/yWaPZYTBoHXgpXKn8" target="_blank"
+                                                        <a href="https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw" target="_blank"
                                                             rel="noopener noreferrer" class="maps-location-note"
                                                             style="color:#ffffff; font-size:20px; line-height:28px; font-weight:800; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.45); margin:16px 0 0; text-decoration:none; display:inline-block;">
                                                             <svg class="maps-location-icon" viewBox="0 0 24 24"
