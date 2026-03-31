@@ -26,16 +26,18 @@ class ParticipantUpdateMail extends Mailable
         );
 
         $this->templateAssets = [
-            'background' => $assetDirectory.DIRECTORY_SEPARATOR.'BACKGROUND.jpg',
-            'logo' => $assetDirectory.DIRECTORY_SEPARATOR.'Songkran logo.png',
-            'venueSponsor' => $assetDirectory.DIRECTORY_SEPARATOR.'123.png',
-            'sponsorEmbassy' => $assetDirectory.DIRECTORY_SEPARATOR.'Royal_Thai_Embassy_Seal.svg.png',
-            'sponsorDitp' => $assetDirectory.DIRECTORY_SEPARATOR.'ditp.jpeg',
-            'sponsorAmazingThailand' => $assetDirectory.DIRECTORY_SEPARATOR.'amazing thailand.png',
-            'sponsorSingha' => $assetDirectory.DIRECTORY_SEPARATOR.'singha-seeklogo.png',
-            'sponsorSnakeBrand' => $assetDirectory.DIRECTORY_SEPARATOR.'Snake-Brand-Logo.png',
-            'mediaWob' => $assetDirectory.DIRECTORY_SEPARATOR.'wob.png',
-            'mediaNoodou' => $assetDirectory.DIRECTORY_SEPARATOR.'noodou.png',
+            'background' => $assetDirectory . DIRECTORY_SEPARATOR . 'BACKGROUND.jpg',
+            'logo' => $assetDirectory . DIRECTORY_SEPARATOR . 'Songkran logo.png',
+            'eventHeader' => $assetDirectory . DIRECTORY_SEPARATOR . 'ticket-event-header-email.png',
+            'venueSponsor' => $assetDirectory . DIRECTORY_SEPARATOR . '123.png',
+            'sponsorEmbassy' => $assetDirectory . DIRECTORY_SEPARATOR . 'Royal_Thai_Embassy_Seal.svg.png',
+            'sponsorDitp' => $assetDirectory . DIRECTORY_SEPARATOR . 'ditp-new.png',
+            'sponsorAmazingThailand' => $assetDirectory . DIRECTORY_SEPARATOR . 'amazing thailand.png',
+            'sponsorSingha' => $assetDirectory . DIRECTORY_SEPARATOR . 'singha-seeklogo.png',
+            'sponsorSnakeBrand' => $assetDirectory . DIRECTORY_SEPARATOR . 'Snake-Brand-Logo.png',
+            'mapToLocation' => $assetDirectory . DIRECTORY_SEPARATOR . 'Map to Location.png',
+            'mediaWob' => $assetDirectory . DIRECTORY_SEPARATOR . 'wob.png',
+            'mediaNoodou' => $assetDirectory . DIRECTORY_SEPARATOR . 'noodou.png',
         ];
     }
 

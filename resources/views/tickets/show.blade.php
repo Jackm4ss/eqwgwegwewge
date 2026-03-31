@@ -11,7 +11,7 @@
         $logoUrl = asset('images/Songkran logo.png');
         $venueSponsorUrl = asset('images/123.png');
         $sponsorEmbassyUrl = asset('images/Royal_Thai_Embassy_Seal.svg.png');
-        $sponsorDitpUrl = asset('images/ditp.jpeg');
+        $sponsorDitpUrl = asset('images/ditp-new.png');
         $sponsorAmazingThailandUrl = asset('images/amazing thailand.png');
         $sponsorSinghaUrl = asset('images/singha-seeklogo.png');
         $sponsorSnakeBrandUrl = asset('images/Snake-Brand-Logo.png');
@@ -87,6 +87,7 @@
             text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.4);
             letter-spacing: 0.5px;
             margin-top: -15px;
+            font-family: "Tilt Warp", sans-serif;
         }
 
         .event-time {
@@ -254,24 +255,16 @@
 
         .maps-location-note {
             margin-top: 16px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            color: #ffffff;
-            font-size: 1.6rem;
-            line-height: 1.2;
-            font-weight: 800;
-            letter-spacing: 0.03em;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
+            display: inline-block;
             text-decoration: none;
             cursor: pointer;
         }
 
-        .maps-location-icon {
-            width: 30px;
-            height: 30px;
-            flex-shrink: 0;
+        .maps-location-image {
+            width: 220px;
+            max-width: 100%;
+            height: auto;
+            display: block;
             filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
         }
 
@@ -336,7 +329,6 @@
             padding: 2px;
             border-radius: 2px;
             object-fit: contain;
-            background: #ffffff;
         }
 
         .logo-sponsor-amazing {
@@ -444,7 +436,8 @@
                         <div class="glass-card entry-code-card">
                             <div class="entry-code-label">Entry Code</div>
                             <div class="entry-code-value">{{ $entryCodeDisplay }}</div>
-                            <div class="entry-code-help">Use this code for manual lookup if your QR cannot be scanned at the gate.
+                            <div class="entry-code-help">Use this code for manual lookup if your QR cannot be scanned at the
+                                gate.
                             </div>
                         </div>
                     @endif
@@ -471,16 +464,7 @@
                     </div>
                     <a href="https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw" target="_blank" rel="noopener noreferrer"
                         class="maps-location-note">
-                        <svg class="maps-location-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path fill="#4285F4"
-                                d="M12 2C8.13 2 5 5.13 5 9c0 4.91 5.37 11.62 6.08 12.49a1.18 1.18 0 0 0 1.84 0C13.63 20.62 19 13.91 19 9c0-3.87-3.13-7-7-7Z" />
-                            <path fill="#34A853"
-                                d="M12 2a6.96 6.96 0 0 0-5.17 2.29l4.24 4.24A2.5 2.5 0 0 1 14.5 12l4.21 4.21C18.9 13.91 19 11.15 19 9c0-3.87-3.13-7-7-7Z" />
-                            <path fill="#FBBC04"
-                                d="M7.04 4.06A6.97 6.97 0 0 0 5 9c0 4.91 5.37 11.62 6.08 12.49.49.61 1.27.61 1.84 0 .29-.36 1.42-1.78 2.63-3.63L7.04 9.35A2.49 2.49 0 0 1 7.04 4.06Z" />
-                            <circle cx="12" cy="9" r="3.2" fill="#EA4335" />
-                        </svg>
-                        <span>Maps to Location</span>
+                        <img src="{{ $mapToLocationUrl }}" alt="Map to Location" class="maps-location-image">
                     </a>
                 </div>
 

@@ -200,7 +200,7 @@ const TICKET_BACKGROUND_URL = '/images/BACKGROUND.jpg';
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
 const VENUE_SPONSOR_URL = '/images/123.png';
 const SPONSOR_EMBASSY_URL = '/images/Royal_Thai_Embassy_Seal.svg.png';
-const SPONSOR_DITP_URL = '/images/ditp.jpeg';
+const SPONSOR_DITP_URL = '/images/ditp-new.png';
 const SPONSOR_AMAZING_THAILAND_URL = '/images/amazing%20thailand.png';
 const SPONSOR_SINGHA_URL = '/images/singha-seeklogo.png';
 const SPONSOR_SNAKE_BRAND_URL = '/images/Snake-Brand-Logo.png';
@@ -210,6 +210,7 @@ const MEDIA_WOB_URL = '/images/wob.png';
 const MEDIA_NOODOU_URL = '/images/noodou.png';
 const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw';
 const ENABLE_LEGACY_SUCCESS_SCREEN = true;
+const TICKET_HEADER_FONT_FAMILY = '"Tilt Warp", sans-serif';
 function MapsPinIcon() {
   return (
     <svg
@@ -272,7 +273,10 @@ function TicketPreviewCard({
           decoding="async"
         />
 
-        <div className="-mt-[15px] tracking-[0.5px] [text-shadow:1px_1px_4px_rgba(0,0,0,0.4)]">
+        <div
+          className="-mt-[15px] tracking-[0.5px] [text-shadow:1px_1px_4px_rgba(0,0,0,0.4)]"
+          style={{ fontFamily: TICKET_HEADER_FONT_FAMILY }}
+        >
           <p className="mb-1 text-2xl font-extrabold md:text-[1.5rem]">12PM-12AM</p>
           <p className="mb-1 text-[2.2rem] font-black leading-none tracking-[1px] md:text-[3rem]">9-19 APRIL</p>
           <p className="my-[10px] text-[0.95rem] font-extrabold md:text-[1.1rem]">@GF FORECOURT OUTDOOR CARPARK, 1 UTAMA</p>
@@ -372,7 +376,7 @@ function TicketPreviewCard({
             <div className="mb-[5px] text-[0.55rem] font-extrabold uppercase">Sponsors</div>
             <div className="flex flex-wrap items-center justify-center gap-1.5">
               <img src={SPONSOR_EMBASSY_URL} alt="Royal Thai Embassy" className="h-6 w-auto object-contain" decoding="async" />
-              <img src={SPONSOR_DITP_URL} alt="DITP" className="h-[18px] w-auto rounded-[2px] bg-white p-[2px] object-contain" decoding="async" />
+              <img src={SPONSOR_DITP_URL} alt="DITP" className="h-[18px] w-auto rounded-[2px] p-[2px] object-contain" decoding="async" />
               <img src={SPONSOR_AMAZING_THAILAND_URL} alt="Amazing Thailand" className="h-[22px] w-auto object-contain" decoding="async" />
               <img src={SPONSOR_SINGHA_URL} alt="Singha" className="h-6 w-auto object-contain" decoding="async" />
               <img src={SPONSOR_SNAKE_BRAND_URL} alt="Snake Brand" className="h-6 w-auto object-contain" decoding="async" />
@@ -818,7 +822,7 @@ const LEGAL_DIALOG_CONTENT: Record<LegalDialogType, {
   paragraphs: string[];
 }> = {
   terms: {
-    title: 'Terms & Conditions',
+    title: 'Event Terms & Conditions',
     description: '',
     paragraphs: [
       `1. Ticket and Entry Requirements
@@ -840,16 +844,24 @@ Liability: Organizers are not responsible for lost or stolen personal property.`
 Rain or Shine: Events proceed regardless of weather unless conditions are deemed dangerous, in which case the organizer may amend the event.
 Changes: Organizers reserve the right to change schedules, lineups, or terms without prior notice.`,
       `5. Media Rights
-By entering the event, you consent to being photographed or recorded, with the content being used for promotional purposes`
+By entering the event, you consent to being photographed or recorded, with the content being used for promotional purposes`,
+      `6. Security & Removal Clauses
+Right of Refusal: The Organiser reserves the absolute right to refuse entry or remove any visitor from the venue who fails to comply with security screenings, displays unruly behavior, or poses a safety risk to others.
+Prohibited Items: Visitors are prohibited from bringing weapons, illegal substances, or hazardous materials into the venue. All bags are subject to inspection upon entry (Ingress).
+CCTV Monitoring: For the safety of all attendees, 24-hour video surveillance is active. Footage is handled in accordance with our Privacy Policy and may be used as evidence in the event of an incident.`,
     ],
   },
   privacy: {
-    title: 'Privacy Policy',
-    description: 'This content is still dummy text for UI review purposes and will be replaced with the final copy.',
+    title: 'Personal Data Protection Notice (PDPA)',
+    description: '',
     paragraphs: [
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed posuere consectetur est at lobortis. Maecenas sed diam eget risus varius blandit sit amet non magna, id elit non mi porta gravida at eget metus.',
-      'Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue. Integer posuere erat a ante venenatis dapibus posuere velit aliquet, sed posuere consectetur est at lobortis.',
-      'Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Cras justo odio, dapibus ac facilisis in, egestas eget quam. Etiam porta sem malesuada magna mollis euismod, sed posuere consectetur est at lobortis.',
+      `In compliance with the Personal Data Protection Act 2010 (PDPA) of Malaysia, Songkran Festival 2026 / EQ Solutions ("the Organiser") is committed to protecting your personal data.`,
+      `Collection of Data: We collect your name, NRIC/Passport number, contact details, and professional information to process your registration and verify your identity for security purposes.`,
+      `Purpose: Your data will be used for event administration, security screening, health and safety monitoring, and (if consented) marketing updates.`,
+      `Surveillance: Please be visually informed that Closed Circuit Television (CCTV) cameras are in operation throughout the venue for crime prevention and public safety. By entering, you consent to the recording of your image.`,
+      `Disclosure: We may disclose your information to our authorized security vendors, venue providers, or law enforcement agencies as required by law.`,
+      `Your Rights: You have the right to access, correct, or withdraw consent for your personal data. Please contact our Data Protection Officer at rs@rsgr.net for any inquiries.`,
+      `I have read and agree to the Personal Data Protection Notice and the Event Terms & Conditions.`,
     ],
   },
 };
@@ -1207,8 +1219,8 @@ export function RegisterPage() {
         deliveryStatus === 'queued'
           ? 'Registration completed. Your ticket is ready and the email copy is being prepared now.'
           : result.email_sent === false
-          ? 'Registration completed. Your ticket is ready, but the email could not be sent right now.'
-          : 'Your QR ticket has been sent to your email.'
+            ? 'Registration completed. Your ticket is ready, but the email could not be sent right now.'
+            : 'Your QR ticket has been sent to your email.'
       );
 
       setRegisteredEmail(data.email);
@@ -1768,22 +1780,24 @@ export function RegisterPage() {
                         type="checkbox"
                         className="mt-0.5 rounded border-2 border-sky-300 text-sky-600 cursor-pointer focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 flex-shrink-0"
                         style={{ width: 18, height: 18 }}
-                        {...register('agreeTerms', { required: 'You must accept the terms and conditions.' })}
+                        {...register('agreeTerms', {
+                          required: 'Please accept the Personal Data Protection Notice and Event Terms & Conditions to continue.',
+                        })}
                       />
                       <div className="text-slate-600 text-xs leading-relaxed">
                         <label htmlFor="agreeTerms" className="cursor-pointer">
-                          I agree to the
+                          I  agree to the
                         </label>{' '}
                         <button
                           type="button"
                           onClick={() => setLegalDialog('terms')}
                           className="font-semibold text-sky-600 underline underline-offset-2 transition-colors hover:text-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-white rounded-sm"
                         >
-                          Terms &amp; Conditions
-                        </button>
-                        .
-                        {/*
-                        {' '}and{' '}
+                          Terms  &amp; Conditions
+                        </button>{' '}
+                        <label htmlFor="agreeTerms" className="cursor-pointer">
+                          and
+                        </label>{' '}
                         <button
                           type="button"
                           onClick={() => setLegalDialog('privacy')}
@@ -1791,8 +1805,7 @@ export function RegisterPage() {
                         >
                           Privacy Policy
                         </button>
-                        . 
-                        */}
+                        .
                       </div>
                     </div>
                     <AnimatePresence>
@@ -1974,8 +1987,8 @@ export function RegisterPage() {
                         isTicketEmailQueued
                           ? 'Your browser ticket is ready below while the email copy is being prepared in the background.'
                           : ticketEmailSent
-                          ? 'Open the email to find your active festival pass and QR code, or use the browser ticket below anytime.'
-                          : 'Your ticket is ready below. Use the browser ticket for event entry.'
+                            ? 'Open the email to find your active festival pass and QR code, or use the browser ticket below anytime.'
+                            : 'Your ticket is ready below. Use the browser ticket for event entry.'
                       )}
                     </p>
                   </div>
@@ -2052,10 +2065,10 @@ export function RegisterPage() {
                         isTicketEmailQueued
                           ? 'Open the browser ticket below right now while the email copy is still being prepared.'
                           : ticketEmailSent
-                          ? hasDirectTicketUrl
-                            ? 'Open the email to find your active festival pass and QR code, or use the ticket button below anytime.'
-                            : 'Open the email to find your active festival pass, QR code, and direct ticket link for event entry.'
-                          : 'Use the direct ticket link below to open your active festival pass immediately.'
+                            ? hasDirectTicketUrl
+                              ? 'Open the email to find your active festival pass and QR code, or use the ticket button below anytime.'
+                              : 'Open the email to find your active festival pass, QR code, and direct ticket link for event entry.'
+                            : 'Use the direct ticket link below to open your active festival pass immediately.'
                       )}
                     </p>
 

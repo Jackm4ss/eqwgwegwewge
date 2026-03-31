@@ -26,6 +26,7 @@ class TicketReadyMail extends Mailable
         $this->templateAssets = [
             'background' => $assetDirectory.DIRECTORY_SEPARATOR.'BACKGROUND.jpg',
             'logo' => $assetDirectory.DIRECTORY_SEPARATOR.'Songkran logo.png',
+            'eventHeader' => $assetDirectory.DIRECTORY_SEPARATOR.'ticket-event-header-email.png',
             'organiser' => $assetDirectory.DIRECTORY_SEPARATOR.'eq-solution.png',
             'venueSponsor' => $assetDirectory.DIRECTORY_SEPARATOR.'123.png',
             'sponsorEmbassy' => $assetDirectory.DIRECTORY_SEPARATOR.'Royal_Thai_Embassy_Seal.svg.png',
@@ -35,6 +36,7 @@ class TicketReadyMail extends Mailable
             'sponsorSnakeBrand' => $assetDirectory.DIRECTORY_SEPARATOR.'Snake-Brand-Logo.png',
             'sponsorThaigo' => $assetDirectory.DIRECTORY_SEPARATOR.'thaigo.png',
             'sponsorLayer0' => $assetDirectory.DIRECTORY_SEPARATOR.'Layer 0.png',
+            'mapToLocation' => $assetDirectory.DIRECTORY_SEPARATOR.'Map to Location.png',
             'mediaWob' => $assetDirectory.DIRECTORY_SEPARATOR.'wob.png',
             'mediaNoodou' => $assetDirectory.DIRECTORY_SEPARATOR.'noodou.png',
         ];

@@ -101,6 +101,36 @@ const faqs: FAQItem[] = [
     ],
   },
   {
+    q: "Why do I need to provide my NRIC or Passport number?",
+    a: [
+      "This is a mandatory security requirement for identity verification and to ensure a safe environment for all high-profile events and international guests.",
+    ],
+  },
+  {
+    q: "Is my image being recorded?",
+    a: [
+      "Yes. For security purposes, the venue is monitored by CCTV. Additionally, official event photographers may capture footage for promotional use.",
+    ],
+  },
+  {
+    q: "How long will you keep my data?",
+    a: [
+      "We retain registration data for [e.g., 3 months] after the event to conclude administrative reports, after which it is securely deleted, unless a longer period is required by law.",
+    ],
+  },
+  {
+    q: "Can I bring a guest who hasn't registered?",
+    a: [
+      "No. To maintain strict access control and crowd management, only pre-registered visitors with valid credentials will be granted entry.",
+    ],
+  },
+  {
+    q: "CCTV & Surveillance",
+    a: [
+      "The event venue are under 24-hour video surveillance for the purposes of security and crime prevention. By entering, you consent to the collection and processing of your image in accordance with our Privacy Policy.",
+    ],
+  },
+  {
     q: "Who is organising this festival?",
     a: [
       "This event is proudly organised by EQ Solutions, in close collaboration with the Royal Thai Embassy and 1 Utama Shopping Centre, bringing together a vibrant cultural celebration for the public.",

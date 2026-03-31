@@ -13,6 +13,8 @@
     $backgroundSrc = $backgroundCid ?: $publicImageUrl('BACKGROUND.jpg');
     $logoCid = $embedAsset($templateAssets['logo'] ?? null);
     $logoSrc = $logoCid ?: $publicImageUrl('Songkran logo.png');
+    $eventHeaderCid = $embedAsset($templateAssets['eventHeader'] ?? null);
+    $eventHeaderSrc = $eventHeaderCid ?: $publicImageUrl('ticket-event-header-email.png');
     $venueSponsorCid = $embedAsset($templateAssets['venueSponsor'] ?? null);
     $sponsorEmbassyCid = $embedAsset($templateAssets['sponsorEmbassy'] ?? null);
     $sponsorDitpCid = $embedAsset($templateAssets['sponsorDitp'] ?? null);
@@ -21,16 +23,18 @@
     $sponsorSnakeBrandCid = $embedAsset($templateAssets['sponsorSnakeBrand'] ?? null);
     $sponsorThaigoCid = $embedAsset($templateAssets['sponsorThaigo'] ?? null);
     $sponsorLayer0Cid = $embedAsset($templateAssets['sponsorLayer0'] ?? null);
+    $mapToLocationCid = $embedAsset($templateAssets['mapToLocation'] ?? null);
     $mediaWobCid = $embedAsset($templateAssets['mediaWob'] ?? null);
     $mediaNoodouCid = $embedAsset($templateAssets['mediaNoodou'] ?? null);
     $venueSponsorSrc = $venueSponsorCid ?: $publicImageUrl('123.png');
     $sponsorEmbassySrc = $sponsorEmbassyCid ?: $publicImageUrl('Royal_Thai_Embassy_Seal.svg.png');
-    $sponsorDitpSrc = $sponsorDitpCid ?: $publicImageUrl('ditp.jpeg');
+    $sponsorDitpSrc = $sponsorDitpCid ?: $publicImageUrl('ditp-new.png');
     $sponsorAmazingThailandSrc = $sponsorAmazingThailandCid ?: $publicImageUrl('amazing thailand.png');
     $sponsorSinghaSrc = $sponsorSinghaCid ?: $publicImageUrl('singha-seeklogo.png');
     $sponsorSnakeBrandSrc = $sponsorSnakeBrandCid ?: $publicImageUrl('Snake-Brand-Logo.png');
     $sponsorThaigoSrc = $sponsorThaigoCid ?: $publicImageUrl('thaigo.png');
     $sponsorLayer0Src = $sponsorLayer0Cid ?: $publicImageUrl('Layer 0.png');
+    $mapToLocationSrc = $mapToLocationCid ?: $publicImageUrl('Map to Location.png');
     $mediaWobSrc = $mediaWobCid ?: $publicImageUrl('wob.png');
     $mediaNoodouSrc = $mediaNoodouCid ?: $publicImageUrl('noodou.png');
 
@@ -126,6 +130,14 @@
             color: #ffffff;
             text-align: center;
             text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.35);
+        }
+
+        .event-header-image {
+            width: 100%;
+            max-width: 430px;
+            height: auto;
+            margin: 0 auto;
+            display: block;
         }
 
         .event-time {
@@ -326,21 +338,16 @@
         }
 
         .maps-location-note {
-            color: #ffffff;
-            font-size: 20px;
-            line-height: 28px;
-            font-weight: 800;
-            text-align: center;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
             margin: 16px 0 0;
             text-decoration: none;
+            display: inline-block;
         }
 
-        .maps-location-icon {
-            width: 30px;
-            height: 30px;
-            vertical-align: middle;
-            margin-right: 10px;
+        .maps-location-image {
+            width: 220px;
+            max-width: 100%;
+            height: auto;
+            display: block;
         }
 
         .button-table {
@@ -401,7 +408,6 @@
         .logo-sponsor-ditp {
             max-height: 18px;
             width: auto;
-            background: #ffffff;
             padding: 2px;
             border-radius: 2px;
         }
@@ -500,22 +506,29 @@
                                             <tr>
                                                 <td class="event-block"
                                                     style="color:#ffffff; text-align:center; text-shadow:1px 1px 4px rgba(0,0,0,0.35);">
-                                                    <p class="event-time"
-                                                        style="font-size:18px; line-height:24px; font-weight:800; margin:0;">
-                                                        12PM-12AM
-                                                    </p>
-                                                    <p class="event-date"
-                                                        style="font-size:54px; line-height:54px; font-weight:900; letter-spacing:1px; margin:8px 0 6px;">
-                                                        9-19 APRIL
-                                                    </p>
-                                                    <p class="event-venue"
-                                                        style="font-size:14px; line-height:22px; font-weight:800; margin:0;">
-                                                        @GF FORECOURT OUTDOOR CARPARK, 1 UTAMA
-                                                    </p>
-                                                    <p class="event-subtitle"
-                                                        style="font-size:10px; line-height:18px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; margin:6px 0 0;">
-                                                        MALAYSIA'S PREMIER SONGKRAN FESTIVAL
-                                                    </p>
+                                                    @if($eventHeaderSrc)
+                                                        <img src="{{ $eventHeaderSrc }}"
+                                                            alt="12PM-12AM, 9-19 APRIL, at GF Forecourt Outdoor Carpark 1 Utama, Malaysia's premier Songkran festival"
+                                                            width="430" class="event-header-image"
+                                                            style="width:100%; max-width:430px; height:auto; margin:0 auto; display:block;">
+                                                    @else
+                                                        <p class="event-time"
+                                                            style="font-size:18px; line-height:24px; font-weight:800; margin:0;">
+                                                            12PM-12AM
+                                                        </p>
+                                                        <p class="event-date"
+                                                            style="font-size:54px; line-height:54px; font-weight:900; letter-spacing:1px; margin:8px 0 6px;">
+                                                            9-19 APRIL
+                                                        </p>
+                                                        <p class="event-venue"
+                                                            style="font-size:14px; line-height:22px; font-weight:800; margin:0;">
+                                                            @GF FORECOURT OUTDOOR CARPARK, 1 UTAMA
+                                                        </p>
+                                                        <p class="event-subtitle"
+                                                            style="font-size:10px; line-height:18px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; margin:6px 0 0;">
+                                                            MALAYSIA'S PREMIER SONGKRAN FESTIVAL
+                                                        </p>
+                                                    @endif
                                                 </td>
                                             </tr>
                                         </table>
@@ -560,7 +573,8 @@
                                             border="0">
                                             <tr>
                                                 <td align="center"
-                                                    style="height:{{ $heroSpacerHeight }}px; line-height:{{ $heroSpacerHeight }}px; font-size:{{ $heroSpacerHeight }}px;">&nbsp;</td>
+                                                    style="height:{{ $heroSpacerHeight }}px; line-height:{{ $heroSpacerHeight }}px; font-size:{{ $heroSpacerHeight }}px;">
+                                                    &nbsp;</td>
                                             </tr>
                                         </table>
 
@@ -582,14 +596,14 @@
                                                         @if($entryCodeDisplay !== '')
                                                             <tr>
                                                                 <td align="center" style="padding:14px 13px 18px;">
-                                                                    <table role="presentation" width="100%"
-                                                                        cellpadding="0" cellspacing="0" border="0">
+                                                                    <table role="presentation" width="100%" cellpadding="0"
+                                                                        cellspacing="0" border="0">
                                                                         <tr>
                                                                             <td class="entry-code-card"
                                                                                 style="border-radius:22px; border:1px solid rgba(255,255,255,0.52); background:linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.48)); box-shadow:0 10px 28px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.72);">
-                                                                                <table role="presentation"
-                                                                                    width="100%" cellpadding="0"
-                                                                                    cellspacing="0" border="0">
+                                                                                <table role="presentation" width="100%"
+                                                                                    cellpadding="0" cellspacing="0"
+                                                                                    border="0">
                                                                                     <tr>
                                                                                         <td align="center"
                                                                                             style="padding:18px 22px;">
@@ -693,21 +707,13 @@
                                                         {!! $messageCopy !!}
                                                     </p>
                                                     @if($showMapsLink)
-                                                        <a href="https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw" target="_blank"
-                                                            rel="noopener noreferrer" class="maps-location-note"
-                                                            style="color:#ffffff; font-size:20px; line-height:28px; font-weight:800; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.45); margin:16px 0 0; text-decoration:none; display:inline-block;">
-                                                            <svg class="maps-location-icon" viewBox="0 0 24 24"
-                                                                aria-hidden="true"
-                                                                style="width:30px; height:30px; vertical-align:middle; margin-right:10px;">
-                                                                <path fill="#4285F4"
-                                                                    d="M12 2C8.13 2 5 5.13 5 9c0 4.91 5.37 11.62 6.08 12.49a1.18 1.18 0 0 0 1.84 0C13.63 20.62 19 13.91 19 9c0-3.87-3.13-7-7-7Z" />
-                                                                <path fill="#34A853"
-                                                                    d="M12 2a6.96 6.96 0 0 0-5.17 2.29l4.24 4.24A2.5 2.5 0 0 1 14.5 12l4.21 4.21C18.9 13.91 19 11.15 19 9c0-3.87-3.13-7-7-7Z" />
-                                                                <path fill="#FBBC04"
-                                                                    d="M7.04 4.06A6.97 6.97 0 0 0 5 9c0 4.91 5.37 11.62 6.08 12.49.49.61 1.27.61 1.84 0 .29-.36 1.42-1.78 2.63-3.63L7.04 9.35A2.49 2.49 0 0 1 7.04 4.06Z" />
-                                                                <circle cx="12" cy="9" r="3.2" fill="#EA4335" />
-                                                            </svg>
-                                                            <span style="vertical-align:middle;">Maps to Location</span>
+                                                        <a href="https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw"
+                                                            target="_blank" rel="noopener noreferrer"
+                                                            class="maps-location-note"
+                                                            style="margin:16px 0 0; text-decoration:none; display:inline-block;">
+                                                            <img src="{{ $mapToLocationSrc }}" alt="Map to Location"
+                                                                class="maps-location-image"
+                                                                style="display:block; width:220px; max-width:100%; height:auto;">
                                                         </a>
                                                     @endif
                                                     @if($supportNote !== '')
@@ -781,7 +787,7 @@
                                                                             @if($sponsorDitpSrc)
                                                                                 <img src="{{ $sponsorDitpSrc }}" alt="DITP"
                                                                                     class="logo-inline logo-sponsor-ditp"
-                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 3px; max-height:18px; width:auto; background:#ffffff; padding:2px; border-radius:2px;">
+                                                                                    style="display:inline-block; vertical-align:middle; margin:2px 3px; max-height:18px; width:auto; padding:2px; border-radius:2px;">
                                                                             @endif
                                                                             @if($sponsorAmazingThailandSrc)
                                                                                 <img src="{{ $sponsorAmazingThailandSrc }}"
