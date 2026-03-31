@@ -1511,41 +1511,45 @@ class AdminFirestoreRepository
                 }, $documents),
                 'total' => $this->countScanLogsUsingRest($filters),
             ];
-        } catch (RuntimeException $exception) {
+        } catch (\Throwable $exception) {
             return $this->fallbackPaginateScanLogsUsingRest($filters, $offset, $limit, $exception);
         }
     }
 
     private function paginateScanLogsUsingGrpc(array $filters, int $offset, int $limit): array
     {
-        $query = $this->applyScanLogFilters(
-            $this->client()->collection($this->scanLogsCollection()),
-            $filters,
-        );
+        try {
+            $query = $this->applyScanLogFilters(
+                $this->client()->collection($this->scanLogsCollection()),
+                $filters,
+            );
 
-        $query = $query
-            ->orderBy('scanned_at', Query::DIR_DESCENDING)
-            ->orderBy(Query::DOCUMENT_ID, Query::DIR_DESCENDING)
-            ->offset($offset)
-            ->limit($limit);
+            $query = $query
+                ->orderBy('scanned_at', Query::DIR_DESCENDING)
+                ->orderBy(Query::DOCUMENT_ID, Query::DIR_DESCENDING)
+                ->offset($offset)
+                ->limit($limit);
 
-        $rows = [];
+            $rows = [];
 
-        foreach ($query->documents() as $documentSnapshot) {
-            if (! $documentSnapshot->exists()) {
-                continue;
+            foreach ($query->documents() as $documentSnapshot) {
+                if (! $documentSnapshot->exists()) {
+                    continue;
+                }
+
+                $row = $this->timestamps->normalizeFromStorage($documentSnapshot->data());
+                $row['__id'] = $documentSnapshot->id();
+                $row['__path'] = $this->scanLogsCollection().'/'.$documentSnapshot->id();
+                $rows[] = $row;
             }
 
-            $row = $this->timestamps->normalizeFromStorage($documentSnapshot->data());
-            $row['__id'] = $documentSnapshot->id();
-            $row['__path'] = $this->scanLogsCollection().'/'.$documentSnapshot->id();
-            $rows[] = $row;
+            return [
+                'items' => $rows,
+                'total' => $this->countScanLogsUsingGrpc($filters),
+            ];
+        } catch (\Throwable $exception) {
+            return $this->fallbackPaginateScanLogsUsingRest($filters, $offset, $limit, $exception);
         }
-
-        return [
-            'items' => $rows,
-            'total' => $this->countScanLogsUsingGrpc($filters),
-        ];
     }
 
     private function latestScanLogUsingRest(array $filters): ?array
@@ -1570,7 +1574,7 @@ class AdminFirestoreRepository
             $decoded['__path'] = $this->documentPathFromName((string) ($document['name'] ?? ''));
 
             return $decoded;
-        } catch (RuntimeException $exception) {
+        } catch (\Throwable $exception) {
             $rows = $this->fallbackScanLogRowsUsingRest($filters, $exception, 'latest');
 
             return $rows[0] ?? null;
@@ -1579,26 +1583,32 @@ class AdminFirestoreRepository
 
     private function latestScanLogUsingGrpc(array $filters): ?array
     {
-        $query = $this->applyScanLogFilters(
-            $this->client()->collection($this->scanLogsCollection()),
-            $filters,
-        )->orderBy('scanned_at', Query::DIR_DESCENDING)
-            ->orderBy(Query::DOCUMENT_ID, Query::DIR_DESCENDING)
-            ->limit(1);
+        try {
+            $query = $this->applyScanLogFilters(
+                $this->client()->collection($this->scanLogsCollection()),
+                $filters,
+            )->orderBy('scanned_at', Query::DIR_DESCENDING)
+                ->orderBy(Query::DOCUMENT_ID, Query::DIR_DESCENDING)
+                ->limit(1);
 
-        foreach ($query->documents() as $documentSnapshot) {
-            if (! $documentSnapshot->exists()) {
-                continue;
+            foreach ($query->documents() as $documentSnapshot) {
+                if (! $documentSnapshot->exists()) {
+                    continue;
+                }
+
+                $row = $this->timestamps->normalizeFromStorage($documentSnapshot->data());
+                $row['__id'] = $documentSnapshot->id();
+                $row['__path'] = $this->scanLogsCollection().'/'.$documentSnapshot->id();
+
+                return $row;
             }
 
-            $row = $this->timestamps->normalizeFromStorage($documentSnapshot->data());
-            $row['__id'] = $documentSnapshot->id();
-            $row['__path'] = $this->scanLogsCollection().'/'.$documentSnapshot->id();
+            return null;
+        } catch (\Throwable $exception) {
+            $rows = $this->fallbackScanLogRowsUsingRest($filters, $exception, 'latest');
 
-            return $row;
+            return $rows[0] ?? null;
         }
-
-        return null;
     }
 
     private function countUsersUsingRest(array $filters): int
@@ -1676,7 +1686,7 @@ class AdminFirestoreRepository
             );
 
             return $this->restApi->runCountQuery($structuredQuery, 'count');
-        } catch (RuntimeException $exception) {
+        } catch (\Throwable $exception) {
             return count($this->fallbackScanLogRowsUsingRest($filters, $exception, 'count'));
         }
     }
@@ -1685,7 +1695,7 @@ class AdminFirestoreRepository
         array $filters,
         int $offset,
         int $limit,
-        RuntimeException $exception,
+        \Throwable $exception,
     ): array {
         $rows = $this->fallbackScanLogRowsUsingRest($filters, $exception, 'paginate');
 
@@ -1697,10 +1707,10 @@ class AdminFirestoreRepository
 
     private function fallbackScanLogRowsUsingRest(
         array $filters,
-        RuntimeException $exception,
+        \Throwable $exception,
         string $operation,
     ): array {
-        Log::warning('Falling back to in-memory scan log filtering for Firestore REST queries.', [
+        Log::warning('Falling back to in-memory scan log filtering after Firestore query failure.', [
             'operation' => $operation,
             'message' => $exception->getMessage(),
             'code' => $exception->getCode(),
@@ -1795,12 +1805,16 @@ class AdminFirestoreRepository
 
     private function countScanLogsUsingGrpc(array $filters): int
     {
-        $query = $this->applyScanLogFilters(
-            $this->client()->collection($this->scanLogsCollection()),
-            $filters,
-        );
+        try {
+            $query = $this->applyScanLogFilters(
+                $this->client()->collection($this->scanLogsCollection()),
+                $filters,
+            );
 
-        return (int) $query->count();
+            return (int) $query->count();
+        } catch (\Throwable $exception) {
+            return count($this->fallbackScanLogRowsUsingRest($filters, $exception, 'count'));
+        }
     }
 
     private function flushAdminUserManagementCacheOnSuccessfulAttendance(string $result): void

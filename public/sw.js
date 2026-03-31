@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'songkran-scanner-v1';
+const CACHE_VERSION = 'songkran-scanner-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const OFFLINE_URL = '/offline.html';
 const STAFF_MANIFEST_URL = '/pwa/staff-manifest.webmanifest';

@@ -1439,20 +1439,11 @@ export function StaffScannerPage() {
       return;
     }
 
-    if (cameraPermissionState === 'denied') {
-      const deniedMessage = cameraDeniedGuidance(cameraSurface, cameraPlatform);
-      setCameraMessage(deniedMessage);
-      void showScannerAlert({
-        icon: 'error',
-        title: 'Camera blocked',
-        text: 'Camera permission is blocked.',
-      });
-      return;
-    }
-
     try {
       setScannerPending(true);
-      setCameraMessage('');
+      setCameraMessage(cameraPermissionState === 'denied'
+        ? 'Trying camera access again. If the browser still blocks it, check site permissions and retry.'
+        : '');
 
       await stopScanner();
       setAwaitingCameraPermission(cameraPermissionState !== 'granted');

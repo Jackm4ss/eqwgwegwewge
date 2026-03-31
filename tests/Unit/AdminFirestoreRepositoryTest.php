@@ -8,6 +8,8 @@ use App\Services\Firebase\FirebaseClientFactory;
 use App\Services\Firebase\FirestoreRestApi;
 use App\Services\Firebase\FirestoreTimestampNormalizer;
 use App\Services\Tickets\TicketQrCodeService;
+use Google\Cloud\Firestore\FirestoreClient;
+use Google\Cloud\Firestore\Query;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
@@ -554,6 +556,185 @@ class AdminFirestoreRepositoryTest extends TestCase
         $this->assertSame('scan-300', $result['items'][1]['__id']);
     }
 
+    public function test_count_scan_logs_falls_back_to_collection_listing_when_grpc_aggregation_fails(): void
+    {
+        config(['firebase.transport' => 'grpc']);
+
+        $restApi = Mockery::mock(FirestoreRestApi::class);
+        $timestamps = Mockery::mock(FirestoreTimestampNormalizer::class);
+        $ticketQrCodeService = Mockery::mock(TicketQrCodeService::class);
+        $factory = Mockery::mock(FirebaseClientFactory::class);
+        $client = Mockery::mock(FirestoreClient::class);
+        $filteredQuery = Mockery::mock();
+        $fallbackCollection = Mockery::mock();
+
+        $repository = $this->makeRepository($restApi, $timestamps, $ticketQrCodeService, $factory);
+
+        $factory->shouldReceive('make')->atLeast()->once()->andReturn($client);
+        $client->shouldReceive('collection')->with('scan_logs')->andReturn($filteredQuery, $fallbackCollection);
+        $filteredQuery->shouldReceive('where')->once()->with('scanner_name', '=', 'Gate A')->andReturnSelf();
+        $filteredQuery->shouldReceive('where')->once()->with('scanned_at', '>=', Mockery::on(
+            fn ($value): bool => $value instanceof \DateTimeInterface
+        ))->andReturnSelf();
+        $filteredQuery->shouldReceive('where')->once()->with('scanned_at', '<=', Mockery::on(
+            fn ($value): bool => $value instanceof \DateTimeInterface
+        ))->andReturnSelf();
+        $filteredQuery->shouldReceive('count')->once()->andThrow(new \Exception('gRPC aggregation failed.', 9));
+        $fallbackCollection->shouldReceive('documents')->once()->andReturn([
+            $this->fakeDocumentSnapshot('scan-100', [
+                'scanner_name' => 'Gate A',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T01:00:00.000000Z',
+            ]),
+            $this->fakeDocumentSnapshot('scan-200', [
+                'scanner_name' => 'Gate A',
+                'result' => 'duplicate',
+                'scanned_at' => '2026-03-29T02:00:00.000000Z',
+            ]),
+            $this->fakeDocumentSnapshot('scan-300', [
+                'scanner_name' => 'Gate B',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T03:00:00.000000Z',
+            ]),
+            $this->fakeDocumentSnapshot('scan-400', [
+                'scanner_name' => 'Gate A',
+                'result' => 'success',
+                'scanned_at' => '2026-03-30T01:00:00.000000Z',
+            ]),
+        ]);
+        $timestamps->shouldReceive('normalizeFromStorage')
+            ->times(4)
+            ->andReturnUsing(fn (array $payload): array => $payload);
+
+        $count = $repository->countScanLogs([
+            'scanner_post' => 'Gate A',
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ]);
+
+        $this->assertSame(2, $count);
+    }
+
+    public function test_paginate_scan_logs_falls_back_to_collection_listing_when_grpc_query_fails(): void
+    {
+        config(['firebase.transport' => 'grpc']);
+
+        $restApi = Mockery::mock(FirestoreRestApi::class);
+        $timestamps = Mockery::mock(FirestoreTimestampNormalizer::class);
+        $ticketQrCodeService = Mockery::mock(TicketQrCodeService::class);
+        $factory = Mockery::mock(FirebaseClientFactory::class);
+        $client = Mockery::mock(FirestoreClient::class);
+        $filteredQuery = Mockery::mock();
+        $fallbackCollection = Mockery::mock();
+
+        $repository = $this->makeRepository($restApi, $timestamps, $ticketQrCodeService, $factory);
+
+        $factory->shouldReceive('make')->atLeast()->once()->andReturn($client);
+        $client->shouldReceive('collection')->with('scan_logs')->andReturn($filteredQuery, $fallbackCollection);
+        $filteredQuery->shouldReceive('where')->once()->with('scanner_name', '=', 'Gate A')->andReturnSelf();
+        $filteredQuery->shouldReceive('where')->once()->with('scanned_at', '>=', Mockery::on(
+            fn ($value): bool => $value instanceof \DateTimeInterface
+        ))->andReturnSelf();
+        $filteredQuery->shouldReceive('where')->once()->with('scanned_at', '<=', Mockery::on(
+            fn ($value): bool => $value instanceof \DateTimeInterface
+        ))->andReturnSelf();
+        $filteredQuery->shouldReceive('orderBy')->once()->with('scanned_at', Query::DIR_DESCENDING)->andReturnSelf();
+        $filteredQuery->shouldReceive('orderBy')->once()->with(Query::DOCUMENT_ID, Query::DIR_DESCENDING)->andReturnSelf();
+        $filteredQuery->shouldReceive('offset')->once()->with(0)->andReturnSelf();
+        $filteredQuery->shouldReceive('limit')->once()->with(2)->andReturnSelf();
+        $filteredQuery->shouldReceive('documents')->once()->andThrow(new \Exception('gRPC structured query failed.', 9));
+        $fallbackCollection->shouldReceive('documents')->once()->andReturn([
+            $this->fakeDocumentSnapshot('scan-100', [
+                'scanner_name' => 'Gate A',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T01:00:00.000000Z',
+                'ticket_code' => 'TICKET-100',
+            ]),
+            $this->fakeDocumentSnapshot('scan-200', [
+                'scanner_name' => 'Gate A',
+                'result' => 'duplicate',
+                'scanned_at' => '2026-03-29T04:00:00.000000Z',
+                'ticket_code' => 'TICKET-200',
+            ]),
+            $this->fakeDocumentSnapshot('scan-300', [
+                'scanner_name' => 'Gate A',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T03:00:00.000000Z',
+                'ticket_code' => 'TICKET-300',
+            ]),
+            $this->fakeDocumentSnapshot('scan-400', [
+                'scanner_name' => 'Gate B',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T05:00:00.000000Z',
+                'ticket_code' => 'TICKET-400',
+            ]),
+        ]);
+        $timestamps->shouldReceive('normalizeFromStorage')
+            ->times(4)
+            ->andReturnUsing(fn (array $payload): array => $payload);
+
+        $result = $repository->paginateScanLogs([
+            'scanner_post' => 'Gate A',
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ], 1, 2);
+
+        $this->assertSame(3, $result['total']);
+        $this->assertCount(2, $result['items']);
+        $this->assertSame('scan-200', $result['items'][0]['__id']);
+        $this->assertSame('scan-300', $result['items'][1]['__id']);
+    }
+
+    public function test_latest_scan_log_falls_back_to_collection_listing_when_grpc_query_fails(): void
+    {
+        config(['firebase.transport' => 'grpc']);
+
+        $restApi = Mockery::mock(FirestoreRestApi::class);
+        $timestamps = Mockery::mock(FirestoreTimestampNormalizer::class);
+        $ticketQrCodeService = Mockery::mock(TicketQrCodeService::class);
+        $factory = Mockery::mock(FirebaseClientFactory::class);
+        $client = Mockery::mock(FirestoreClient::class);
+        $filteredQuery = Mockery::mock();
+        $fallbackCollection = Mockery::mock();
+
+        $repository = $this->makeRepository($restApi, $timestamps, $ticketQrCodeService, $factory);
+
+        $factory->shouldReceive('make')->atLeast()->once()->andReturn($client);
+        $client->shouldReceive('collection')->with('scan_logs')->andReturn($filteredQuery, $fallbackCollection);
+        $filteredQuery->shouldReceive('where')->once()->with('scanner_name', '=', 'Gate A')->andReturnSelf();
+        $filteredQuery->shouldReceive('orderBy')->once()->with('scanned_at', Query::DIR_DESCENDING)->andReturnSelf();
+        $filteredQuery->shouldReceive('orderBy')->once()->with(Query::DOCUMENT_ID, Query::DIR_DESCENDING)->andReturnSelf();
+        $filteredQuery->shouldReceive('limit')->once()->with(1)->andReturnSelf();
+        $filteredQuery->shouldReceive('documents')->once()->andThrow(new \Exception('gRPC latest query failed.', 9));
+        $fallbackCollection->shouldReceive('documents')->once()->andReturn([
+            $this->fakeDocumentSnapshot('scan-100', [
+                'scanner_name' => 'Gate A',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T01:00:00.000000Z',
+            ]),
+            $this->fakeDocumentSnapshot('scan-200', [
+                'scanner_name' => 'Gate A',
+                'result' => 'duplicate',
+                'scanned_at' => '2026-03-29T04:00:00.000000Z',
+            ]),
+            $this->fakeDocumentSnapshot('scan-300', [
+                'scanner_name' => 'Gate B',
+                'result' => 'success',
+                'scanned_at' => '2026-03-29T05:00:00.000000Z',
+            ]),
+        ]);
+        $timestamps->shouldReceive('normalizeFromStorage')
+            ->times(3)
+            ->andReturnUsing(fn (array $payload): array => $payload);
+
+        $result = $repository->latestScanLog([
+            'scanner_post' => 'Gate A',
+        ]);
+
+        $this->assertSame('scan-200', $result['__id']);
+        $this->assertSame('2026-03-29T04:00:00.000000Z', $result['scanned_at']);
+    }
+
     public function test_latest_non_future_scan_log_date_prefers_non_future_scan_log(): void
     {
         $restApi = Mockery::mock(FirestoreRestApi::class);
@@ -598,10 +779,37 @@ class AdminFirestoreRepositoryTest extends TestCase
         FirestoreRestApi $restApi,
         FirestoreTimestampNormalizer $timestamps,
         TicketQrCodeService $ticketQrCodeService,
+        ?FirebaseClientFactory $factory = null,
     ): AdminFirestoreRepository {
-        $factory = Mockery::mock(FirebaseClientFactory::class);
+        $factory ??= Mockery::mock(FirebaseClientFactory::class);
         $factory->shouldIgnoreMissing();
 
         return new AdminFirestoreRepository($factory, $restApi, $timestamps, $ticketQrCodeService);
+    }
+
+    private function fakeDocumentSnapshot(string $id, array $data): object
+    {
+        return new class($id, $data)
+        {
+            public function __construct(
+                private readonly string $id,
+                private readonly array $data,
+            ) {}
+
+            public function exists(): bool
+            {
+                return true;
+            }
+
+            public function data(): array
+            {
+                return $this->data;
+            }
+
+            public function id(): string
+            {
+                return $this->id;
+            }
+        };
     }
 }
