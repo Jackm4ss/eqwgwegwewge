@@ -648,7 +648,7 @@ APP_NAME="Event System"
 APP_ENV=production
 APP_KEY=
 APP_DEBUG=false
-APP_URL=https://event.example.com
+APP_URL=https://songkranfestival.my
 APP_ROUTING_MODE=subdomain
 APP_LOCALE=en
 APP_FALLBACK_LOCALE=en
@@ -663,7 +663,7 @@ DB_DATABASE=/var/www/event-system/database/database.sqlite
 SESSION_DRIVER=file
 SESSION_LIFETIME=120
 SESSION_COOKIE=event_system_session
-SESSION_DOMAIN=.example.com
+SESSION_DOMAIN=.songkranfestival.my
 SESSION_SECURE_COOKIE=true
 
 CACHE_STORE=file
@@ -710,10 +710,10 @@ SCANNER_SEED_COUNT=1
 SCANNER_BOOTSTRAP_PASSWORD=
 SCANNER_POSTS=Gate A,Gate B
 
-FRONTEND_HOMEPAGE_URL=https://register.example.com
-ADMIN_APP_URL=https://portal.example.com
-REGISTER_APP_URL=https://register.example.com
-STAFF_APP_URL=https://app.example.com
+FRONTEND_HOMEPAGE_URL=https://songkranfestival.my
+ADMIN_APP_URL=https://portal.songkranfestival.my
+REGISTER_APP_URL=https://register.songkranfestival.my
+STAFF_APP_URL=https://app.songkranfestival.my
 ```
 
 Penjelasan keputusan config di atas:
@@ -724,7 +724,7 @@ Penjelasan keputusan config di atas:
   - paling simpel dan tidak butuh Redis
 - `APP_ROUTING_MODE=subdomain`
   - supaya production langsung aktif di mode subdomain
-- `SESSION_DOMAIN=.example.com`
+- `SESSION_DOMAIN=.songkranfestival.my`
   - supaya login/session tetap terbaca di `portal.`, `register.`, dan `app.`
 - `FIREBASE_TRANSPORT=rest`
   - paling aman untuk VPS biasa
@@ -836,48 +836,32 @@ Kalau command ini gagal, selesaikan error-nya sebelum go-live.
 
 ### Step 19 - Konfigurasi Nginx
 
-Buat file config:
+Buat file bootstrap config dulu:
 
 ```bash
-sudo nano /etc/nginx/sites-available/event-system
+sudo cp deploy/nginx/songkranfestival.my.bootstrap.conf.example /etc/nginx/sites-available/songkranfestival.my
+sudo nano /etc/nginx/sites-available/songkranfestival.my
 ```
 
-Isi dengan contoh ini:
+Di file itu, sesuaikan minimal 2 hal:
 
-```nginx
-server {
-    listen 80;
-    server_name event.example.com;
+- `root /var/www/event-system/public;`
+- `fastcgi_pass unix:/run/php/php8.2-fpm.sock;`
 
-    root /var/www/event-system/public;
-    index index.php index.html;
+Arsitektur production yang dipakai sekarang adalah:
 
-    client_max_body_size 20M;
+- landing/public: `songkranfestival.my`
+- admin: `portal.songkranfestival.my`
+- scanner: `app.songkranfestival.my`
+- register: `register.songkranfestival.my`
 
-    access_log /var/log/nginx/event-system-access.log;
-    error_log /var/log/nginx/event-system-error.log;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-}
-```
+Semua domain itu tetap mengarah ke root Laravel yang sama.  
+Pembedaan behavior dilakukan oleh aplikasi berdasarkan host request, jadi Nginx paling aman justru memakai satu vhost untuk semua domain itu.
 
 Aktifkan config:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/event-system /etc/nginx/sites-enabled/event-system
+sudo ln -s /etc/nginx/sites-available/songkranfestival.my /etc/nginx/sites-enabled/songkranfestival.my
 sudo nginx -t
 sudo systemctl reload nginx
 sudo systemctl restart php8.2-fpm
@@ -896,22 +880,30 @@ sudo systemctl reload nginx
 Setelah domain sudah resolve ke VPS:
 
 ```bash
-sudo certbot --nginx -d event.example.com
+sudo certbot --nginx -d songkranfestival.my -d portal.songkranfestival.my -d app.songkranfestival.my -d register.songkranfestival.my
 ```
 
-Kalau kalian memang sudah menyiapkan subdomain yang mengarah ke app yang sama:
+Setelah SSL berhasil dibuat, ganti bootstrap config dengan file final:
 
 ```bash
-sudo certbot --nginx -d event.example.com -d admin.example.com -d staff.example.com
+sudo cp deploy/nginx/songkranfestival.my.conf.example /etc/nginx/sites-available/songkranfestival.my
+sudo nano /etc/nginx/sites-available/songkranfestival.my
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
-Catatan:
+Di file final itu, cek lagi 3 hal:
 
-- route tetap path-based
-- jadi meskipun subdomain dipasang, URL aman tetap:
-  - `/register`
-  - `/login`
-  - `/staff/login`
+- `root /var/www/event-system/public;`
+- `fastcgi_pass unix:/run/php/php8.2-fpm.sock;`
+- path SSL:
+  - `/etc/letsencrypt/live/songkranfestival.my/fullchain.pem`
+  - `/etc/letsencrypt/live/songkranfestival.my/privkey.pem`
+
+File referensi yang bisa dipakai dari repo:
+
+- `deploy/nginx/songkranfestival.my.bootstrap.conf.example`
+- `deploy/nginx/songkranfestival.my.conf.example`
 
 ### Step 21 - Cache konfigurasi production
 
@@ -926,16 +918,17 @@ php artisan view:cache
 
 Cek semua ini:
 
-1. `https://event.example.com/` terbuka
-2. `https://event.example.com/register` terbuka
-3. `https://event.example.com/login` terbuka
-4. `https://event.example.com/staff/login` terbuka
-5. admin bisa login
-6. scanner bisa login dan pilih gate saat login
+1. `https://songkranfestival.my/` terbuka
+2. `https://register.songkranfestival.my/` terbuka
+3. `https://portal.songkranfestival.my/login` terbuka
+4. `https://app.songkranfestival.my/login` terbuka
+5. admin bisa login di `portal.songkranfestival.my`
+6. scanner bisa login di `app.songkranfestival.my` dan pilih gate saat login
 7. setelah login scanner, gate tidak bisa diganti lagi dari halaman scanner
-8. test registrasi peserta berhasil
-9. email terkirim
-10. ticket page bisa dibuka
+8. test registrasi peserta dari `register.songkranfestival.my` berhasil
+9. short link campaign seperti `https://songkranfestival.my/fb` redirect ke tujuan yang benar
+10. email verification / reset link membuka domain public yang benar
+11. ticket page bisa dibuka
 
 Kalau semua lolos, deploy pertama dianggap sukses.
 

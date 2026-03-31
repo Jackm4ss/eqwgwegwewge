@@ -94,17 +94,23 @@
   <div class="row g-3">
     <div class="col-md-6">
       <label class="form-label" for="source_{{ $fieldPrefix }}">UTM source</label>
-      <input
-        type="text"
-        class="form-control @if ($errorsEnabled) @error('source') is-invalid @enderror @endif"
+      <select
+        class="form-select @if ($errorsEnabled) @error('source') is-invalid @enderror @endif"
         id="source_{{ $fieldPrefix }}"
         name="source"
-        list="campaign-link-source-options"
-        value="{{ data_get($link, 'source', 'instagram') }}"
-        placeholder="instagram"
         data-preview-source
-      />
-      <small class="text-muted">Example: instagram, whatsapp, facebook.</small>
+        data-campaign-source-select
+      >
+        @foreach ($sourceSuggestions as $sourceSuggestion)
+          @php
+            $sourceOptionValue = strtolower(trim((string) preg_replace('/[^a-z0-9]+/i', '-', (string) $sourceSuggestion), '-'));
+          @endphp
+          <option value="{{ $sourceOptionValue }}" @selected(data_get($link, 'source', 'instagram') === $sourceOptionValue)>
+            {{ $sourceSuggestion }}
+          </option>
+        @endforeach
+      </select>
+      <small class="text-muted">Choose one source for this campaign link.</small>
     </div>
     <div class="col-md-6">
       <label class="form-label" for="medium_{{ $fieldPrefix }}">UTM medium</label>

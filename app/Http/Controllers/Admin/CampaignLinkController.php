@@ -39,6 +39,7 @@ class CampaignLinkController extends Controller
             'storageReady' => $storageReady,
             'summary' => $this->campaignLinkService->dashboardSummary(),
             'analyticsSummary' => $this->campaignLinkService->analyticsSummary($filters),
+            'sourceAnalytics' => $this->campaignLinkService->sourceVisitBreakdown($filters),
             'filters' => $filters,
             'destinationOptions' => $this->campaignLinkService->destinationOptions(),
             'sourceSuggestions' => $this->campaignLinkService->sourceSuggestions(),

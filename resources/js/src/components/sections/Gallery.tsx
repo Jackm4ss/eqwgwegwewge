@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
+import { LazyImage } from "../ui/LazyImage";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Syne', sans-serif" };
 const SG: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif" };
@@ -49,11 +50,15 @@ function GalleryItem({ src, label, col, index }: { src: string; label: string; c
       onMouseEnter={() => setHovered(true)}
       data-hover
     >
-      <img
+      <LazyImage
         src={src}
         alt={label}
+        loading={index === 0 ? "eager" : "lazy"}
+        fetchPriority={index === 0 ? "high" : "auto"}
+        wrapperClassName="w-full h-full"
         className="w-full h-full object-cover"
         style={{ transition: "transform 0.6s cubic-bezier(0.22,1,0.36,1)", transform: hovered ? "scale(1.08)" : "scale(1)" }}
+        showSkeleton
       />
       {/* Always-visible subtle gradient */}
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(5,5,8,0.8) 0%, transparent 50%)" }} />
@@ -86,6 +91,18 @@ export function Gallery() {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
   const titleX = useTransform(scrollYProgress, [0, 1], ["-5%", "5%"]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    imgs.slice(0, 2).forEach((imageAsset) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = imageAsset.src;
+    });
+  }, []);
 
   return (
     <section id="gallery" ref={ref} style={{ background: "#070810" }} className="py-24 md:py-36 relative overflow-hidden">

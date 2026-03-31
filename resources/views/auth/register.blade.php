@@ -1,4 +1,11 @@
 <!doctype html>
+@php
+  $shareImagePath = implode('/', array_map('rawurlencode', explode('/', 'images/Songkran logo.png')));
+  $metaTitle = 'Songkran Festival 2026';
+  $metaDescription = "Malaysia's Premier Songkran Festival. Join us for 11 days of pure celebration!";
+  $metaImage = asset($shareImagePath);
+  $metaUrl = url()->current();
+@endphp
 
 <html
   lang="en"
@@ -14,9 +21,28 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>Register | Event System</title>
+    <title>Register | Songkran Festival 2026</title>
+    <meta name="description" content="{{ $metaDescription }}">
+    <link rel="canonical" href="{{ $metaUrl }}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ $metaTitle }}">
+    <meta property="og:description" content="{{ $metaDescription }}">
+    <meta property="og:image" content="{{ $metaImage }}">
+    <meta property="og:image:alt" content="Songkran Festival 2026 logo">
+    <meta property="og:url" content="{{ $metaUrl }}">
+    <meta property="og:site_name" content="{{ $metaTitle }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $metaTitle }}">
+    <meta name="twitter:description" content="{{ $metaDescription }}">
+    <meta name="twitter:image" content="{{ $metaImage }}">
+    <meta name="twitter:image:alt" content="Songkran Festival 2026 logo">
 
-    <link rel="icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" href="{{ $metaImage }}">
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
+    <link rel="apple-touch-icon" href="{{ $metaImage }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

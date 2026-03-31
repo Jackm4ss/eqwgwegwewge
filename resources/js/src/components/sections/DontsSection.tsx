@@ -1,5 +1,6 @@
-import type { CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import { motion } from "motion/react";
+import { LazyImage } from "../ui/LazyImage";
 import {
   PANEL_BACKGROUND,
   PANEL_BACKGROUND_SIZE,
@@ -53,6 +54,18 @@ const PROHIBITED_ITEMS = [
 ] as const;
 
 export function DontsSection() {
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    PROHIBITED_ITEMS.slice(0, 4).forEach((item) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = iconPath(item.fileName);
+    });
+  }, []);
+
   return (
     <section
       aria-label="Festival don'ts"
@@ -114,12 +127,15 @@ export function DontsSection() {
                   style={{ boxShadow: "0 10px 28px rgba(0,0,0,0.10)" }}
                 >
                   <div className="mb-4 flex h-[88px] w-[88px] flex-shrink-0 items-center justify-center transition-transform duration-300 group-hover:scale-105 md:h-[100px] md:w-[100px]">
-                    <img
+                    <LazyImage
                       src={iconPath(item.fileName)}
                       alt=""
                       aria-hidden="true"
+                      loading={idx < 4 ? "eager" : "lazy"}
+                      fetchPriority={idx === 0 ? "high" : "auto"}
+                      wrapperClassName="h-full w-full"
                       className="h-full w-full object-contain drop-shadow-[0_6px_16px_rgba(0,0,0,0.14)]"
-                      loading="lazy"
+                      showSkeleton
                     />
                   </div>
 

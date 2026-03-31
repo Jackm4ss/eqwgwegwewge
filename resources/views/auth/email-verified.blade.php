@@ -1,6 +1,9 @@
 @extends('layouts.app', ['title' => 'Email Verified | Songkran Festival'])
 
 @section('content')
+@php
+    $homepageUrl = \App\Support\AppRouting::publicUrl();
+@endphp
 <div class="card" style="max-width:560px">
     <div class="success-icon">✓</div>
 
@@ -15,7 +18,7 @@
             <button type="button">Login</button>
         </a>
 
-        <a href="{{ env('FRONTEND_HOMEPAGE_URL', 'https://frolicking-twilight-019912.netlify.app/') }}">
+        <a href="{{ $homepageUrl }}">
             <button type="button" class="secondary-btn">Homepage</button>
         </a>
     </div>

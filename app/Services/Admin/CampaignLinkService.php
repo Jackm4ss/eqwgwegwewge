@@ -12,6 +12,23 @@ class CampaignLinkService
 {
     private const TABLE = 'campaign_links';
 
+    private const REQUIRED_COLUMNS = [
+        'id',
+        'name',
+        'slug',
+        'destination',
+        'source',
+        'medium',
+        'campaign',
+        'utm_content',
+        'notes',
+        'is_active',
+        'visit_count',
+        'last_visited_at',
+        'created_at',
+        'updated_at',
+    ];
+
     private const DESTINATION_OPTIONS = [
         'homepage' => [
             'label' => 'Homepage',
@@ -35,21 +52,37 @@ class CampaignLinkService
         'google' => 'Google',
         'website' => 'Website',
         'media-partner' => 'Media Partner',
+        'wob' => 'Wob',
+        'noodou' => 'Noodou',
+        'ilovemalaysiafood' => 'Ilovemalaysiafood',
+        'fooddiver' => 'Fooddiver',
+        'edmhub' => 'Edmhub',
+        'ig' => 'Ig',
+        'fb' => 'Fb',
+        'tya' => 'Tya',
         'direct' => 'Direct',
     ];
 
     private const SOURCE_SUGGESTIONS = [
-        'instagram',
-        'tiktok',
-        'threads',
-        'facebook',
-        'whatsapp',
-        'x',
-        'linkedin',
-        'youtube',
-        'google',
-        'media-partner',
-        'website',
+        'Instagram',
+        'TikTok',
+        'Threads',
+        'Facebook',
+        'WhatsApp',
+        'X',
+        'LinkedIn',
+        'YouTube',
+        'Google',
+        'Media Partner',
+        'Website',
+        'Wob',
+        'Noodou',
+        'Ilovemalaysiafood',
+        'Fooddiver',
+        'Edmhub',
+        'Ig',
+        'Fb',
+        'Tya',
     ];
 
     private const MEDIUM_SUGGESTIONS = [
@@ -66,12 +99,16 @@ class CampaignLinkService
 
     public function storageReady(): bool
     {
-        return Schema::hasTable(self::TABLE);
+        return $this->missingRequiredColumns() === [];
     }
 
     public function storageNotReadyMessage(): string
     {
-        return 'Campaign Links is not ready because the campaign_links table has not been created yet. Run php artisan migrate first.';
+        if (! Schema::hasTable(self::TABLE)) {
+            return 'Campaign Links is not ready because the campaign_links table has not been created yet. Run php artisan migrate first.';
+        }
+
+        return 'Campaign Links is not ready because the campaign_links table schema is outdated. Run php artisan migrate first.';
     }
 
     /**
@@ -153,6 +190,70 @@ class CampaignLinkService
             'filtered_active' => (clone $query)->where('is_active', true)->count(),
             'filtered_inactive' => (clone $query)->where('is_active', false)->count(),
             'filtered_visits' => (int) (clone $query)->sum('visit_count'),
+        ];
+    }
+
+    public function sourceVisitBreakdown(array $filters = []): array
+    {
+        if (! $this->storageReady()) {
+            return [
+                'has_data' => false,
+                'total_visits' => 0,
+                'source_count' => 0,
+                'top_source_label' => '-',
+                'top_source_visits' => 0,
+                'labels' => [],
+                'series' => [],
+                'rows' => [],
+            ];
+        }
+
+        $rows = $this->manageableLinks($filters)
+            ->groupBy(function (CampaignLink $campaignLink): string {
+                $normalizedSource = $this->normalizeToken($campaignLink->source);
+
+                return $normalizedSource !== '' ? $normalizedSource : 'direct';
+            })
+            ->map(function (EloquentCollection $campaignLinks, string $source): array {
+                return [
+                    'source' => $source,
+                    'label' => $this->sourceLabel($source),
+                    'visits' => (int) $campaignLinks->sum('visit_count'),
+                    'links' => $campaignLinks->count(),
+                ];
+            })
+            ->filter(fn (array $row): bool => $row['visits'] > 0)
+            ->sortByDesc('visits')
+            ->values();
+
+        $totalVisits = (int) $rows->sum('visits');
+
+        $rows = $rows
+            ->map(function (array $row) use ($totalVisits): array {
+                return array_merge($row, [
+                    'percentage' => $totalVisits > 0
+                        ? round(($row['visits'] / $totalVisits) * 100, 1)
+                        : 0.0,
+                ]);
+            })
+            ->values()
+            ->all();
+
+        return [
+            'has_data' => $totalVisits > 0 && $rows !== [],
+            'total_visits' => $totalVisits,
+            'source_count' => count($rows),
+            'top_source_label' => data_get($rows, '0.label', '-'),
+            'top_source_visits' => (int) data_get($rows, '0.visits', 0),
+            'labels' => array_map(
+                static fn (array $row): string => (string) data_get($row, 'label', ''),
+                $rows
+            ),
+            'series' => array_map(
+                static fn (array $row): int => (int) data_get($row, 'visits', 0),
+                $rows
+            ),
+            'rows' => $rows,
         ];
     }
 
@@ -477,5 +578,22 @@ class CampaignLinkService
     private function humanizeToken(string $value): string
     {
         return ucwords(str_replace(['-', '_'], ' ', $value));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function missingRequiredColumns(): array
+    {
+        if (! Schema::hasTable(self::TABLE)) {
+            return self::REQUIRED_COLUMNS;
+        }
+
+        $existingColumns = collect(Schema::getColumnListing(self::TABLE));
+
+        return collect(self::REQUIRED_COLUMNS)
+            ->reject(fn (string $column): bool => $existingColumns->contains($column))
+            ->values()
+            ->all();
     }
 }

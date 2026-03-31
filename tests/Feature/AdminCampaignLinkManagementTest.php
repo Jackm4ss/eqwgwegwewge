@@ -141,4 +141,47 @@ class AdminCampaignLinkManagementTest extends TestCase
                 'error' => 'Campaign Links is not ready because the campaign_links table has not been created yet. Run php artisan migrate first.',
             ]);
     }
+
+    public function test_campaign_link_management_handles_outdated_table_schema_gracefully(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        Schema::drop('campaign_links');
+
+        Schema::create('campaign_links', function ($table): void {
+            $table->id();
+            $table->string('name')->unique();
+            $table->string('destination', 40)->default('homepage');
+            $table->string('source', 120);
+            $table->string('medium', 120);
+            $table->string('campaign', 120);
+            $table->string('utm_content', 120)->nullable();
+            $table->text('notes')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+        });
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/campaign-links')
+            ->assertOk()
+            ->assertSee('campaign_links')
+            ->assertSee('missing or outdated')
+            ->assertSee('php artisan migrate');
+
+        $this->actingAs($admin, 'admin')
+            ->withSession(['_token' => 'csrf-token'])
+            ->post('/admin/campaign-links', [
+                '_token' => 'csrf-token',
+                'name' => 'Broken Link',
+                'slug' => 'broken-link',
+                'destination' => 'homepage',
+                'source' => 'instagram',
+                'medium' => 'bio',
+                'campaign' => 'april2026',
+            ])
+            ->assertRedirect(route('admin.campaign-links.index'))
+            ->assertSessionHasErrors([
+                'error' => 'Campaign Links is not ready because the campaign_links table schema is outdated. Run php artisan migrate first.',
+            ]);
+    }
 }

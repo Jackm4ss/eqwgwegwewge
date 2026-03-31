@@ -1,0 +1,51 @@
+# Bootstrap Nginx config for first-time certificate issuance.
+# Use this file before Certbot creates the TLS certificates.
+# After SSL is issued, replace it with songkranfestival.my.conf.example.
+#
+# Adjust these values before enabling:
+# - root /var/www/event-system/public;
+# - fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name songkranfestival.my portal.songkranfestival.my app.songkranfestival.my register.songkranfestival.my;
+
+    root /var/www/event-system/public;
+    index index.php index.html;
+
+    charset utf-8;
+    client_max_body_size 20M;
+
+    access_log /var/log/nginx/songkranfestival-bootstrap-access.log;
+    error_log /var/log/nginx/songkranfestival-bootstrap-error.log warn;
+
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~* \.(?:css|js|mjs|map|jpg|jpeg|gif|png|svg|webp|ico|ttf|woff|woff2)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        include fastcgi_params;
+        fastcgi_read_timeout 120;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}

@@ -1,0 +1,94 @@
+# Final Nginx config for the Songkran Festival Laravel app.
+# This single vhost serves all four domains and lets Laravel decide behavior
+# based on the incoming Host header:
+# - songkranfestival.my
+# - portal.songkranfestival.my
+# - app.songkranfestival.my
+# - register.songkranfestival.my
+#
+# Adjust these values before enabling:
+# - root /var/www/event-system/public;
+# - fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+# - ssl_certificate / ssl_certificate_key if your cert path differs.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name songkranfestival.my portal.songkranfestival.my app.songkranfestival.my register.songkranfestival.my;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/event-system/public;
+        allow all;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name songkranfestival.my portal.songkranfestival.my app.songkranfestival.my register.songkranfestival.my;
+
+    root /var/www/event-system/public;
+    index index.php index.html;
+
+    ssl_certificate /etc/letsencrypt/live/songkranfestival.my/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/songkranfestival.my/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    charset utf-8;
+    client_max_body_size 20M;
+
+    access_log /var/log/nginx/songkranfestival-access.log;
+    error_log /var/log/nginx/songkranfestival-error.log warn;
+
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
+    location = /favicon.ico {
+        access_log off;
+        log_not_found off;
+        try_files $uri =204;
+    }
+
+    location = /robots.txt {
+        access_log off;
+        log_not_found off;
+        try_files $uri =404;
+    }
+
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~* \.(?:css|js|mjs|map|jpg|jpeg|gif|png|svg|webp|ico|ttf|woff|woff2)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        include fastcgi_params;
+        fastcgi_read_timeout 120;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}

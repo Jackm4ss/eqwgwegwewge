@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { SECTION_BACKGROUND } from "./sectionContrastTheme";
+import { LazyImage } from "../ui/LazyImage";
 
 const TILT: CSSProperties = {
   fontFamily: "'Tilt Warp', sans-serif",
@@ -150,7 +151,6 @@ function TiltCard({ activity }: { activity: Activity }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const card = cardRef.current;
@@ -193,12 +193,14 @@ function TiltCard({ activity }: { activity: Activity }) {
           transform: isHovered ? "scale(1.06)" : "scale(1)",
         }}
       >
-        <img
+        <LazyImage
           src={activity.image}
           alt={activity.title}
-          onLoad={() => setImgLoaded(true)}
+          loading="lazy"
+          wrapperClassName="h-full w-full"
+          sizes={isWide ? "(min-width: 768px) 480px, 420px" : "(min-width: 768px) 340px, 300px"}
           className={`h-full w-full object-cover transition-all duration-500 ${isHovered ? "brightness-100 grayscale-0" : "brightness-95 grayscale-[10%]"
-            } ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+            }`}
         />
       </div>
 

@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { LazyImage } from "../ui/LazyImage";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 const SG: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
@@ -65,7 +66,13 @@ export function SponsorSection() {
               </div>
               <div className={CARD_CONTENT_ROW_CLASS}>
                 <div className={`${LOGO_FRAME_CLASS} px-3`}>
-                  <img src="/images/eq-solution.png" alt="eq solutions" className="h-7 md:h-8 lg:h-9 w-auto object-contain" />
+                  <LazyImage
+                    src="/images/eq-solution.png"
+                    alt="eq solutions"
+                    loading="lazy"
+                    wrapperClassName="flex items-center justify-center"
+                    className="h-7 w-auto object-contain md:h-8 lg:h-9"
+                  />
                 </div>
               </div>
             </div>
@@ -76,7 +83,13 @@ export function SponsorSection() {
               </div>
               <div className={CARD_CONTENT_ROW_CLASS}>
                 <div className={`${LOGO_FRAME_CLASS} px-3`}>
-                  <img src={VENUE_SPONSOR_URL} alt="1 Utama" className="h-8 md:h-9 lg:h-10 w-auto object-contain" />
+                  <LazyImage
+                    src={VENUE_SPONSOR_URL}
+                    alt="1 Utama"
+                    loading="lazy"
+                    wrapperClassName="flex items-center justify-center"
+                    className="h-8 w-auto object-contain md:h-9 lg:h-10"
+                  />
                 </div>
               </div>
             </div>
@@ -89,7 +102,13 @@ export function SponsorSection() {
                 <div className="grid w-full max-w-[420px] grid-cols-4 place-items-center gap-x-3 gap-y-3 md:gap-x-4 md:gap-y-3.5">
                   {SPONSOR_LOGOS.map((logo) => (
                     <div key={logo.alt} className={`${LOGO_FRAME_CLASS} w-full`}>
-                      <img src={logo.src} alt={logo.alt} className={logo.className} />
+                      <LazyImage
+                        src={logo.src}
+                        alt={logo.alt}
+                        loading="lazy"
+                        wrapperClassName="flex w-full items-center justify-center"
+                        className={logo.className}
+                      />
                     </div>
                   ))}
                 </div>
@@ -104,7 +123,13 @@ export function SponsorSection() {
                 <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4">
                   {MEDIA_PARTNERS.map((logo) => (
                     <div key={logo.alt} className="flex min-h-[56px] items-center justify-center">
-                      <img src={logo.src} alt={logo.alt} className="h-12 w-12 md:h-14 md:w-14 lg:h-16 lg:w-16 rounded-full object-cover shadow-[0_6px_20px_rgba(0,0,0,0.14)]" />
+                      <LazyImage
+                        src={logo.src}
+                        alt={logo.alt}
+                        loading="lazy"
+                        wrapperClassName="flex items-center justify-center rounded-full"
+                        className="h-12 w-12 rounded-full object-cover shadow-[0_6px_20px_rgba(0,0,0,0.14)] md:h-14 md:w-14 lg:h-16 lg:w-16"
+                      />
                     </div>
                   ))}
                 </div>

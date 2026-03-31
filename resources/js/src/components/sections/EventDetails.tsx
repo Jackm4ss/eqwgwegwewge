@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { SpotlightCard } from "../ui/SpotlightCard";
 import ShapeGrid from "../ui/ShapeGrid/ShapeGrid";
 import { SECTION_BACKGROUND } from "./sectionContrastTheme";
+import { LazyImage } from "../ui/LazyImage";
 
 const TILT: CSSProperties = {
   fontFamily: "'Tilt Warp', sans-serif",
@@ -432,10 +433,12 @@ export function EventDetails() {
                     </div>
 
                     <div className="flex items-center pt-1">
-                      <img 
-                        src="/images/eq-solution.png" 
-                        alt="EQ Solutions" 
-                        className="h-7 w-auto object-contain transition-transform duration-300 group-hover:scale-[1.03]" 
+                      <LazyImage
+                        src="/images/eq-solution.png"
+                        alt="EQ Solutions"
+                        loading="lazy"
+                        wrapperClassName="inline-flex items-center"
+                        className="h-7 w-auto object-contain transition-transform duration-300 group-hover:scale-[1.03]"
                       />
                       <ArrowUpRight
                         strokeWidth={3}

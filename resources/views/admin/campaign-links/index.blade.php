@@ -14,9 +14,12 @@
     'source' => data_get($filters, 'source') !== 'all' ? data_get($filters, 'source') : null,
     'export' => 'csv',
   ], static fn ($value) => filled($value));
+  $sourceAnalyticsRows = collect(data_get($sourceAnalytics ?? [], 'rows', []));
 @endphp
 
 @push('vendor-styles')
+  <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/libs/select2/select2.css') }}" />
+  <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/libs/apex-charts/apex-charts.css') }}" />
   <style>
     .campaign-links-page .hero-card {
       background: linear-gradient(135deg, rgba(14, 116, 144, 0.12), rgba(15, 23, 42, 0.04));
@@ -77,12 +80,94 @@
       font-size: 0.8125rem;
       font-weight: 600;
     }
+
+    .campaign-links-page .source-chart-shell {
+      min-height: 320px;
+    }
+
+    .campaign-links-page .source-breakdown-row + .source-breakdown-row {
+      border-top: 1px solid rgba(148, 163, 184, 0.2);
+      padding-top: 0.9rem;
+      margin-top: 0.9rem;
+    }
+
+    .campaign-links-page .source-breakdown-bar {
+      height: 0.4rem;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.18);
+      overflow: hidden;
+    }
+
+    .campaign-links-page .source-breakdown-bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #0284c7, #0f766e);
+    }
+
+    .campaign-links-page .select2-container {
+      width: 100% !important;
+    }
+
+    .campaign-links-page .select2-container .select2-selection--single {
+      min-height: calc(2.25rem + 2px);
+      border-color: #d9dee3;
+      display: flex;
+      align-items: center;
+    }
+
+    .campaign-links-page .select2-container .select2-selection__rendered {
+      line-height: 1.5 !important;
+      padding-left: 0.875rem !important;
+      padding-right: 2rem !important;
+      color: #0f172a;
+    }
+
+    .campaign-links-page .select2-container .select2-selection__arrow {
+      height: 100% !important;
+      right: 0.5rem !important;
+    }
+
+    .select2-dropdown .select2-results__options {
+      max-height: 240px;
+      overflow-y: auto;
+    }
   </style>
+@endpush
+
+@push('vendor-scripts')
+  <script src="{{ asset('assets-vuexy/vendor/libs/select2/select2.js') }}"></script>
+  <script src="{{ asset('assets-vuexy/vendor/libs/apex-charts/apexcharts.js') }}"></script>
 @endpush
 
 @push('page-scripts')
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+      const initSourceSelects = () => {
+        if (typeof window.jQuery === 'undefined' || !window.jQuery.fn.select2) {
+          return;
+        }
+
+        window.jQuery('[data-campaign-source-select]').each(function () {
+          const $select = window.jQuery(this);
+
+          if (!$select.parent().hasClass('position-relative')) {
+            $select.wrap('<div class="position-relative"></div>');
+          }
+
+          if ($select.data('select2')) {
+            $select.trigger('change.select2');
+            return;
+          }
+
+          $select.select2({
+            width: '100%',
+            minimumResultsForSearch: 8,
+            dropdownParent: $select.parent(),
+          });
+        });
+      };
+
       const slugify = (value) => String(value || '')
         .toLowerCase()
         .trim()
@@ -140,6 +225,51 @@
         syncPreview();
       });
 
+      @if (data_get($sourceAnalytics, 'has_data'))
+        const sourceChartEl = document.querySelector('#sourceTrafficChart');
+
+        if (sourceChartEl && typeof ApexCharts !== 'undefined') {
+          const sourceChartOptions = {
+            chart: {
+              type: 'pie',
+              height: 320,
+              toolbar: { show: false }
+            },
+            labels: @json(data_get($sourceAnalytics, 'labels', [])),
+            series: @json(data_get($sourceAnalytics, 'series', [])),
+            legend: { show: false },
+            dataLabels: {
+              enabled: true,
+              formatter: function (value) {
+                return `${Math.round(value)}%`;
+              }
+            },
+            stroke: {
+              width: 2,
+              colors: ['#ffffff']
+            },
+            colors: ['#0284c7', '#0f766e', '#7c3aed', '#ea580c', '#db2777', '#16a34a', '#ca8a04', '#475569'],
+            tooltip: {
+              y: {
+                formatter: function (value) {
+                  return `${value} clicks`;
+                }
+              }
+            },
+            responsive: [{
+              breakpoint: 992,
+              options: {
+                chart: {
+                  height: 280
+                }
+              }
+            }]
+          };
+
+          new ApexCharts(sourceChartEl, sourceChartOptions).render();
+        }
+      @endif
+
       document.querySelectorAll('[data-copy-text]').forEach((button) => {
         button.addEventListener('click', async function () {
           const originalLabel = this.textContent;
@@ -156,6 +286,8 @@
           }, 1600);
         });
       });
+
+      initSourceSelects();
     });
   </script>
 @endpush
@@ -242,7 +374,7 @@
                 ])
               @else
                 <div class="alert alert-warning mb-0" role="alert">
-                  Campaign Links is not ready yet because the <code>campaign_links</code> table is missing.
+                  Campaign Links is not ready yet because the <code>campaign_links</code> table is missing or outdated.
                   Run <code>php artisan migrate</code> first.
                 </div>
               @endif
@@ -287,6 +419,72 @@
                 <div class="analytics-box p-3 h-100">
                   <small class="text-muted d-block mb-1">Filtered visits</small>
                   <h4 class="mb-0">{{ number_format((int) data_get($analyticsSummary, 'filtered_visits', 0)) }}</h4>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-lg-7">
+                <div class="analytics-box p-3 h-100">
+                  <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+                    <div>
+                      <h6 class="mb-1">Source Click Breakdown</h6>
+                      <p class="text-muted mb-0">Pie chart from total tracked clicks per source after the current filters are applied.</p>
+                    </div>
+                    <span class="badge bg-label-info">{{ number_format((int) data_get($sourceAnalytics, 'total_visits', 0)) }} clicks</span>
+                  </div>
+
+                  @if (data_get($sourceAnalytics, 'has_data'))
+                    <div id="sourceTrafficChart" class="source-chart-shell"></div>
+                  @else
+                    <div class="preview-box p-4 text-center">
+                      <span class="badge bg-label-secondary mb-2">No click data yet</span>
+                      <p class="text-muted mb-0">The pie chart will appear after campaign links receive tracked visits.</p>
+                    </div>
+                  @endif
+                </div>
+              </div>
+
+              <div class="col-lg-5">
+                <div class="analytics-box p-3 h-100">
+                  <div class="row g-3 mb-3">
+                    <div class="col-6">
+                      <small class="text-muted d-block mb-1">Top source</small>
+                      <h5 class="mb-0">{{ data_get($sourceAnalytics, 'top_source_label', '-') }}</h5>
+                      <small class="text-muted">{{ number_format((int) data_get($sourceAnalytics, 'top_source_visits', 0)) }} clicks</small>
+                    </div>
+                    <div class="col-6">
+                      <small class="text-muted d-block mb-1">Sources with clicks</small>
+                      <h5 class="mb-0">{{ number_format((int) data_get($sourceAnalytics, 'source_count', 0)) }}</h5>
+                      <small class="text-muted">unique sources</small>
+                    </div>
+                  </div>
+
+                  @if ($sourceAnalyticsRows->isNotEmpty())
+                    <div class="d-grid gap-0">
+                      @foreach ($sourceAnalyticsRows as $sourceRow)
+                        <div class="source-breakdown-row">
+                          <div class="d-flex justify-content-between align-items-start gap-3 mb-2">
+                            <div>
+                              <span class="fw-semibold d-block">{{ data_get($sourceRow, 'label') }}</span>
+                              <small class="text-muted">{{ number_format((int) data_get($sourceRow, 'links', 0)) }} link(s)</small>
+                            </div>
+                            <div class="text-end">
+                              <span class="fw-semibold d-block">{{ number_format((int) data_get($sourceRow, 'visits', 0)) }}</span>
+                              <small class="text-muted">{{ number_format((float) data_get($sourceRow, 'percentage', 0), 1) }}%</small>
+                            </div>
+                          </div>
+                          <div class="source-breakdown-bar">
+                            <span style="width: {{ min(100, (float) data_get($sourceRow, 'percentage', 0)) }}%"></span>
+                          </div>
+                        </div>
+                      @endforeach
+                    </div>
+                  @else
+                    <div class="preview-box p-4 text-center">
+                      <p class="text-muted mb-0">No sources have recorded clicks yet.</p>
+                    </div>
+                  @endif
                 </div>
               </div>
             </div>
@@ -481,12 +679,6 @@
         </div>
       </div>
     </div>
-
-    <datalist id="campaign-link-source-options">
-      @foreach ($sourceSuggestions as $sourceSuggestion)
-        <option value="{{ $sourceSuggestion }}"></option>
-      @endforeach
-    </datalist>
 
     <datalist id="campaign-link-medium-options">
       @foreach ($mediumSuggestions as $mediumSuggestion)

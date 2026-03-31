@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, useScroll, useTransform, useMotionValue, useSpring } from "motion/react";
 import { Mic2, Disc3, Music4, ChevronLeft, ChevronRight } from "lucide-react";
+import { LazyImage } from "../ui/LazyImage";
 
 import lineup1 from "@/assets/images/lineup_1.png";
 import lineup2 from "@/assets/images/lineup_2.png";
@@ -98,14 +99,22 @@ function ArtistCard({ artist, isActive }: { artist: Artist; isActive: boolean })
       >
         {/* Portrait Image */}
         <div className="relative overflow-hidden" style={{ height: "clamp(280px, 45vh, 460px)" }}>
-          <motion.img
-            src={artist.image}
-            alt={artist.name}
-            draggable={false}
-            className="w-full h-full object-cover object-top"
+          <motion.div
             animate={{ scale: hovered || isActive ? 1.06 : 1 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-          />
+            className="h-full w-full"
+          >
+            <LazyImage
+              src={artist.image}
+              alt={artist.name}
+              draggable={false}
+              loading={isActive ? "eager" : "lazy"}
+              fetchPriority={isActive ? "high" : "auto"}
+              wrapperClassName="h-full w-full"
+              className="w-full h-full object-cover object-top"
+              showSkeleton
+            />
+          </motion.div>
           {/* Gradient */}
           <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(5,5,8,1) 0%, rgba(5,5,8,0.3) 50%, rgba(5,5,8,0.05) 100%)" }} />
 
@@ -191,6 +200,24 @@ export function ArtistLineUp() {
 
   const prev = () => rotateToIndex((current - 1 + artists.length) % artists.length);
   const next = () => rotateToIndex((current + 1) % artists.length);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const priorityIndexes = [
+      current,
+      (current + 1) % artists.length,
+      (current - 1 + artists.length) % artists.length,
+    ];
+
+    priorityIndexes.forEach((index) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = artists[index].image;
+    });
+  }, [current]);
 
   return (
     <section

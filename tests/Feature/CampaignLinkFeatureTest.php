@@ -84,15 +84,49 @@ class CampaignLinkFeatureTest extends TestCase
     {
         $admin = Admin::query()->firstOrFail();
 
+        CampaignLink::query()->create([
+            'name' => 'Instagram Campaign',
+            'slug' => 'ig-main',
+            'destination' => 'homepage',
+            'source' => 'instagram',
+            'medium' => 'bio',
+            'campaign' => 'songkran-launch',
+            'utm_content' => null,
+            'notes' => null,
+            'is_active' => true,
+            'visit_count' => 9,
+        ]);
+
+        CampaignLink::query()->create([
+            'name' => 'WhatsApp Campaign',
+            'slug' => 'wa-main',
+            'destination' => 'register',
+            'source' => 'whatsapp',
+            'medium' => 'broadcast',
+            'campaign' => 'songkran-launch',
+            'utm_content' => null,
+            'notes' => null,
+            'is_active' => true,
+            'visit_count' => 4,
+        ]);
+
         $this->actingAs($admin, 'admin')
             ->get('/admin/campaign-links')
             ->assertOk()
             ->assertSee('Create Campaign Link')
             ->assertSee('Public slug after the slash')
+            ->assertSee('name="source"', false)
+            ->assertSee('<select', false)
+            ->assertSee('data-campaign-source-select', false)
+            ->assertDontSee('campaign-link-source-options', false)
             ->assertSee('https://songkranfestival.my/')
             ->assertSee('/fb')
             ->assertSee('Export link CSV')
             ->assertSee('Analytics & Filters', false)
+            ->assertSee('Source Click Breakdown')
+            ->assertSee('Top source')
+            ->assertSee('Instagram')
+            ->assertSee('WhatsApp')
             ->assertDontSee('Reset traffic')
             ->assertDontSee('Bulk import')
             ->assertDontSee('template CSV');

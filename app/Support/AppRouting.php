@@ -39,10 +39,20 @@ final class AppRouting
         return (string) (config('routing.staff_url') ?: config('app.url'));
     }
 
+    public static function registerUrl(): string
+    {
+        return (string) (
+            config('routing.register_url')
+            ?: config('admin.future_urls.register')
+            ?: config('app.url')
+        );
+    }
+
     public static function urlForArea(string $area): string
     {
         return match ($area) {
             'admin' => self::adminUrl(),
+            'register' => self::registerUrl(),
             'staff' => self::staffUrl(),
             default => self::publicUrl(),
         };

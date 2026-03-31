@@ -3,6 +3,7 @@ import {
   MapPin, Calendar, Clock, Instagram, Facebook
 } from "lucide-react";
 import { buildRegisterUrl } from "@/lib/trafficAttribution";
+import { LazyImage } from "../ui/LazyImage";
 
 const SYNE: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 const SG: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
@@ -51,15 +52,17 @@ export function Footer() {
         background:
           "radial-gradient(circle at top, rgba(53,216,247,0.16) 0%, rgba(53,216,247,0.05) 24%, transparent 48%), linear-gradient(180deg, #0B2A43 0%, #071C2F 58%, #041220 100%)",
         position: "relative",
-        overflow: "hidden"
+        overflow: "hidden",
       }}
     >
       {/* Giant watermark */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-        <img
+        <LazyImage
           src={SONGKRAN_LOGO_URL}
           alt=""
           aria-hidden="true"
+          loading="lazy"
+          wrapperClassName="w-[min(72vw,520px)] max-w-none"
           className="w-[min(72vw,520px)] max-w-none select-none opacity-[0.04]"
           style={{ userSelect: "none", filter: "grayscale(1) brightness(1.9)" }}
         />
@@ -121,9 +124,11 @@ export function Footer() {
           {/* Brand */}
           <div>
             <div className="mb-5">
-              <img
+              <LazyImage
                 src={SONGKRAN_LOGO_URL}
                 alt="Songkran Festival"
+                loading="lazy"
+                wrapperClassName="inline-flex items-center"
                 className="h-12 w-auto"
               />
             </div>
@@ -209,7 +214,13 @@ export function Footer() {
                   rel="noopener noreferrer"
                   className="inline-block transition-transform duration-300 group hover:scale-[1.03] w-fit mt-1"
                 >
-                  <img src="/images/eq-solution.png" alt="EQ Solutions" className="h-6 w-auto object-contain" />
+                  <LazyImage
+                    src="/images/eq-solution.png"
+                    alt="EQ Solutions"
+                    loading="lazy"
+                    wrapperClassName="inline-flex items-center"
+                    className="h-6 w-auto object-contain"
+                  />
                 </a>
               </div>
             </div>

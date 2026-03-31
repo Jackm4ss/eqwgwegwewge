@@ -2,6 +2,7 @@ import { useState, memo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, Info, Music, Sparkles, Calendar, Image as ImageIcon, HelpCircle, ChevronRight, ArrowUpRight } from "lucide-react";
 import { buildRegisterUrl } from "@/lib/trafficAttribution";
+import { LazyImage } from "../ui/LazyImage";
 
 const S: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 
@@ -147,9 +148,11 @@ export function Navbar() {
                   onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                   className="flex items-center gap-2 group"
                 >
-                  <img
+                  <LazyImage
                     src="/images/Songkran logo.png"
                     alt="Songkran Festival"
+                    loading="lazy"
+                    wrapperClassName="inline-flex items-center"
                     style={{
                       width: "120px",
                       height: "auto",

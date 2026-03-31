@@ -85,4 +85,98 @@ class CampaignLinkServiceTest extends TestCase
             'visits' => 7,
         ], $service->dashboardSummary());
     }
+
+    public function test_source_visit_breakdown_groups_clicks_by_source(): void
+    {
+        /** @var CampaignLinkService $service */
+        $service = app(CampaignLinkService::class);
+
+        CampaignLink::query()->create([
+            'name' => 'Instagram Bio',
+            'slug' => 'ig-bio',
+            'destination' => 'homepage',
+            'source' => 'instagram',
+            'medium' => 'bio',
+            'campaign' => 'april2026',
+            'utm_content' => null,
+            'notes' => null,
+            'is_active' => true,
+            'visit_count' => 8,
+        ]);
+
+        CampaignLink::query()->create([
+            'name' => 'Instagram Story',
+            'slug' => 'ig-story',
+            'destination' => 'register',
+            'source' => 'instagram',
+            'medium' => 'story',
+            'campaign' => 'april2026',
+            'utm_content' => null,
+            'notes' => null,
+            'is_active' => true,
+            'visit_count' => 4,
+        ]);
+
+        CampaignLink::query()->create([
+            'name' => 'WhatsApp Blast',
+            'slug' => 'wa-blast',
+            'destination' => 'homepage',
+            'source' => 'whatsapp',
+            'medium' => 'broadcast',
+            'campaign' => 'april2026',
+            'utm_content' => null,
+            'notes' => null,
+            'is_active' => true,
+            'visit_count' => 3,
+        ]);
+
+        CampaignLink::query()->create([
+            'name' => 'Threads Zero',
+            'slug' => 'threads-zero',
+            'destination' => 'homepage',
+            'source' => 'threads',
+            'medium' => 'post',
+            'campaign' => 'april2026',
+            'utm_content' => null,
+            'notes' => null,
+            'is_active' => true,
+            'visit_count' => 0,
+        ]);
+
+        $breakdown = $service->sourceVisitBreakdown();
+
+        $this->assertTrue($breakdown['has_data']);
+        $this->assertSame(15, $breakdown['total_visits']);
+        $this->assertSame(2, $breakdown['source_count']);
+        $this->assertSame('Instagram', $breakdown['top_source_label']);
+        $this->assertSame(12, $breakdown['top_source_visits']);
+        $this->assertSame(['Instagram', 'WhatsApp'], $breakdown['labels']);
+        $this->assertSame([12, 3], $breakdown['series']);
+        $this->assertSame(80.0, data_get($breakdown, 'rows.0.percentage'));
+        $this->assertSame(20.0, data_get($breakdown, 'rows.1.percentage'));
+    }
+
+    public function test_source_suggestions_and_labels_include_custom_partner_sources(): void
+    {
+        /** @var CampaignLinkService $service */
+        $service = app(CampaignLinkService::class);
+
+        $this->assertContains('Wob', $service->sourceSuggestions());
+        $this->assertContains('Noodou', $service->sourceSuggestions());
+        $this->assertContains('Ilovemalaysiafood', $service->sourceSuggestions());
+        $this->assertContains('Fooddiver', $service->sourceSuggestions());
+        $this->assertContains('Edmhub', $service->sourceSuggestions());
+        $this->assertContains('Ig', $service->sourceSuggestions());
+        $this->assertContains('Fb', $service->sourceSuggestions());
+        $this->assertContains('Tya', $service->sourceSuggestions());
+
+        $this->assertSame('Wob', $service->sourceLabel('wob'));
+        $this->assertSame('Noodou', $service->sourceLabel('noodou'));
+        $this->assertSame('Ilovemalaysiafood', $service->sourceLabel('ilovemalaysiafood'));
+        $this->assertSame('Fooddiver', $service->sourceLabel('fooddiver'));
+        $this->assertSame('Edmhub', $service->sourceLabel('edmhub'));
+        $this->assertSame('Ig', $service->sourceLabel('ig'));
+        $this->assertSame('Fb', $service->sourceLabel('fb'));
+        $this->assertSame('Tya', $service->sourceLabel('tya'));
+    }
 }

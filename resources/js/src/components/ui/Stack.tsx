@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { LazyImage } from './LazyImage';
 
 interface Card {
   id: number | string;
@@ -111,7 +112,13 @@ export const Stack: React.FC<StackProps> = ({
               onDragEnd={isTop ? handleDragEnd : undefined}
               onClick={isTop ? handleClick : undefined}
             >
-              <img src={card.src} alt="stack-card" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
+              <LazyImage
+                src={card.src}
+                alt="stack-card"
+                loading="lazy"
+                wrapperClassName="h-full w-full pointer-events-none"
+                className="h-full w-full object-cover pointer-events-none"
+              />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(5,5,8,0.25) 0%, transparent 60%)', pointerEvents: 'none' }} />
             </motion.div>
           );

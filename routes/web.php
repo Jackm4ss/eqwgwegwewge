@@ -35,6 +35,31 @@ $renderSpa = static function (string $context) {
     ]);
 };
 
+$renderRegisterSpa = static function () {
+    $spaConfig = AppRouting::spaConfig('public');
+    $configuredRegisterPath = parse_url(AppRouting::registerUrl(), PHP_URL_PATH);
+    $registerPath = AppRouting::normalizePath(
+        is_string($configuredRegisterPath) && $configuredRegisterPath !== ''
+            ? $configuredRegisterPath
+            : '/'
+    );
+
+    $spaConfig['paths']['landing'] = [];
+    $spaConfig['paths']['register'] = collect([
+        '/',
+        '/register',
+        $registerPath,
+    ])->filter()->unique()->values()->all();
+    $spaConfig['urls']['registerForm'] = AppRouting::registerUrl();
+
+    return view('welcome', [
+        'spaContext' => 'public',
+        'spaConfig' => $spaConfig,
+        'staffScannerPosts' => config('scanner.posts', ['Gate A']),
+        'pwaManifestUrl' => null,
+    ]);
+};
+
 $redirectAuthenticatedAdmin = static function () {
     if (! Auth::guard('admin')->check()) {
         return null;
@@ -235,6 +260,19 @@ $publicRoutes = static function () use ($renderSpa, $isSubdomainMode, $adminLogi
 };
 
 $groupForDomain(AppRouting::hostFor('public'), $publicRoutes);
+
+if ($isSubdomainMode) {
+    $registerHost = AppRouting::hostFor('register');
+    $publicHost = AppRouting::hostFor('public');
+
+    if ($registerHost !== null && $registerHost !== '' && $registerHost !== $publicHost) {
+        $groupForDomain($registerHost, static function () use ($renderRegisterSpa) {
+            Route::get('/', $renderRegisterSpa);
+            Route::get('/register', $renderRegisterSpa);
+            Route::get('/forgot-qr', $renderRegisterSpa);
+        });
+    }
+}
 
 if ($isSubdomainMode) {
     $groupForDomain(AppRouting::hostFor('admin'), static function () use ($adminHomePage, $adminLoginPage) {

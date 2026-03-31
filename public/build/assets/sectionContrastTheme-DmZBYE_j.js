@@ -1,0 +1,1 @@
+const a={background:"transparent"},r="linear-gradient(rgba(255,255,255,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.16) 1px, transparent 1px), rgba(186, 230, 253, 0.72)",n="26px 26px, 26px 26px, auto",t="1px solid rgba(255,255,255,0.45)";export{t as P,a as S,n as a,r as b};

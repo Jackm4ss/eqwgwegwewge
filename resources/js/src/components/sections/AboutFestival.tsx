@@ -404,6 +404,8 @@ export function AboutFestival() {
               <img
                 src="https://flagcdn.com/th.svg"
                 alt="Thailand"
+                loading="lazy"
+                decoding="async"
                 className="h-auto w-8 rounded-[2px] shadow-sm md:w-10"
               />
               <div>
@@ -482,6 +484,8 @@ export function AboutFestival() {
               <img
                 src="https://flagcdn.com/my.svg"
                 alt="Malaysia"
+                loading="lazy"
+                decoding="async"
                 className="h-auto w-8 rounded-[2px] shadow-sm md:w-10"
               />
             </div>
