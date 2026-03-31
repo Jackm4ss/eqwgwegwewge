@@ -55,13 +55,11 @@
 @endphp
 
 <!DOCTYPE html>
-<html lang="en" style="color-scheme: only light;">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="color-scheme" content="light">
-    <meta name="supported-color-schemes" content="light">
     <title>{{ $emailDocumentTitle }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
@@ -78,7 +76,6 @@
             margin: 0;
             padding: 0;
             background-color: #e5f5f9;
-            color-scheme: only light;
             -webkit-text-size-adjust: 100%;
             -ms-text-size-adjust: 100%;
         }
@@ -471,94 +468,11 @@
                 border-bottom: 0 !important;
             }
         }
-
-        @media (prefers-color-scheme: dark) {
-            body,
-            .ticket-surface {
-                background-color: #e5f5f9 !important;
-            }
-
-            .notice-card,
-            .qr-card,
-            .entry-code-card,
-            .identity-card,
-            .footer-card,
-            .button-link {
-                background: #ffffff !important;
-                background-color: #ffffff !important;
-            }
-
-            .entry-code-card {
-                border-color: #d7eef7 !important;
-            }
-
-            .notice-eyebrow,
-            .entry-code-label,
-            .footer-heading {
-                color: #475569 !important;
-            }
-
-            .notice-title,
-            .entry-code-value,
-            .identity-name,
-            .footer-text {
-                color: #0f172a !important;
-            }
-
-            .notice-copy,
-            .entry-code-help,
-            .identity-number {
-                color: #334155 !important;
-            }
-
-            .button-link {
-                color: #0956c8 !important;
-                -webkit-text-fill-color: #0956c8 !important;
-            }
-        }
-
-        [data-ogsc] .notice-card,
-        [data-ogsc] .qr-card,
-        [data-ogsc] .entry-code-card,
-        [data-ogsc] .identity-card,
-        [data-ogsc] .footer-card,
-        [data-ogsc] .button-link {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-        }
-
-        [data-ogsc] .entry-code-card {
-            border-color: #d7eef7 !important;
-        }
-
-        [data-ogsc] .notice-eyebrow,
-        [data-ogsc] .entry-code-label,
-        [data-ogsc] .footer-heading {
-            color: #475569 !important;
-        }
-
-        [data-ogsc] .notice-title,
-        [data-ogsc] .entry-code-value,
-        [data-ogsc] .identity-name,
-        [data-ogsc] .footer-text {
-            color: #0f172a !important;
-        }
-
-        [data-ogsc] .notice-copy,
-        [data-ogsc] .entry-code-help,
-        [data-ogsc] .identity-number {
-            color: #334155 !important;
-        }
-
-        [data-ogsc] .button-link {
-            color: #0956c8 !important;
-            -webkit-text-fill-color: #0956c8 !important;
-        }
     </style>
 </head>
 
-<body style="margin:0; padding:0; background-color:#e5f5f9; color-scheme:only light;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#E5F5F9"
+<body>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
         style="width:100%; background-color:#e5f5f9;">
         <tr>
             <td align="center" style="padding:24px 0;">
@@ -609,8 +523,8 @@
                                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                                                 border="0" style="width:100%; max-width:460px; margin:24px auto 0;">
                                                 <tr>
-                                                    <td class="notice-card" bgcolor="#F8FDFF"
-                                                        style="border-radius:22px; border:1px solid #d7eef7; background:#f8fdff; background-color:#f8fdff; box-shadow:0 14px 30px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.72);">
+                                                    <td class="notice-card"
+                                                        style="border-radius:22px; border:1px solid rgba(255,255,255,0.42); background:linear-gradient(135deg, rgba(255,255,255,0.72), rgba(255,255,255,0.48)); box-shadow:0 14px 30px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.72);">
                                                         <table role="presentation" width="100%" cellpadding="0"
                                                             cellspacing="0" border="0">
                                                             <tr>
@@ -652,11 +566,10 @@
                                         <table role="presentation" cellpadding="0" cellspacing="0" border="0"
                                             class="qr-wrap" style="margin:0 auto;">
                                             <tr>
-                                                <td class="qr-card" bgcolor="#FFFFFF"
-                                                    style="width:{{ $qrCardWidth }}px; border-radius:14px; background:#ffffff; background-color:#ffffff; box-shadow:0 8px 24px rgba(0,0,0,0.22);">
+                                                <td class="qr-card"
+                                                    style="width:{{ $qrCardWidth }}px; border-radius:14px; background:#ffffff; box-shadow:0 8px 24px rgba(0,0,0,0.22);">
                                                     <table role="presentation" cellpadding="0" cellspacing="0"
-                                                        border="0" width="{{ $qrCardWidth }}" bgcolor="#FFFFFF"
-                                                        style="background-color:#ffffff;">
+                                                        border="0" width="{{ $qrCardWidth }}">
                                                         <tr>
                                                             <td align="center"
                                                                 style="padding:13px 13px {{ $entryCodeDisplay !== '' ? '0' : '13px' }};">
@@ -671,17 +584,16 @@
                                                                     <table role="presentation" width="100%"
                                                                         cellpadding="0" cellspacing="0" border="0">
                                                                         <tr>
-                                                                            <td class="entry-code-card" bgcolor="#F8FDFF"
-                                                                                style="border-radius:22px; border:1px solid #d7eef7; background:#f8fdff; background-color:#f8fdff; box-shadow:0 10px 28px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.72);">
+                                                                            <td class="entry-code-card"
+                                                                                style="border-radius:22px; border:1px solid rgba(255,255,255,0.52); background:linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.48)); box-shadow:0 10px 28px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.72);">
                                                                                 <table role="presentation"
                                                                                     width="100%" cellpadding="0"
-                                                                                    cellspacing="0" border="0" bgcolor="#F8FDFF"
-                                                                                    style="background-color:#f8fdff;">
+                                                                                    cellspacing="0" border="0">
                                                                                     <tr>
                                                                                         <td align="center"
                                                                                             style="padding:18px 22px;">
                                                                                             <p class="entry-code-label"
-                                                                                                style="color:#475569; font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
+                                                                                                style="color:rgba(15,23,42,0.68); font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
                                                                                                 Entry Code
                                                                                             </p>
                                                                                             <p class="entry-code-value"
@@ -689,7 +601,7 @@
                                                                                                 {{ $entryCodeDisplay }}
                                                                                             </p>
                                                                                             <p class="entry-code-help"
-                                                                                                style="color:#334155; font-size:12px; line-height:18px; font-weight:700; margin:8px auto 0; max-width:220px;">
+                                                                                                style="color:rgba(15,23,42,0.72); font-size:12px; line-height:18px; font-weight:700; margin:8px auto 0; max-width:220px;">
                                                                                                 Use this code for manual
                                                                                                 lookup if your QR cannot
                                                                                                 be scanned at the gate.
@@ -716,11 +628,11 @@
                                                         border="0" class="button-table" style="margin:0 auto;">
                                                         <tr>
                                                             <td align="center" bgcolor="#FFFFFF"
-                                                                style="border-radius:999px; background:#ffffff; background-color:#ffffff; box-shadow:0 12px 24px rgba(2,132,199,0.24);">
+                                                                style="border-radius:999px; background:rgba(255,255,255,0.95); box-shadow:0 12px 24px rgba(2,132,199,0.24);">
                                                                 <a href="{{ $ticketUrl }}" target="_blank"
                                                                     rel="noopener noreferrer" class="button-link"
-                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background:#ffffff; background-color:#ffffff; color:#0956c8; -webkit-text-fill-color:#0956c8; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
-                                                                    <span style="color:#0956c8; -webkit-text-fill-color:#0956c8;">{{ $ticketButtonLabel }}</span>
+                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background:rgba(255,255,255,0.95); color:#0956c8; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
+                                                                    {{ $ticketButtonLabel }}
                                                                 </a>
                                                             </td>
                                                         </tr>
@@ -732,11 +644,10 @@
                                         <table role="presentation" cellpadding="0" cellspacing="0" border="0"
                                             width="85%" style="width:85%; max-width:320px; margin:28px auto 0;">
                                             <tr>
-                                                <td class="identity-card" bgcolor="#D9F4FB"
-                                                    style="background:#d9f4fb; background-color:#d9f4fb; border:1px solid #9adcf0; border-radius:20px; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+                                                <td class="identity-card"
+                                                    style="background:rgba(255,255,255,0.36); border:1px solid rgba(255,255,255,0.32); border-radius:20px; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
                                                     <table role="presentation" width="100%" cellpadding="0"
-                                                        cellspacing="0" border="0" bgcolor="#D9F4FB"
-                                                        style="background-color:#d9f4fb;">
+                                                        cellspacing="0" border="0">
                                                         <tr>
                                                             <td align="center" style="padding:30px 35px 28px;">
                                                                 <p class="identity-name"
@@ -744,7 +655,7 @@
                                                                     {{ mb_strtoupper($fullName) }}
                                                                 </p>
                                                                 <p class="identity-number"
-                                                                    style="color:#334155; font-size:14px; line-height:20px; font-weight:600; margin:0;">
+                                                                    style="color:rgba(0,0,0,0.9); font-size:14px; line-height:20px; font-weight:600; margin:0;">
                                                                     {{ $identityDisplay }}
                                                                 </p>
                                                             </td>
@@ -820,8 +731,8 @@
                                             <tr>
                                                 <td>
                                                     <table role="presentation" width="100%" cellpadding="0"
-                                                        cellspacing="0" border="0" class="footer-card" bgcolor="#D9F4FB"
-                                                        style="width:100%; background:#d9f4fb; background-color:#d9f4fb; border:1px solid #9adcf0; border-radius:20px; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+                                                        cellspacing="0" border="0" class="footer-card"
+                                                        style="width:100%; background:rgba(255,255,255,0.36); border:1px solid rgba(255,255,255,0.32); border-radius:20px; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
                                                         <tr>
                                                             <td style="padding:16px 10px;">
                                                                 <table role="presentation" width="100%" cellpadding="0"
