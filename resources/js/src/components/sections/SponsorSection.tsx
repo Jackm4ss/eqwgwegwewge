@@ -21,13 +21,13 @@ const CARD_VALUE: React.CSSProperties = {
 };
 
 const SPONSOR_LOGOS = [
-  { src: "/images/Royal_Thai_Embassy_Seal.svg.png", alt: "Royal Thai Embassy", className: "h-9 md:h-10 lg:h-11 w-auto object-contain" },
-  { src: "/images/ditp-new.png", alt: "DITP", className: "h-7 md:h-8 lg:h-9 w-auto object-contain" },
-  { src: "/images/amazing thailand.png", alt: "Amazing Thailand", className: "h-8 md:h-9 lg:h-10 w-auto object-contain" },
-  { src: "/images/singha-seeklogo.png", alt: "Singha", className: "h-8 md:h-9 lg:h-10 w-auto object-contain" },
-  { src: "/images/Snake-Brand-Logo.png", alt: "Snake Brand", className: "h-8 md:h-9 lg:h-10 w-auto object-contain" },
-  { src: "/images/thaigo.png", alt: "Thaigo", className: "h-8 md:h-9 lg:h-10 w-auto object-contain" },
-  { src: "/images/Layer 0.png", alt: "Layer 0", className: "h-8 md:h-9 lg:h-10 w-auto object-contain" },
+  { src: "/images/Royal_Thai_Embassy_Seal.svg.png", alt: "Royal Thai Embassy", className: "h-16 md:h-20 lg:h-24 w-auto object-contain scale-125" },
+  { src: "/images/ditp-new.png", alt: "DITP", className: "h-8 md:h-9 lg:h-10 w-auto object-contain" },
+  { src: "/images/amazing thailand.png", alt: "Amazing Thailand", className: "h-9 md:h-10 lg:h-11 w-auto object-contain" },
+  { src: "/images/singha-seeklogo.png", alt: "Singha", className: "h-9 md:h-10 lg:h-11 w-auto object-contain" },
+  { src: "/images/Snake-Brand-Logo.png", alt: "Snake Brand", className: "h-16 md:h-20 lg:h-24 w-auto object-contain scale-125" },
+  { src: "/images/thaigo.png", alt: "Thaigo", className: "h-9 md:h-10 lg:h-11 w-auto object-contain" },
+  { src: "/images/Layer 0.png", alt: "Layer 0", className: "h-9 md:h-10 lg:h-11 w-auto object-contain" },
 ];
 
 const MEDIA_PARTNERS = [
@@ -53,14 +53,15 @@ export function SponsorSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="rounded-[32px] border border-white/15 px-6 py-7 md:px-8 md:py-8 lg:px-10 lg:py-9"
+          className="rounded-[32px] border border-white/15 px-6 py-10 md:px-12 md:py-12 lg:px-16 lg:py-14"
           style={{
             background: "linear-gradient(180deg, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.22) 100%)",
             boxShadow: "0 18px 42px rgba(0,0,0,0.12)",
           }}
         >
-          <div className="grid gap-5 md:grid-cols-[0.95fr_1.05fr_2.65fr_1.2fr] md:items-stretch lg:gap-6">
-            <div className={`${CARD_SECTION_CLASS} md:border-r md:pr-5 lg:pr-6`}>
+          {/* Top Row: Organiser & Venue Sponsor */}
+          <div className="grid gap-10 border-b border-black/5 pb-10 md:grid-cols-2 md:gap-16 lg:gap-24">
+            <div className="flex flex-col items-center text-center">
               <div className={CARD_TITLE_ROW_CLASS}>
                 <p style={CARD_LABEL}>ORGANISER</p>
               </div>
@@ -71,13 +72,13 @@ export function SponsorSection() {
                     alt="eq solutions"
                     loading="lazy"
                     wrapperClassName="flex items-center justify-center"
-                    className="h-7 w-auto object-contain md:h-8 lg:h-9"
+                    className="h-9 w-auto object-contain md:h-11 lg:h-13"
                   />
                 </div>
               </div>
             </div>
 
-            <div className={`${CARD_SECTION_CLASS} md:border-r md:pr-5 lg:pr-6`}>
+            <div className="flex flex-col items-center text-center">
               <div className={CARD_TITLE_ROW_CLASS}>
                 <p style={CARD_LABEL}>VENUE SPONSOR</p>
               </div>
@@ -88,25 +89,28 @@ export function SponsorSection() {
                     alt="1 Utama"
                     loading="lazy"
                     wrapperClassName="flex items-center justify-center"
-                    className="h-8 w-auto object-contain md:h-9 lg:h-10"
+                    className="h-16 w-auto object-contain md:h-20 lg:h-24 scale-125"
                   />
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className={`${CARD_SECTION_CLASS} md:border-r md:pr-5 lg:pr-6`}>
-              <div className={CARD_TITLE_ROW_CLASS}>
+          {/* Bottom Row: Sponsors & Media Partners */}
+          <div className="mt-10 grid gap-12 md:grid-cols-[1.6fr_1fr] md:gap-16 lg:mt-14 lg:gap-24">
+            <div className="flex flex-col items-center w-full">
+              <div className="mb-8 flex w-full justify-center">
                 <p style={CARD_LABEL}>SPONSORS</p>
               </div>
-              <div className={CARD_CONTENT_ROW_CLASS}>
-                <div className="grid w-full max-w-[420px] grid-cols-4 place-items-center gap-x-3 gap-y-3 md:gap-x-4 md:gap-y-3.5">
+              <div className="w-full">
+                <div className="grid w-full grid-cols-4 place-items-center gap-x-4 gap-y-10 md:gap-x-8 md:gap-y-12 lg:gap-x-12">
                   {SPONSOR_LOGOS.map((logo) => (
-                    <div key={logo.alt} className={`${LOGO_FRAME_CLASS} w-full`}>
+                    <div key={logo.alt} className="flex items-center justify-center">
                       <LazyImage
                         src={logo.src}
                         alt={logo.alt}
                         loading="lazy"
-                        wrapperClassName="flex w-full items-center justify-center"
+                        wrapperClassName="flex items-center justify-center"
                         className={logo.className}
                       />
                     </div>
@@ -115,12 +119,12 @@ export function SponsorSection() {
               </div>
             </div>
 
-            <div className={`${CARD_SECTION_CLASS} border-b-0 pb-0`}>
-              <div className={CARD_TITLE_ROW_CLASS}>
-                <p style={CARD_LABEL}>MEDIA PARTNERS</p>
+            <div className="flex flex-col items-center w-full">
+              <div className="mb-8 flex w-full justify-center">
+                <p style={CARD_LABEL}>MEDIA PARTNER</p>
               </div>
-              <div className={CARD_CONTENT_ROW_CLASS}>
-                <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4">
+              <div className="w-full">
+                <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
                   {MEDIA_PARTNERS.map((logo) => (
                     <div key={logo.alt} className="flex min-h-[56px] items-center justify-center">
                       <LazyImage
@@ -128,7 +132,8 @@ export function SponsorSection() {
                         alt={logo.alt}
                         loading="lazy"
                         wrapperClassName="flex items-center justify-center rounded-full"
-                        className="h-12 w-12 rounded-full object-cover shadow-[0_6px_20px_rgba(0,0,0,0.14)] md:h-14 md:w-14 lg:h-16 lg:w-16"
+                        className="h-16 w-16 rounded-full object-cover shadow-[0_8px_24px_rgba(0,0,0,0.15)] md:h-20 md:w-20 lg:h-24 lg:w-24"
+                        style={{ border: "3px solid white" }}
                       />
                     </div>
                   ))}

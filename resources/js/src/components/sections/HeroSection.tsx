@@ -265,19 +265,23 @@ export function HeroSection() {
 
       <motion.button
         type="button"
-        onClick={goToNextSection}
-        initial={{ opacity: 0, x: 12 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 1.1, duration: 0.45, ease: "easeOut" }}
-        className="absolute bottom-28 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white shadow-[0_8px_22px_rgba(0,0,0,0.22)] backdrop-blur-sm transition hover:scale-105 hover:bg-black/55 active:scale-95 md:hidden"
-        aria-label="Scroll to next section"
+        onClick={() => {
+          document.getElementById("about")?.scrollIntoView({ behavior: "smooth" });
+        }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.5, duration: 0.6 }}
+        className="absolute bottom-10 right-6 z-30 flex flex-col items-center justify-center gap-2 lg:hidden"
+        aria-label="Scroll to about section"
       >
-        <motion.div
-        animate={{ y: [0, 6, 0] }}
-        transition={{ repeat: Infinity, duration: 1.2 }}
-      >
-        <ArrowDown className="h-5 w-5" />
-      </motion.div>
+        <div className="bg-[#050508]/90 backdrop-blur-md border border-white/20 w-11 h-11 rounded-full shadow-[0_8px_16px_rgba(0,0,0,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
+          <motion.div
+            animate={{ y: [0, 4, 0] }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+          >
+            <ArrowDown className="h-6 w-6 text-[#3FD7F5]" />
+          </motion.div>
+        </div>
       </motion.button>
 
       {false && (

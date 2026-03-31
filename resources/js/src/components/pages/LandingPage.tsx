@@ -206,7 +206,7 @@ export function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen" style={{ fontFamily: "'Tilt Warp', sans-serif" }}>
+    <div className="min-h-screen overflow-x-hidden" style={{ fontFamily: "'Tilt Warp', sans-serif" }}>
       <LandingPageLoader ready={pageReady} />
 
       <div
