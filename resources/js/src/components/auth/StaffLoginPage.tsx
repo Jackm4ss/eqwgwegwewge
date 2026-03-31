@@ -137,6 +137,7 @@ export function StaffLoginPage() {
       onCanvasReady={handleCanvasReady}
       onPageClick={handlePageClick}
       backgroundImageUrl="/images/BACKGROUND.jpg"
+      fixedTheme="light"
     >
       <motion.main
         id="staff-login-form"

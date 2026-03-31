@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" style="color-scheme: light;">
+<html lang="en" style="color-scheme: only light;">
 @php
     $shareImagePath = implode('/', array_map('rawurlencode', explode('/', 'images/Songkran logo.png')));
     $metaTitle = 'Songkran Festival 2026';
@@ -65,7 +65,7 @@
     @viteReactRefresh
     @vite('resources/js/src/main.tsx')
 </head>
-<body class="antialiased" style="color-scheme: light; background-color: #e0f7ff;">
+<body class="antialiased" style="color-scheme: only light; background-color: #e0f7ff;">
     <div id="root"></div>
 </body>
 </html>

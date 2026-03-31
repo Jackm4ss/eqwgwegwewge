@@ -75,6 +75,7 @@ export function AuthPageShell({
   backgroundImageUrl,
   fixedTheme,
 }: AuthPageShellProps) {
+  const enforcedColorScheme = fixedTheme === 'light' ? 'only light' : fixedTheme;
   const pageBackgroundStyle = backgroundImageUrl
     ? {
         backgroundImage: `url(${backgroundImageUrl})`,
@@ -104,7 +105,7 @@ export function AuthPageShell({
       appRootHadDark: appRoot?.classList.contains('dark') ?? false,
     };
 
-    const syncMetaTag = (name: string) => {
+    const syncMetaTag = (name: string, content: string) => {
       let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
       const existed = Boolean(meta);
       const previousContent = meta?.content ?? '';
@@ -115,7 +116,7 @@ export function AuthPageShell({
         document.head.appendChild(meta);
       }
 
-      meta.content = fixedTheme;
+      meta.content = content;
 
       return () => {
         if (!meta) {
@@ -131,18 +132,20 @@ export function AuthPageShell({
       };
     };
 
-    const restoreColorSchemeMeta = syncMetaTag('color-scheme');
-    const restoreSupportedColorSchemesMeta = syncMetaTag('supported-color-schemes');
+    const themeColor = fixedTheme === 'light' ? '#E0F7FF' : '#0F172A';
+    const restoreColorSchemeMeta = syncMetaTag('color-scheme', fixedTheme);
+    const restoreSupportedColorSchemesMeta = syncMetaTag('supported-color-schemes', fixedTheme);
+    const restoreThemeColorMeta = syncMetaTag('theme-color', themeColor);
 
     html.classList.remove('dark');
     body.classList.remove('dark');
     appRoot?.classList.remove('dark');
 
-    html.style.colorScheme = fixedTheme;
-    body.style.colorScheme = fixedTheme;
+    html.style.colorScheme = enforcedColorScheme;
+    body.style.colorScheme = enforcedColorScheme;
 
     if (appRoot) {
-      appRoot.style.colorScheme = fixedTheme;
+      appRoot.style.colorScheme = enforcedColorScheme;
     }
 
     return () => {
@@ -165,13 +168,14 @@ export function AuthPageShell({
 
       restoreColorSchemeMeta();
       restoreSupportedColorSchemesMeta();
+      restoreThemeColorMeta();
     };
-  }, [fixedTheme]);
+  }, [enforcedColorScheme, fixedTheme]);
 
   return (
     <div
       className="relative min-h-screen overflow-x-hidden"
-      style={{ ...pageBackgroundStyle, colorScheme: fixedTheme }}
+      style={{ ...pageBackgroundStyle, colorScheme: enforcedColorScheme }}
       onClick={onPageClick}
     >
       {skipHref && skipLabel ? (
