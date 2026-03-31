@@ -14,6 +14,8 @@ class ScannerSeedCommandTest extends TestCase
 
     public function test_scanner_seed_command_creates_scanner_accounts_with_explicit_password(): void
     {
+        config(['scanner.seed_email_domain' => 'songkranfestival.my']);
+
         Artisan::call('scanner:seed', [
             '--password' => 'ScannerPass123!',
             '--count' => 2,
@@ -22,10 +24,11 @@ class ScannerSeedCommandTest extends TestCase
         $output = Artisan::output();
 
         $this->assertStringContainsString('Seeded 2 scanner staff accounts.', $output);
+        $this->assertStringContainsString('Email range: scanner01@songkranfestival.my -> scanner02@songkranfestival.my', $output);
         $this->assertSame(2, Admin::query()->where('role', 'scanner')->count());
-        $this->assertTrue(Hash::check('ScannerPass123!', Admin::query()->where('email', 'scanner01@songkran.local')->firstOrFail()->password));
-        $this->assertDatabaseHas('admins', ['email' => 'scanner01@songkran.local', 'role' => 'scanner']);
-        $this->assertDatabaseHas('admins', ['email' => 'scanner02@songkran.local', 'role' => 'scanner']);
+        $this->assertTrue(Hash::check('ScannerPass123!', Admin::query()->where('email', 'scanner01@songkranfestival.my')->firstOrFail()->password));
+        $this->assertDatabaseHas('admins', ['email' => 'scanner01@songkranfestival.my', 'role' => 'scanner']);
+        $this->assertDatabaseHas('admins', ['email' => 'scanner02@songkranfestival.my', 'role' => 'scanner']);
     }
 
     public function test_scanner_seed_command_requires_password_when_not_configured(): void

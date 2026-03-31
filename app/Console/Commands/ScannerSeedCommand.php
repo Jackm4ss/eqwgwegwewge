@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\BootstrapAccountEmail;
 use Database\Seeders\ScannerStaffSeeder;
 use Illuminate\Console\Command;
 
@@ -43,7 +44,7 @@ class ScannerSeedCommand extends Command
         ]);
 
         $this->info("Seeded {$count} scanner staff accounts.");
-        $this->line('Email range: scanner01@songkran.local -> '.sprintf('scanner%02d@songkran.local', $count));
+        $this->line('Email range: '.BootstrapAccountEmail::scanner(1).' -> '.BootstrapAccountEmail::scanner($count));
         $this->line('Staff login path: /'.trim((string) config('scanner.path', 'staff'), '/').'/login');
 
         return self::SUCCESS;

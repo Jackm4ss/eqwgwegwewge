@@ -17,6 +17,7 @@ class ScannerStaffSeederTest extends TestCase
         config([
             'scanner.bootstrap_password' => 'ScannerPass123!',
             'scanner.seed_count' => 3,
+            'scanner.seed_email_domain' => 'songkranfestival.my',
         ]);
 
         $this->seed(ScannerStaffSeeder::class);
@@ -24,5 +25,7 @@ class ScannerStaffSeederTest extends TestCase
         $this->assertSame(3, Admin::query()->where('role', 'scanner')->count());
         $this->assertSame(0, Admin::query()->where('role', 'admin')->count());
         $this->assertTrue(Hash::check('ScannerPass123!', Admin::query()->where('role', 'scanner')->firstOrFail()->password));
+        $this->assertDatabaseHas('admins', ['email' => 'scanner01@songkranfestival.my', 'role' => 'scanner']);
+        $this->assertDatabaseHas('admins', ['email' => 'scanner03@songkranfestival.my', 'role' => 'scanner']);
     }
 }

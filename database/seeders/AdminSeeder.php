@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Admin;
+use App\Support\BootstrapAccountEmail;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use RuntimeException;
@@ -21,7 +22,7 @@ class AdminSeeder extends Seeder
 
         for ($index = 1; $index <= $count; $index++) {
             Admin::updateOrCreate(
-                ['email' => sprintf('admin%02d@songkran.local', $index)],
+                ['email' => BootstrapAccountEmail::admin($index)],
                 [
                     'name' => sprintf('Songkran Admin %02d', $index),
                     'password' => Hash::make($password),

@@ -4,6 +4,7 @@ return [
     'path' => trim((string) env('ADMIN_PANEL_PATH', 'admin'), '/'),
     'bootstrap_password' => env('ADMIN_BOOTSTRAP_PASSWORD'),
     'seed_count' => (int) env('ADMIN_SEED_COUNT', 8),
+    'seed_email_domain' => env('BOOTSTRAP_EMAIL_DOMAIN', 'songkran.local'),
     'dashboard_days' => (int) env('ADMIN_DASHBOARD_DAYS', 7),
     'per_page' => (int) env('ADMIN_PER_PAGE', 10),
     'report_default_days' => (int) env('ADMIN_REPORT_DEFAULT_DAYS', 7),

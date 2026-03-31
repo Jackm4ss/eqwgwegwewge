@@ -17,6 +17,7 @@ class AdminSeederTest extends TestCase
         config([
             'admin.bootstrap_password' => 'SharedAdminPass123!',
             'admin.seed_count' => 8,
+            'admin.seed_email_domain' => 'songkranfestival.my',
         ]);
 
         $this->seed(AdminSeeder::class);
@@ -24,5 +25,7 @@ class AdminSeederTest extends TestCase
         $this->assertSame(8, Admin::count());
         $this->assertSame(8, Admin::query()->where('role', 'admin')->count());
         $this->assertTrue(Hash::check('SharedAdminPass123!', Admin::firstOrFail()->password));
+        $this->assertDatabaseHas('admins', ['email' => 'admin01@songkranfestival.my']);
+        $this->assertDatabaseHas('admins', ['email' => 'admin08@songkranfestival.my']);
     }
 }

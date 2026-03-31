@@ -355,8 +355,11 @@ FIREBASE_FALLBACK_LOCAL=false
 
 EVENT_CODE=SONGKRAN2026
 
+BOOTSTRAP_EMAIL_DOMAIN=songkran.local
 ADMIN_PANEL_PATH=admin
+ADMIN_SEED_COUNT=8
 STAFF_PANEL_PATH=staff
+SCANNER_SEED_COUNT=1
 SCANNER_POSTS=Gate A,Gate B
 FRONTEND_HOMEPAGE_URL=http://event-system.test
 ```
@@ -394,16 +397,17 @@ php artisan scanner:seed --password=Scanner123!
 
 Seeder ini aman dijalankan ulang karena memakai `updateOrCreate`.
 
-Email default hasil seeder:
+Email hasil seeder mengikuti `BOOTSTRAP_EMAIL_DOMAIN`:
 
-- admin: `admin01@songkran.local`, `admin02@songkran.local`, dst
-- scanner: `scanner01@songkran.local`, dst
+- admin: `admin01@{BOOTSTRAP_EMAIL_DOMAIN}`, `admin02@{BOOTSTRAP_EMAIL_DOMAIN}`, dst
+- scanner: `scanner01@{BOOTSTRAP_EMAIL_DOMAIN}`, dst
 
 Catatan penting:
 
-- email `.local` ini adalah akun internal bootstrap
+- default local tetap aman di `songkran.local`
+- kalau `BOOTSTRAP_EMAIL_DOMAIN=songkranfestival.my`, maka hasilnya jadi `admin01@songkranfestival.my`, `scanner01@songkranfestival.my`, dst
+- jumlah akun mengikuti `ADMIN_SEED_COUNT` dan `SCANNER_SEED_COUNT`
 - ini bukan email peserta
-- kalau tim ingin email admin/scanner yang lebih resmi, koordinasikan dulu sebelum ubah data production
 
 ### Step 11 - Jalankan aplikasi
 
@@ -760,6 +764,7 @@ FIREBASE_FALLBACK_LOCAL=false
 EVENT_CODE=SONGKRAN2026
 TICKET_DOWNLOAD_FONT_PATH=/var/www/event-system/storage/app/fonts/TiltWarp-Regular-VariableFont_XROT,YROT.ttf
 
+BOOTSTRAP_EMAIL_DOMAIN=songkranfestival.my
 ADMIN_PANEL_PATH=admin
 ADMIN_SEED_COUNT=2
 ADMIN_BOOTSTRAP_PASSWORD=
@@ -884,8 +889,13 @@ php artisan scanner:seed --password='GANTI_PASSWORD_SCANNER_YANG_KUAT'
 
 Setelah itu catat hasilnya:
 
-- admin login: `admin01@songkran.local`
-- scanner login: `scanner01@songkran.local`
+- admin login: `admin01@{BOOTSTRAP_EMAIL_DOMAIN}`
+- scanner login: `scanner01@{BOOTSTRAP_EMAIL_DOMAIN}`
+
+Untuk target deploy sekarang, kalau `BOOTSTRAP_EMAIL_DOMAIN=songkranfestival.my`, maka hasil nyatanya menjadi:
+
+- admin login: `admin01@songkranfestival.my`
+- scanner login: `scanner01@songkranfestival.my`
 
 ### Step 18 - Jalankan preflight scanner dan registrasi
 

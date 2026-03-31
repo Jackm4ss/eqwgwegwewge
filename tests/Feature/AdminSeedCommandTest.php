@@ -14,6 +14,8 @@ class AdminSeedCommandTest extends TestCase
 
     public function test_admin_seed_command_creates_admin_accounts_with_explicit_password(): void
     {
+        config(['admin.seed_email_domain' => 'songkranfestival.my']);
+
         Artisan::call('admin:seed', [
             '--password' => 'SharedAdminPass123!',
             '--count' => 3,
@@ -22,10 +24,11 @@ class AdminSeedCommandTest extends TestCase
         $output = Artisan::output();
 
         $this->assertStringContainsString('Seeded 3 admin accounts.', $output);
+        $this->assertStringContainsString('Email range: admin01@songkranfestival.my -> admin03@songkranfestival.my', $output);
         $this->assertSame(3, Admin::count());
         $this->assertTrue(Hash::check('SharedAdminPass123!', Admin::query()->firstOrFail()->password));
-        $this->assertDatabaseHas('admins', ['email' => 'admin01@songkran.local']);
-        $this->assertDatabaseHas('admins', ['email' => 'admin03@songkran.local']);
+        $this->assertDatabaseHas('admins', ['email' => 'admin01@songkranfestival.my']);
+        $this->assertDatabaseHas('admins', ['email' => 'admin03@songkranfestival.my']);
     }
 
     public function test_admin_seed_command_requires_password_when_not_configured(): void

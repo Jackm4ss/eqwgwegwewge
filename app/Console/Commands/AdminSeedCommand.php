@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\BootstrapAccountEmail;
 use Database\Seeders\AdminSeeder;
 use Illuminate\Console\Command;
 
@@ -43,7 +44,7 @@ class AdminSeedCommand extends Command
         ]);
 
         $this->info("Seeded {$count} admin accounts.");
-        $this->line('Email range: admin01@songkran.local -> '.sprintf('admin%02d@songkran.local', $count));
+        $this->line('Email range: '.BootstrapAccountEmail::admin(1).' -> '.BootstrapAccountEmail::admin($count));
         $this->line('Admin login path: /'.trim((string) config('admin.path', 'admin'), '/').'/login');
 
         return self::SUCCESS;
