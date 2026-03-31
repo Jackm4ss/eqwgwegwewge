@@ -103,6 +103,18 @@ class StaffScannerApiTest extends TestCase
                         'ticket_code' => 'TICKET123',
                         'entry_code_display' => 'ABCD-2345',
                     ],
+                    'activity_item' => [
+                        'scan_id' => 'scan-123',
+                        'status' => 'success',
+                        'ticket_code' => 'TICKET123',
+                        'entry_code_display' => 'ABCD-2345',
+                        'scanner_post' => 'Gate A',
+                        'scanned_at' => '2026-03-31T10:00:00Z',
+                        'participant' => [
+                            'full_name' => 'Te*** Us**',
+                            'email' => 'te**@example.com',
+                        ],
+                    ],
                     'stats' => [
                         'total_scans' => 1,
                         'successful_scans' => 1,
@@ -113,14 +125,20 @@ class StaffScannerApiTest extends TestCase
         });
 
         $this->actingAs($scanner, 'admin')
-            ->withSession(['staff.scanner_post' => 'Gate A'])
+            ->withSession(['staff.scanner_post' => 'Gate A', '_token' => 'csrf-token'])
             ->postJson('/staff/scan', [
                 'payload' => 'esf1:TICKET123:signedpayload',
+            ], [
+                'X-CSRF-TOKEN' => 'csrf-token',
             ])
             ->assertOk()
             ->assertJson([
                 'status' => 'success',
                 'scanner_post' => 'Gate A',
+                'activity_item' => [
+                    'scan_id' => 'scan-123',
+                    'ticket_code' => 'TICKET123',
+                ],
                 'participant' => [
                     'ticket_code' => 'TICKET123',
                     'entry_code_display' => 'ABCD-2345',
@@ -163,6 +181,18 @@ class StaffScannerApiTest extends TestCase
                 ->andReturn([
                     'status' => 'duplicate',
                     'message' => 'Participant was already checked in today.',
+                    'activity_item' => [
+                        'scan_id' => 'scan-456',
+                        'status' => 'duplicate',
+                        'ticket_code' => 'TICKET123',
+                        'entry_code_display' => 'ABCD-2345',
+                        'scanner_post' => 'Gate A',
+                        'scanned_at' => '2026-03-31T10:05:00Z',
+                        'participant' => [
+                            'full_name' => 'Te*** Us**',
+                            'email' => 'te**@example.com',
+                        ],
+                    ],
                     'participant' => [
                         'ticket_code' => 'TICKET123',
                         'entry_code_display' => 'ABCD-2345',
@@ -177,9 +207,11 @@ class StaffScannerApiTest extends TestCase
         });
 
         $this->actingAs($scanner, 'admin')
-            ->withSession(['staff.scanner_post' => 'Gate A'])
+            ->withSession(['staff.scanner_post' => 'Gate A', '_token' => 'csrf-token'])
             ->postJson('/staff/manual-lookup', [
                 'entry_code' => 'ABCD-2345',
+            ], [
+                'X-CSRF-TOKEN' => 'csrf-token',
             ])
             ->assertOk()
             ->assertJson([
@@ -191,34 +223,93 @@ class StaffScannerApiTest extends TestCase
             ]);
 
         $this->actingAs($scanner, 'admin')
-            ->withSession(['staff.scanner_post' => 'Gate A'])
+            ->withSession(['staff.scanner_post' => 'Gate A', '_token' => 'csrf-token'])
             ->postJson('/staff/manual-confirm', [
                 'resolution_token' => 'resolution-token-123',
+            ], [
+                'X-CSRF-TOKEN' => 'csrf-token',
             ])
             ->assertOk()
             ->assertJson([
                 'status' => 'duplicate',
+                'activity_item' => [
+                    'scan_id' => 'scan-456',
+                    'ticket_code' => 'TICKET123',
+                ],
                 'participant' => [
                     'ticket_code' => 'TICKET123',
                 ],
             ]);
     }
 
-    public function test_scanner_can_fetch_history_and_stats(): void
+    public function test_scanner_can_fetch_dashboard_paginated_history_and_stats(): void
     {
         $scanner = Admin::query()->where('role', 'scanner')->firstOrFail();
 
         $this->mock(StaffScannerService::class, function ($mock) use ($scanner): void {
-            $mock->shouldReceive('history')
+            $mock->shouldReceive('dashboard')
                 ->once()
-                ->withArgs(function (Admin $operator, string $scannerPost) use ($scanner): bool {
-                    return $operator->is($scanner) && $scannerPost === 'Gate A';
+                ->withArgs(function (Admin $operator, string $scannerPost, int $page, int $perPage) use ($scanner): bool {
+                    return $operator->is($scanner)
+                        && $scannerPost === 'Gate A'
+                        && $page === 1
+                        && $perPage === 20;
                 })
                 ->andReturn([
-                    [
-                        'status' => 'success',
-                        'ticket_code' => 'TICKET123',
-                        'entry_code_display' => 'ABCD-2345',
+                    'stats' => [
+                        'total_scans' => 3,
+                        'successful_scans' => 2,
+                        'duplicate_scans' => 1,
+                        'invalid_scans' => 0,
+                    ],
+                    'history' => [
+                        'items' => [
+                            [
+                                'scan_id' => 'scan-123',
+                                'status' => 'success',
+                                'ticket_code' => 'TICKET123',
+                                'entry_code_display' => 'ABCD-2345',
+                                'scanner_post' => 'Gate A',
+                                'scanned_at' => '2026-03-31T10:00:00Z',
+                                'participant' => null,
+                            ],
+                        ],
+                        'meta' => [
+                            'page' => 1,
+                            'per_page' => 20,
+                            'total' => 21,
+                            'has_more' => true,
+                            'scope_date' => '2026-03-31',
+                        ],
+                    ],
+                ]);
+
+            $mock->shouldReceive('history')
+                ->once()
+                ->withArgs(function (Admin $operator, string $scannerPost, int $page, int $perPage) use ($scanner): bool {
+                    return $operator->is($scanner)
+                        && $scannerPost === 'Gate A'
+                        && $page === 2
+                        && $perPage === 20;
+                })
+                ->andReturn([
+                    'items' => [
+                        [
+                            'scan_id' => 'scan-456',
+                            'status' => 'duplicate',
+                            'ticket_code' => 'TICKET456',
+                            'entry_code_display' => 'WXYZ-6789',
+                            'scanner_post' => 'Gate A',
+                            'scanned_at' => '2026-03-31T10:05:00Z',
+                            'participant' => null,
+                        ],
+                    ],
+                    'meta' => [
+                        'page' => 2,
+                        'per_page' => 20,
+                        'total' => 21,
+                        'has_more' => false,
+                        'scope_date' => '2026-03-31',
                     ],
                 ]);
 
@@ -237,9 +328,51 @@ class StaffScannerApiTest extends TestCase
 
         $this->actingAs($scanner, 'admin')
             ->withSession(['staff.scanner_post' => 'Gate A'])
-            ->getJson('/staff/history')
+            ->getJson('/staff/dashboard?per_page=20')
             ->assertOk()
-            ->assertJsonCount(1);
+            ->assertJson([
+                'stats' => [
+                    'total_scans' => 3,
+                    'successful_scans' => 2,
+                    'duplicate_scans' => 1,
+                    'invalid_scans' => 0,
+                ],
+                'history' => [
+                    'items' => [
+                        [
+                            'scan_id' => 'scan-123',
+                            'ticket_code' => 'TICKET123',
+                        ],
+                    ],
+                    'meta' => [
+                        'page' => 1,
+                        'per_page' => 20,
+                        'total' => 21,
+                        'has_more' => true,
+                        'scope_date' => '2026-03-31',
+                    ],
+                ],
+            ]);
+
+        $this->actingAs($scanner, 'admin')
+            ->withSession(['staff.scanner_post' => 'Gate A'])
+            ->getJson('/staff/history?page=2&per_page=20')
+            ->assertOk()
+            ->assertJson([
+                'items' => [
+                    [
+                        'scan_id' => 'scan-456',
+                        'ticket_code' => 'TICKET456',
+                    ],
+                ],
+                'meta' => [
+                    'page' => 2,
+                    'per_page' => 20,
+                    'total' => 21,
+                    'has_more' => false,
+                    'scope_date' => '2026-03-31',
+                ],
+            ]);
 
         $this->actingAs($scanner, 'admin')
             ->withSession(['staff.scanner_post' => 'Gate A'])

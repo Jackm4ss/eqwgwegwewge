@@ -5,7 +5,6 @@ import { Navbar } from "../sections/Navbar";
 import { HeroSection } from "../sections/HeroSection";
 import { SectionDivider } from "../ui/SectionDivider";
 import { LazyImage } from "../ui/LazyImage";
-import { captureTrafficAttribution } from "@/lib/trafficAttribution";
 
 const AboutFestival = lazy(() =>
   import("../sections/AboutFestival").then((module) => ({ default: module.AboutFestival }))
@@ -135,10 +134,6 @@ export function LandingPage() {
   const [pageReady, setPageReady] = useState(false);
   const [isHeroToFaqBackgroundVisible, setIsHeroToFaqBackgroundVisible] = useState(true);
   const heroToFaqRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    captureTrafficAttribution();
-  }, []);
 
   useEffect(() => {
     let cancelled = false;

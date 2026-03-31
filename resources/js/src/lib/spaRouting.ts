@@ -25,6 +25,7 @@ export type SpaUrlKey =
   | 'staffScan'
   | 'staffManualLookup'
   | 'staffManualConfirm'
+  | 'staffDashboard'
   | 'staffHistory'
   | 'staffStats';
 
@@ -69,6 +70,7 @@ const FALLBACK_CONFIG: SpaConfig = {
     staffScan: '/staff/scan',
     staffManualLookup: '/staff/manual-lookup',
     staffManualConfirm: '/staff/manual-confirm',
+    staffDashboard: '/staff/dashboard',
     staffHistory: '/staff/history',
     staffStats: '/staff/stats',
   },

@@ -453,6 +453,9 @@ if ($isSubdomainMode) {
                 Route::post('/manual-confirm', [StaffScannerController::class, 'manualConfirm'])
                     ->name('manual-confirm');
 
+                Route::get('/dashboard', [StaffScannerController::class, 'dashboard'])
+                    ->name('dashboard');
+
                 Route::get('/history', [StaffScannerController::class, 'history'])
                     ->name('history');
 
@@ -496,6 +499,9 @@ if ($isSubdomainMode) {
 
                 Route::post('/manual-confirm', [StaffScannerController::class, 'manualConfirm'])
                     ->name('manual-confirm');
+
+                Route::get('/dashboard', [StaffScannerController::class, 'dashboard'])
+                    ->name('dashboard');
 
                 Route::get('/history', [StaffScannerController::class, 'history'])
                     ->name('history');

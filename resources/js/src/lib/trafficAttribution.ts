@@ -417,34 +417,24 @@ function buildCurrentTrafficAttribution() {
 }
 
 export function resolveTrafficAttribution() {
-  const stored = pickStoredTrafficAttribution([
-    readTrafficAttributionLocalStorage(),
-    readTrafficAttributionCookie(),
-  ]);
-
-  if (hasMeaningfulTrafficAttribution(stored)) {
-    return stored;
-  }
-
   const current = buildCurrentTrafficAttribution();
 
-  if (hasMeaningfulTrafficAttribution(current)) {
+  if (current) {
     persistTrafficAttribution(current);
 
     return current;
   }
 
+  const stored = pickStoredTrafficAttribution([
+    readTrafficAttributionLocalStorage(),
+    readTrafficAttributionCookie(),
+  ]);
+
   if (stored) {
     persistTrafficAttribution(stored);
-
-    return stored;
   }
 
-  if (current) {
-    persistTrafficAttribution(current);
-  }
-
-  return current;
+  return stored;
 }
 
 export function captureTrafficAttribution() {
@@ -467,57 +457,12 @@ function resolveRegisterUrl(currentUrl: URL) {
   return new URL('/register', currentUrl.origin);
 }
 
-function copyCurrentUtmParameters(currentUrl: URL, registerUrl: URL) {
-  const utmKeys = Array.from(new Set(
-    Array.from(currentUrl.searchParams.keys()).filter((key) => key.toLowerCase().startsWith('utm_')),
-  ));
-
-  if (utmKeys.length === 0) {
-    return false;
-  }
-
-  for (const key of utmKeys) {
-    registerUrl.searchParams.delete(key);
-
-    for (const value of currentUrl.searchParams.getAll(key)) {
-      const trimmedValue = value.trim();
-
-      if (trimmedValue !== '') {
-        registerUrl.searchParams.append(key, trimmedValue);
-      }
-    }
-  }
-
-  return true;
-}
-
 export function buildRegisterUrl() {
   if (typeof window === 'undefined') {
     return readMetaContent('register-url') || '/register';
   }
 
   const currentUrl = new URL(window.location.href);
-  const registerUrl = resolveRegisterUrl(currentUrl);
 
-  if (copyCurrentUtmParameters(currentUrl, registerUrl)) {
-    return registerUrl.toString();
-  }
-
-  const storedAttribution = captureTrafficAttribution();
-
-  if (hasMeaningfulTrafficAttribution(storedAttribution)) {
-    if (storedAttribution.traffic_source !== '' && storedAttribution.traffic_source !== 'direct') {
-      registerUrl.searchParams.set('utm_source', storedAttribution.traffic_source);
-    }
-
-    if (storedAttribution.traffic_medium !== '' && storedAttribution.traffic_medium !== 'direct') {
-      registerUrl.searchParams.set('utm_medium', storedAttribution.traffic_medium);
-    }
-
-    if (storedAttribution.traffic_campaign !== '') {
-      registerUrl.searchParams.set('utm_campaign', storedAttribution.traffic_campaign);
-    }
-  }
-
-  return registerUrl.toString();
+  return resolveRegisterUrl(currentUrl).toString();
 }

@@ -310,8 +310,10 @@ DB_CONNECTION=sqlite
 DB_DATABASE=database/database.sqlite
 
 SESSION_DRIVER=file
+SESSION_CONNECTION=default
 CACHE_STORE=file
 QUEUE_CONNECTION=sync
+REGISTRATION_REDIS_MODE=disabled
 SESSION_SECURE_COOKIE=false
 
 MAIL_MAILER=log
@@ -472,30 +474,32 @@ Biasanya tidak perlu diubah dulu:
 
 ---
 
-## 10. Rekomendasi Konfigurasi VPS Pertama Kali
+## 10. Profil Runtime yang Direkomendasikan
 
-Untuk deployment pertama di single VPS tanpa Docker, gunakan mode sederhana ini:
+Project ini sekarang punya 2 profil runtime yang jelas:
 
-- database: SQLite
-- session: file
-- cache: file
-- queue: sync
-- Firebase transport: `rest`
-- mail: SMTP
-- SSL: Nginx + Certbot
+- Local / dev profile
+  - `SESSION_DRIVER=file`
+  - `CACHE_STORE=file`
+  - `QUEUE_CONNECTION=sync`
+  - `REGISTRATION_REDIS_MODE=disabled`
+- Production / VPS profile
+  - `SESSION_DRIVER=redis`
+  - `CACHE_STORE=redis`
+  - `QUEUE_CONNECTION=redis`
+  - `REGISTRATION_REDIS_MODE=required`
 
-Kenapa ini direkomendasikan?
+Kenapa dibagi seperti ini?
 
-- lebih sedikit moving parts
-- tidak perlu Redis
-- tidak perlu Supervisor
-- tidak perlu cron scheduler untuk saat ini
+- intern dan junior tetap bisa jalan tanpa setup Redis di laptop
+- production tetap fail keras kalau Redis belum siap
+- popup sukses registrasi tetap penuh, tetapi email berat dipindah ke background queue
 
 Catatan penting:
 
-- `app/Console/Kernel.php` saat ini belum punya scheduled task
-- email saat ini dikirim secara synchronous, jadi queue worker belum wajib
-- kalau nanti tim sengaja install Redis dan background queue, baru upgrade ke mode Redis
+- `app/Console/Kernel.php` saat ini belum punya scheduled task yang wajib
+- untuk production, queue worker Redis wajib aktif
+- jalankan `php artisan registration:preflight --production` sebelum go-live
 
 ---
 
@@ -660,15 +664,29 @@ LOG_LEVEL=info
 DB_CONNECTION=sqlite
 DB_DATABASE=/var/www/event-system/database/database.sqlite
 
-SESSION_DRIVER=file
+SESSION_DRIVER=redis
+SESSION_CONNECTION=default
 SESSION_LIFETIME=120
 SESSION_COOKIE=event_system_session
 SESSION_DOMAIN=.songkranfestival.my
 SESSION_SECURE_COOKIE=true
 
-CACHE_STORE=file
-QUEUE_CONNECTION=sync
+CACHE_STORE=redis
+QUEUE_CONNECTION=redis
 FILESYSTEM_DISK=local
+REGISTRATION_REDIS_MODE=required
+REGISTRATION_EMAIL_QUEUE=registration-emails
+
+REDIS_CLIENT=phpredis
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_USERNAME=
+REDIS_PASSWORD=
+REDIS_DB=0
+REDIS_CACHE_DB=1
+REDIS_QUEUE_CONNECTION=default
+REDIS_CACHE_CONNECTION=cache
+REDIS_QUEUE=default
 
 MAIL_MAILER=smtp
 MAIL_HOST=ISI_DARI_EMAIL
@@ -720,8 +738,10 @@ Penjelasan keputusan config di atas:
 
 - `DB_CONNECTION=sqlite`
   - cukup untuk internal tables project ini
-- `SESSION_DRIVER=file`, `CACHE_STORE=file`, `QUEUE_CONNECTION=sync`
-  - paling simpel dan tidak butuh Redis
+- `SESSION_DRIVER=redis`, `CACHE_STORE=redis`, `QUEUE_CONNECTION=redis`
+  - production profile wajib pakai Redis supaya registrasi berat tidak membebani request utama
+- `REGISTRATION_REDIS_MODE=required`
+  - memaksa flow registrasi production tetap memakai Redis queue, bukan fallback diam-diam ke mode sync
 - `APP_ROUTING_MODE=subdomain`
   - supaya production langsung aktif di mode subdomain
 - `SESSION_DOMAIN=.songkranfestival.my`
@@ -826,15 +846,26 @@ Setelah itu catat hasilnya:
 - admin login: `admin01@songkran.local`
 - scanner login: `scanner01@songkran.local`
 
-### Step 18 - Jalankan preflight scanner
+### Step 18 - Jalankan preflight scanner dan registrasi
 
 ```bash
 php artisan scanner:preflight --production
+php artisan registration:preflight --production
 ```
 
-Kalau command ini gagal, selesaikan error-nya sebelum go-live.
+Kalau salah satu command ini gagal, selesaikan error-nya sebelum go-live.
 
-### Step 19 - Konfigurasi Nginx
+### Step 19 - Jalankan worker Redis untuk email registrasi
+
+Minimal jalankan worker ini di production:
+
+```bash
+php artisan queue:work redis --queue=registration-emails,default --tries=3
+```
+
+Kalau pakai Supervisor atau systemd, command di atas yang harus dijaga tetap hidup.
+
+### Step 20 - Konfigurasi Nginx
 
 Buat file bootstrap config dulu:
 
@@ -875,7 +906,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### Step 20 - Pasang SSL
+### Step 21 - Pasang SSL
 
 Setelah domain sudah resolve ke VPS:
 
@@ -905,7 +936,7 @@ File referensi yang bisa dipakai dari repo:
 - `deploy/nginx/songkranfestival.my.bootstrap.conf.example`
 - `deploy/nginx/songkranfestival.my.conf.example`
 
-### Step 21 - Cache konfigurasi production
+### Step 22 - Cache konfigurasi production
 
 ```bash
 php artisan optimize:clear
@@ -914,7 +945,7 @@ php artisan route:cache
 php artisan view:cache
 ```
 
-### Step 22 - Final smoke test
+### Step 23 - Final smoke test
 
 Cek semua ini:
 
@@ -1058,20 +1089,21 @@ npm run build
 
 ## 15. Kapan Harus Pakai Redis?
 
-Untuk project ini, Redis belum wajib di deploy pertama.
+Untuk project ini:
 
-Mulai pertimbangkan Redis kalau:
+- local development tidak wajib Redis
+- production wajib Redis
 
-- traffic production sudah tinggi
-- session file mulai terasa berat
-- kalian sengaja mengaktifkan queue async
-- kalian ingin cache yang lebih cepat dan stabil
+Praktiknya sederhana:
 
-Kalau belum ada alasan kuat, tetap pakai:
+- di laptop developer, tetap pakai `SESSION_DRIVER=file`, `CACHE_STORE=file`, `QUEUE_CONNECTION=sync`, dan `REGISTRATION_REDIS_MODE=disabled`
+- di VPS production, pakai `SESSION_DRIVER=redis`, `CACHE_STORE=redis`, `QUEUE_CONNECTION=redis`, dan `REGISTRATION_REDIS_MODE=required`
 
-- `SESSION_DRIVER=file`
-- `CACHE_STORE=file`
-- `QUEUE_CONNECTION=sync`
+Kalau production belum bisa memenuhi itu, jangan go-live dulu. Jalankan:
+
+```bash
+php artisan registration:preflight --production
+```
 
 ---
 
@@ -1137,7 +1169,7 @@ php artisan view:cache
 3. Data peserta utama ada di Firestore.
 4. Database Laravel hanya untuk data internal seperti admin, scanner gate, dan campaign links.
 5. Local dev paling gampang pakai SQLite + Firebase REST + mail log.
-6. Deploy pertama paling aman pakai SQLite + file session/cache + sync queue + Firebase REST.
+6. Production profile registrasi sekarang wajib pakai Redis untuk session, cache, dan queue; local tetap boleh tanpa Redis.
 7. Scanner staff memilih gate saat login, bukan setelah login.
 8. Kalau production error, cek dulu:
    - `.env`

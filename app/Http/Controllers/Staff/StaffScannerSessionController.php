@@ -17,6 +17,7 @@ class StaffScannerSessionController extends Controller
     {
         /** @var Admin $admin */
         $admin = auth('admin')->user();
+        $this->gateService->clearCache();
 
         $scannerPost = $this->gateService->normalizeSelected(
             (string) session((string) config('scanner.session_post_key', 'staff.scanner_post'))

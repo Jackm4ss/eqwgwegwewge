@@ -40,7 +40,10 @@ class RegistrationService
                 'verification_status' => 'verified',
                 'email_verified_at' => now()->toISOString(),
                 'ticket_id' => null,
+                'ticket_ready_email_queued_at' => null,
                 'ticket_ready_email_sent_at' => null,
+                'ticket_ready_email_failed_at' => null,
+                'ticket_ready_email_last_error' => null,
                 'agreed_terms_at' => now()->toISOString(),
                 'registered_ip' => $ip,
             ];

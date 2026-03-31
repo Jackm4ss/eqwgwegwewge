@@ -61,6 +61,7 @@ class StaffScannerService
             $this->makeScanEntry($operator, $scannerPost, [
                 'scan_mode' => 'qr',
                 'raw_payload' => $payload,
+                'participant_snapshot' => $this->participantSummary($user, $ticket),
             ], $ipAddress),
         );
 
@@ -69,6 +70,7 @@ class StaffScannerService
             is_array($record['ticket'] ?? null) ? $record['ticket'] : $ticket,
             $user,
             $scannerPost,
+            is_array($record['log'] ?? null) ? $record['log'] : null,
         );
     }
 
@@ -152,6 +154,7 @@ class StaffScannerService
                 'raw_payload' => (string) ($resolution['entry_code'] ?? ''),
                 'resolution_token' => $resolutionToken,
                 'entry_code_display' => (string) ($ticket['entry_code_display'] ?? ''),
+                'participant_snapshot' => $this->participantSummary($user, $ticket),
             ], $ipAddress),
         );
 
@@ -160,75 +163,61 @@ class StaffScannerService
             is_array($record['ticket'] ?? null) ? $record['ticket'] : $ticket,
             $user,
             $scannerPost,
+            is_array($record['log'] ?? null) ? $record['log'] : null,
         );
     }
 
-    public function history(Admin $operator, string $scannerPost, int $limit = 12): array
+    public function dashboard(Admin $operator, string $scannerPost, int $page = 1, int $perPage = 20): array
     {
-        $logs = $this->filteredScannerLogs($scannerPost);
+        return [
+            'stats' => $this->stats($operator, $scannerPost),
+            'history' => $this->history($operator, $scannerPost, $page, $perPage),
+        ];
+    }
 
-        usort($logs, fn (array $left, array $right): int => strcmp(
-            (string) ($right['scanned_at'] ?? ''),
-            (string) ($left['scanned_at'] ?? ''),
-        ));
+    public function history(Admin $operator, string $scannerPost, int $page = 1, int $perPage = 20): array
+    {
+        $filters = $this->scannerActivityFilters($scannerPost);
+        $page = max(1, $page);
+        $perPage = max(1, min($perPage, 50));
+        $history = $this->repository->paginateScanLogs($filters, $page, $perPage);
+        $items = array_map(
+            fn (array $log): array => $this->historyItemFromLog($log),
+            array_values($history['items'] ?? []),
+        );
+        $total = max(0, (int) ($history['total'] ?? 0));
 
-        return array_slice(array_map(function (array $log): array {
-            $ticketId = (string) ($log['ticket_id'] ?? '');
-            $ticketCode = strtoupper(trim((string) ($log['ticket_code'] ?? '')));
-            $userId = (string) ($log['user_id'] ?? '');
-            $ticket = $ticketId !== '' ? $this->repository->findTicket($ticketId) : null;
-
-            if (! is_array($ticket) && $ticketCode !== '') {
-                $ticket = $this->repository->findTicketByTicketCode($ticketCode);
-            }
-
-            $user = $userId !== '' ? $this->repository->findUser($userId) : null;
-
-            if (! is_array($user) && is_array($ticket)) {
-                $ticketUserId = (string) ($ticket['user_id'] ?? '');
-                $user = $ticketUserId !== '' ? $this->repository->findUser($ticketUserId) : null;
-            }
-
-            return [
-                'status' => (string) ($log['result'] ?? 'invalid'),
-                'ticket_code' => (string) ($log['ticket_code'] ?? ''),
-                'entry_code_display' => (string) ($log['entry_code_display'] ?? ''),
-                'scanner_post' => (string) ($log['scanner_name'] ?? ''),
-                'scanned_at' => (string) ($log['scanned_at'] ?? ''),
-                'participant' => is_array($ticket) && is_array($user)
-                    ? $this->participantSummary($user, $ticket)
-                    : null,
-            ];
-        }, $logs), 0, max(1, $limit));
+        return [
+            'items' => $items,
+            'meta' => [
+                'page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'has_more' => ($page * $perPage) < $total,
+                'scope_date' => (string) ($filters['from'] ?? ''),
+            ],
+        ];
     }
 
     public function stats(Admin $operator, string $scannerPost): array
     {
-        $attendance = $this->analytics->buildAttendanceOverview(
-            $this->filteredScannerLogs($scannerPost),
-            [],
-        );
-        $dailyRows = $attendance['daily_attendance'] ?? [];
+        $filters = $this->scannerActivityFilters($scannerPost);
 
-        $stats = [
-            'total_scans' => 0,
-            'successful_scans' => 0,
-            'duplicate_scans' => 0,
-            'invalid_scans' => 0,
+        return [
+            'total_scans' => $this->repository->countScanLogs($filters),
+            'successful_scans' => $this->repository->countScanLogs([...$filters, 'result' => 'success']),
+            'duplicate_scans' => $this->repository->countScanLogs([...$filters, 'result' => 'duplicate']),
+            'invalid_scans' => $this->repository->countScanLogs([...$filters, 'result' => 'invalid']),
         ];
-
-        foreach ($dailyRows as $row) {
-            $stats['total_scans'] += (int) ($row['total_scans'] ?? 0);
-            $stats['successful_scans'] += (int) ($row['successful_attendance'] ?? 0);
-            $stats['duplicate_scans'] += (int) ($row['duplicate_scans'] ?? 0);
-            $stats['invalid_scans'] += (int) ($row['invalid_scans'] ?? 0);
-        }
-
-        return $stats;
     }
 
-    private function buildScanResponse(string $status, array $ticket, array $user, string $scannerPost): array
-    {
+    private function buildScanResponse(
+        string $status,
+        array $ticket,
+        array $user,
+        string $scannerPost,
+        ?array $log = null,
+    ): array {
         $message = match ($status) {
             'success' => 'Participant check-in recorded.',
             'duplicate' => 'Participant was already checked in today.',
@@ -240,6 +229,7 @@ class StaffScannerService
             'message' => $message,
             'scanner_post' => $scannerPost,
             'participant' => $this->participantSummary($user, $ticket),
+            'activity_item' => is_array($log) ? $this->historyItemFromLog($log, $ticket, $user) : null,
             'stats' => $this->stats($this->placeholderOperator(), $scannerPost),
         ];
     }
@@ -252,7 +242,7 @@ class StaffScannerService
         ?string $ipAddress = null,
         array $extra = [],
     ): array {
-        $this->repository->appendScanLog(array_merge(
+        $log = $this->repository->appendScanLog(array_merge(
             $this->makeScanEntry($operator, $scannerPost, [
                 'scan_mode' => 'qr',
                 'raw_payload' => $rawPayload,
@@ -266,16 +256,20 @@ class StaffScannerService
             'message' => $message,
             'scanner_post' => $scannerPost,
             'participant' => null,
+            'activity_item' => $this->historyItemFromLog($log),
             'stats' => $this->stats($this->placeholderOperator(), $scannerPost),
         ];
     }
 
-    private function filteredScannerLogs(string $scannerPost): array
+    private function scannerActivityFilters(string $scannerPost): array
     {
-        return array_values(array_filter(
-            $this->repository->allScanLogs(),
-            fn (array $log): bool => (string) ($log['scanner_name'] ?? '') === $scannerPost,
-        ));
+        $scopeDate = now($this->eventTimezone())->toDateString();
+
+        return [
+            'scanner_post' => $scannerPost,
+            'from' => $scopeDate,
+            'to' => $scopeDate,
+        ];
     }
 
     private function ticketIsActive(?array $ticket): bool
@@ -288,7 +282,7 @@ class StaffScannerService
     private function makeScanEntry(Admin $operator, string $scannerPost, array $extra = [], ?string $ipAddress = null): array
     {
         $scannedAt = now()->toISOString();
-        $eventTimezone = (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
+        $eventTimezone = $this->eventTimezone();
 
         return array_merge([
             'scanner_id' => 'scanner-post:'.Str::slug($scannerPost),
@@ -300,6 +294,95 @@ class StaffScannerService
             'scanned_at' => $scannedAt,
             'scan_date' => now($eventTimezone)->toDateString(),
         ], $extra);
+    }
+
+    private function historyItemFromLog(array $log, ?array $ticket = null, ?array $user = null): array
+    {
+        return [
+            'scan_id' => $this->scanIdFromLog($log),
+            'status' => (string) ($log['result'] ?? 'invalid'),
+            'ticket_code' => (string) ($log['ticket_code'] ?? ''),
+            'entry_code_display' => (string) ($log['entry_code_display'] ?? ''),
+            'scanner_post' => (string) ($log['scanner_name'] ?? ''),
+            'scanned_at' => (string) ($log['scanned_at'] ?? ''),
+            'participant' => $this->participantSummaryFromLog($log, $ticket, $user),
+        ];
+    }
+
+    private function participantSummaryFromLog(array $log, ?array $ticket = null, ?array $user = null): ?array
+    {
+        $snapshot = $this->participantSnapshotFromLog($log);
+        if (is_array($snapshot)) {
+            return $snapshot;
+        }
+
+        $ticket ??= $this->ticketFromLog($log);
+        if (! is_array($ticket)) {
+            return null;
+        }
+
+        $user ??= $this->userFromLog($log, $ticket);
+        if (! is_array($user)) {
+            return null;
+        }
+
+        return $this->participantSummary($user, $ticket);
+    }
+
+    private function participantSnapshotFromLog(array $log): ?array
+    {
+        $snapshot = $log['participant_snapshot'] ?? null;
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        $fullName = trim((string) ($snapshot['full_name'] ?? $snapshot['name'] ?? ''));
+        $country = strtoupper(trim((string) ($snapshot['country'] ?? '')));
+
+        return [
+            'name' => $fullName,
+            'full_name' => $fullName,
+            'email' => trim((string) ($snapshot['email'] ?? '')),
+            'phone_number' => trim((string) ($snapshot['phone_number'] ?? '')),
+            'country' => $country,
+            'country_label' => trim((string) ($snapshot['country_label'] ?? '')),
+            'ticket_code' => (string) ($snapshot['ticket_code'] ?? $log['ticket_code'] ?? ''),
+            'entry_code_display' => (string) ($snapshot['entry_code_display'] ?? $log['entry_code_display'] ?? ''),
+        ];
+    }
+
+    private function ticketFromLog(array $log): ?array
+    {
+        $ticketId = (string) ($log['ticket_id'] ?? '');
+        if ($ticketId !== '') {
+            $ticket = $this->repository->findTicket($ticketId);
+            if (is_array($ticket)) {
+                return $ticket;
+            }
+        }
+
+        $ticketCode = strtoupper(trim((string) ($log['ticket_code'] ?? '')));
+
+        return $ticketCode !== ''
+            ? $this->repository->findTicketByTicketCode($ticketCode)
+            : null;
+    }
+
+    private function userFromLog(array $log, array $ticket): ?array
+    {
+        $userId = (string) ($log['user_id'] ?? '');
+        if ($userId !== '') {
+            $user = $this->repository->findUser($userId);
+            if (is_array($user)) {
+                return $user;
+            }
+        }
+
+        $ticketUserId = (string) ($ticket['user_id'] ?? '');
+
+        return $ticketUserId !== ''
+            ? $this->repository->findUser($ticketUserId)
+            : null;
     }
 
     private function participantSummary(array $user, array $ticket): array
@@ -330,6 +413,26 @@ class StaffScannerService
         $nationalNumber = preg_replace('/\s+/', '', trim((string) ($user['phone_national_number'] ?? ''))) ?? '';
 
         return trim($countryCode.$nationalNumber);
+    }
+
+    private function scanIdFromLog(array $log): string
+    {
+        $scanId = trim((string) ($log['scan_id'] ?? ''));
+        if ($scanId !== '') {
+            return $scanId;
+        }
+
+        $documentId = trim((string) ($log['__id'] ?? ''));
+        if ($documentId !== '') {
+            return $documentId;
+        }
+
+        return hash('sha256', json_encode($log) ?: '');
+    }
+
+    private function eventTimezone(): string
+    {
+        return (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
     }
 
     private function resolutionCacheKey(string $resolutionToken): string

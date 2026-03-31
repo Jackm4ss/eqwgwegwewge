@@ -122,6 +122,7 @@ final class AppRouting
                 'staffScan' => route('staff.scan'),
                 'staffManualLookup' => route('staff.manual-lookup'),
                 'staffManualConfirm' => route('staff.manual-confirm'),
+                'staffDashboard' => route('staff.dashboard'),
                 'staffHistory' => route('staff.history'),
                 'staffStats' => route('staff.stats'),
             ],

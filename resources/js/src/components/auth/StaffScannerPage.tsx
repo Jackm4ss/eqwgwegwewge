@@ -67,6 +67,7 @@ type ScanResult = {
   status: 'success' | 'duplicate' | 'invalid';
   message: string;
   participant: Participant | null;
+  activity_item?: HistoryItem | null;
   stats: ScannerStats;
 };
 
@@ -80,12 +81,31 @@ type ManualLookupResult = {
 type StaffScannerTab = 'home' | 'stats' | 'profile';
 
 type HistoryItem = {
+  scan_id: string;
   status: 'success' | 'duplicate' | 'invalid';
   ticket_code: string;
   entry_code_display: string;
   scanner_post: string;
   scanned_at: string;
   participant?: Participant | null;
+};
+
+type HistoryMeta = {
+  page: number;
+  per_page: number;
+  total: number;
+  has_more: boolean;
+  scope_date: string;
+};
+
+type HistoryResponse = {
+  items: HistoryItem[];
+  meta: HistoryMeta;
+};
+
+type DashboardResponse = {
+  stats: ScannerStats;
+  history: HistoryResponse;
 };
 
 type ScannerAlertIcon = 'success' | 'warning' | 'error' | 'info';
@@ -121,14 +141,22 @@ type ExtendedMediaTrackSettings = MediaTrackSettings & {
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
 const PWA_APP_ICON_URL = '/pwa/icons/icon-192.png';
 const SCANNER_REGION_ID = 'staff-html5-qrcode-region';
+const DEFAULT_HISTORY_PER_PAGE = 20;
 const EMPTY_STATS: ScannerStats = { total_scans: 0, successful_scans: 0, duplicate_scans: 0, invalid_scans: 0 };
+const EMPTY_HISTORY_META: HistoryMeta = {
+  page: 1,
+  per_page: DEFAULT_HISTORY_PER_PAGE,
+  total: 0,
+  has_more: false,
+  scope_date: '',
+};
 const STAFF_LOGIN_URL = getSpaUrl('staffLogin', '/staff/login');
 const STAFF_SESSION_URL = getSpaUrl('staffSession', '/staff/session');
 const STAFF_SCAN_URL = getSpaUrl('staffScan', '/staff/scan');
 const STAFF_MANUAL_LOOKUP_URL = getSpaUrl('staffManualLookup', '/staff/manual-lookup');
 const STAFF_MANUAL_CONFIRM_URL = getSpaUrl('staffManualConfirm', '/staff/manual-confirm');
+const STAFF_DASHBOARD_URL = getSpaUrl('staffDashboard', '/staff/dashboard');
 const STAFF_HISTORY_URL = getSpaUrl('staffHistory', '/staff/history');
-const STAFF_STATS_URL = getSpaUrl('staffStats', '/staff/stats');
 const STAFF_LOGOUT_URL = getSpaUrl('staffLogout', '/staff/logout');
 
 function csrfToken() {
@@ -201,6 +229,45 @@ function historyParticipantDetails(item: HistoryItem) {
       {participantDetailField('Country', participant.country_label || participant.country || '-')}
     </div>
   );
+}
+
+function buildHistoryUrl(page: number, perPage: number) {
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: String(perPage),
+  });
+
+  return `${STAFF_HISTORY_URL}?${params.toString()}`;
+}
+
+function buildDashboardUrl(perPage: number) {
+  const params = new URLSearchParams({
+    page: '1',
+    per_page: String(perPage),
+  });
+
+  return `${STAFF_DASHBOARD_URL}?${params.toString()}`;
+}
+
+function dedupeHistoryItems(items: HistoryItem[]) {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    if (seen.has(item.scan_id)) {
+      return false;
+    }
+
+    seen.add(item.scan_id);
+    return true;
+  });
+}
+
+function appendHistoryItems(current: HistoryItem[], incoming: HistoryItem[]) {
+  return dedupeHistoryItems([...current, ...incoming]);
+}
+
+function prependHistoryItem(current: HistoryItem[], incoming: HistoryItem, visibleLimit: number) {
+  return dedupeHistoryItems([incoming, ...current]).slice(0, Math.max(visibleLimit, 1));
 }
 
 function scanResultAlertHtml(result: Pick<ScanResult, 'message' | 'participant'>) {
@@ -933,6 +1000,9 @@ export function StaffScannerPage() {
   const [scannerPost, setScannerPost] = useState('');
   const [stats, setStats] = useState<ScannerStats>(EMPTY_STATS);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [historyMeta, setHistoryMeta] = useState<HistoryMeta>(EMPTY_HISTORY_META);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
   const [dashboardRefreshing, setDashboardRefreshing] = useState(false);
   const [dashboardRefreshAnimating, setDashboardRefreshAnimating] = useState(false);
   const [latest, setLatest] = useState<ScanResult>({ status: 'invalid', message: 'Scanner is ready when you are.', participant: null, stats: EMPTY_STATS });
@@ -1062,27 +1132,68 @@ export function StaffScannerPage() {
     }
   }, []);
 
-  const refreshDashboard = useCallback(async () => {
-    const [historyResponse, statsResponse] = await Promise.all([
-      fetch(STAFF_HISTORY_URL, { headers: { Accept: 'application/json' } }),
-      fetch(STAFF_STATS_URL, { headers: { Accept: 'application/json' } }),
-    ]);
+  const refreshDashboard = useCallback(async (perPage = historyMeta.per_page || DEFAULT_HISTORY_PER_PAGE) => {
+    setDashboardLoading(true);
 
-    if ([401, 403].includes(historyResponse.status) || [401, 403].includes(statsResponse.status)) {
-      redirectToLogin();
+    try {
+      const response = await fetch(buildDashboardUrl(perPage), { headers: { Accept: 'application/json' } });
+
+      if ([401, 403].includes(response.status)) {
+        redirectToLogin();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('Unable to refresh scanner dashboard.');
+      }
+
+      const payload = (await response.json()) as DashboardResponse;
+      setStats(payload.stats);
+      setHistory(payload.history.items);
+      setHistoryMeta(payload.history.meta);
+    } finally {
+      setDashboardLoading(false);
+    }
+  }, [historyMeta.per_page, redirectToLogin]);
+
+  const loadMoreHistory = useCallback(async () => {
+    if (!scannerPost.trim() || historyLoadingMore || dashboardLoading || !historyMeta.has_more) {
       return;
     }
 
-    if (historyResponse.ok) {
-      setHistory((await historyResponse.json()) as HistoryItem[]);
+    setHistoryLoadingMore(true);
+
+    try {
+      const nextPage = historyMeta.page + 1;
+      const response = await fetch(buildHistoryUrl(nextPage, historyMeta.per_page), {
+        headers: { Accept: 'application/json' },
+      });
+
+      if ([401, 403].includes(response.status)) {
+        redirectToLogin();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('Unable to load more scan history.');
+      }
+
+      const payload = (await response.json()) as HistoryResponse;
+      setHistory((current) => appendHistoryItems(current, payload.items));
+      setHistoryMeta(payload.meta);
+    } catch (error) {
+      await showScannerAlert({
+        icon: 'error',
+        title: 'History unavailable',
+        text: error instanceof Error ? error.message : 'Unable to load more scan history.',
+      });
+    } finally {
+      setHistoryLoadingMore(false);
     }
-    if (statsResponse.ok) {
-      setStats((await statsResponse.json()) as ScannerStats);
-    }
-  }, [redirectToLogin]);
+  }, [dashboardLoading, historyLoadingMore, historyMeta.has_more, historyMeta.page, historyMeta.per_page, redirectToLogin, scannerPost, showScannerAlert]);
 
   const handleDashboardRefresh = useCallback(async () => {
-    if (dashboardRefreshing) {
+    if (dashboardRefreshing || !scannerPost.trim()) {
       return;
     }
 
@@ -1099,10 +1210,16 @@ export function StaffScannerPage() {
     setDashboardRefreshing(true);
     try {
       await refreshDashboard();
+    } catch (error) {
+      await showScannerAlert({
+        icon: 'error',
+        title: 'Dashboard unavailable',
+        text: error instanceof Error ? error.message : 'Unable to refresh scanner dashboard.',
+      });
     } finally {
       setDashboardRefreshing(false);
     }
-  }, [dashboardRefreshing, refreshDashboard]);
+  }, [dashboardRefreshing, refreshDashboard, scannerPost, showScannerAlert]);
 
   useEffect(() => () => {
     if (dashboardRefreshTimerRef.current) {
@@ -1125,7 +1242,22 @@ export function StaffScannerPage() {
         const payload = (await response.json()) as StaffSession;
         setSession(payload);
         setScannerPost(payload.scanner_post ?? '');
-        await refreshDashboard();
+
+        if (payload.scanner_post) {
+          void refreshDashboard().catch(async () => {
+            setDashboardLoading(false);
+            await showScannerAlert({
+              icon: 'error',
+              title: 'Dashboard unavailable',
+              text: 'Scanner session loaded, but recent activity could not be loaded.',
+            });
+          });
+        } else {
+          setStats(EMPTY_STATS);
+          setHistory([]);
+          setHistoryMeta(EMPTY_HISTORY_META);
+          setDashboardLoading(false);
+        }
       } catch {
         void showScannerAlert({
           icon: 'error',
@@ -1225,11 +1357,27 @@ export function StaffScannerPage() {
     };
   }, []);
 
-  const applyResult = useCallback(async (result: ScanResult) => {
+  const applyResult = useCallback((result: ScanResult) => {
     setLatest(result);
     setStats(result.stats);
-    await refreshDashboard();
-  }, [refreshDashboard]);
+    if (!result.activity_item) {
+      return;
+    }
+
+    const visibleLimit = Math.max(historyMeta.page * historyMeta.per_page, historyMeta.per_page || DEFAULT_HISTORY_PER_PAGE);
+
+    setHistory((current) => prependHistoryItem(current, result.activity_item as HistoryItem, visibleLimit));
+    setHistoryMeta((current) => {
+      const total = current.total + 1;
+      const loadedItems = Math.max(current.page * current.per_page, current.per_page || DEFAULT_HISTORY_PER_PAGE);
+
+      return {
+        ...current,
+        total,
+        has_more: loadedItems < total,
+      };
+    });
+  }, [historyMeta.page, historyMeta.per_page]);
 
   const submitScan = useCallback(async (payload: string) => {
     setScanBusy(true);
@@ -1256,7 +1404,7 @@ export function StaffScannerPage() {
 
       await showScannerAlert(scanResultAlertConfig(result));
       setManualLookup(null);
-      await applyResult(result);
+      applyResult(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to process scan.';
       await showScannerAlert({
@@ -1489,7 +1637,7 @@ export function StaffScannerPage() {
       await showScannerAlert(scanResultAlertConfig(result));
       setManualLookup(null);
       setManualCode('');
-      await applyResult(result);
+      applyResult(result);
     } catch (error) {
       void showScannerAlert({
         icon: 'error',
@@ -1767,20 +1915,23 @@ export function StaffScannerPage() {
                   <div className="rounded-[1.8rem] border border-sky-100 bg-white p-5 shadow-[0_18px_50px_rgba(2,132,199,0.08)]">
                     <AuthSectionHeading eyebrow="Today" title="Stats" description="Live totals refresh after every QR or manual confirmation." />
                     <div className="mt-5 grid gap-3">
-                      <div className="rounded-[1.3rem] border border-sky-100 bg-sky-50/80 px-4 py-4 text-sky-800"><p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-80">Total Scans</p><p className="mt-2 text-3xl font-black tracking-tight">{stats.total_scans}</p></div>
-                      <div className="rounded-[1.3rem] border border-emerald-100 bg-emerald-50/80 px-4 py-4 text-emerald-800"><p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-80">Valid</p><p className="mt-2 text-3xl font-black tracking-tight">{stats.successful_scans}</p></div>
-                      <div className="rounded-[1.3rem] border border-amber-100 bg-amber-50/80 px-4 py-4 text-amber-800"><p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-80">Duplicate</p><p className="mt-2 text-3xl font-black tracking-tight">{stats.duplicate_scans}</p></div>
-                      <div className="rounded-[1.3rem] border border-red-100 bg-red-50/80 px-4 py-4 text-red-800"><p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-80">Invalid</p><p className="mt-2 text-3xl font-black tracking-tight">{stats.invalid_scans}</p></div>
+                      <div className="rounded-[1.3rem] border border-sky-100 bg-sky-50/80 px-4 py-4 text-sky-800"><p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-80">Total Scans</p><p className="mt-2 text-3xl font-black tracking-tight">{dashboardLoading ? '...' : stats.total_scans}</p></div>
+                      <div className="rounded-[1.3rem] border border-emerald-100 bg-emerald-50/80 px-4 py-4 text-emerald-800"><p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-80">Valid</p><p className="mt-2 text-3xl font-black tracking-tight">{dashboardLoading ? '...' : stats.successful_scans}</p></div>
+                      <div className="rounded-[1.3rem] border border-amber-100 bg-amber-50/80 px-4 py-4 text-amber-800"><p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-80">Duplicate</p><p className="mt-2 text-3xl font-black tracking-tight">{dashboardLoading ? '...' : stats.duplicate_scans}</p></div>
+                      <div className="rounded-[1.3rem] border border-red-100 bg-red-50/80 px-4 py-4 text-red-800"><p className="text-[11px] font-bold uppercase tracking-[0.24em] opacity-80">Invalid</p><p className="mt-2 text-3xl font-black tracking-tight">{dashboardLoading ? '...' : stats.invalid_scans}</p></div>
                     </div>
                   </div>
 
                   <div className="rounded-[1.8rem] border border-sky-100 bg-white p-5 shadow-[0_18px_50px_rgba(2,132,199,0.08)]">
                     <div className="flex items-start justify-between gap-3">
-                      <AuthSectionHeading eyebrow="Recent Activity" title="Recent Scans" description="Latest activity for the selected gate." />
+                      <AuthSectionHeading eyebrow="Recent Activity" title="Recent Scans" description="Latest activity for the selected gate today." />
                       <button type="button" onClick={() => void handleDashboardRefresh()} disabled={dashboardRefreshing} className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition-all ${(dashboardRefreshing || dashboardRefreshAnimating) ? 'border-sky-200 bg-sky-50 text-sky-600 shadow-[0_12px_24px_rgba(14,165,233,0.18)]' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'} disabled:cursor-wait`} aria-label="Refresh history and stats"><motion.span animate={dashboardRefreshAnimating ? { rotate: 360, scale: [1, 1.08, 1] } : { rotate: 0, scale: 1 }} transition={dashboardRefreshAnimating ? { rotate: { duration: 1, ease: 'easeInOut' }, scale: { duration: 1, ease: 'easeInOut' } } : { duration: 0.2, ease: 'easeOut' }}><RefreshCcw className="h-4.5 w-4.5" aria-hidden="true" /></motion.span></button>
                     </div>
                     <div className="mt-5 space-y-3">
-                      {history.length === 0 ? <div className="rounded-[1.4rem] border border-slate-100 bg-slate-50 px-4 py-4 text-sm text-slate-500">No scan activity yet for this gate today.</div> : history.map((item, index) => { const meta = statusMeta(item.status); return <div key={`${item.ticket_code}-${item.scanned_at}-${index}`} className="rounded-[1.4rem] border border-slate-100 bg-slate-50/70 px-4 py-4"><div className="flex items-start justify-between gap-3"><p className="flex items-center gap-1.5 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" aria-hidden="true" />{formatScannedAt(item.scanned_at)}</p><span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] ${meta.badge}`}>{meta.label}</span></div>{historyParticipantDetails(item)}<div className="mt-3 flex flex-wrap items-center justify-between gap-3"><AuthCodeBadge code={item.entry_code_display} label="Entry Code" /><div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">{item.scanner_post}</div></div></div>; })}
+                      {dashboardLoading && history.length === 0 ? <div className="rounded-[1.4rem] border border-sky-100 bg-sky-50 px-4 py-4 text-sm text-sky-700">Loading recent scan activity...</div> : null}
+                      {!dashboardLoading && history.length === 0 ? <div className="rounded-[1.4rem] border border-slate-100 bg-slate-50 px-4 py-4 text-sm text-slate-500">No scan activity yet for this gate today.</div> : null}
+                      {history.map((item) => { const meta = statusMeta(item.status); return <div key={item.scan_id} className="rounded-[1.4rem] border border-slate-100 bg-slate-50/70 px-4 py-4"><div className="flex items-start justify-between gap-3"><p className="flex items-center gap-1.5 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" aria-hidden="true" />{formatScannedAt(item.scanned_at)}</p><span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] ${meta.badge}`}>{meta.label}</span></div>{historyParticipantDetails(item)}<div className="mt-3 flex flex-wrap items-center justify-between gap-3"><AuthCodeBadge code={item.entry_code_display} label="Entry Code" /><div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">{item.scanner_post}</div></div></div>; })}
+                      {historyMeta.has_more ? <button type="button" onClick={() => void loadMoreHistory()} disabled={historyLoadingMore} className="inline-flex w-full items-center justify-center gap-2 rounded-[1.4rem] border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 transition-colors hover:border-sky-300 hover:bg-sky-100 disabled:cursor-wait disabled:opacity-70">{historyLoadingMore ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />Loading more...</> : 'Load more scans'}</button> : null}
                     </div>
                   </div>
                 </div>

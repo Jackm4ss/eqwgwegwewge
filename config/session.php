@@ -6,6 +6,8 @@ return [
     'expire_on_close' => false,
     'encrypt' => false,
     'files' => storage_path('framework/sessions'),
+    'connection' => env('SESSION_CONNECTION', 'default'),
+    'store' => env('SESSION_STORE'),
     'cookie' => env('SESSION_COOKIE', 'songkran_session'),
     'path' => '/',
     'domain' => env('SESSION_DOMAIN'),

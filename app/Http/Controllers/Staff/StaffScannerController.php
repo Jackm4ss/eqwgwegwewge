@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Staff\StaffScannerHistoryRequest;
 use App\Http\Requests\Staff\StaffManualConfirmRequest;
 use App\Http\Requests\Staff\StaffManualLookupRequest;
 use App\Http\Requests\Staff\StaffScanRequest;
@@ -70,13 +71,27 @@ class StaffScannerController extends Controller
         return response()->json($result);
     }
 
-    public function history(): JsonResponse
+    public function dashboard(StaffScannerHistoryRequest $request): JsonResponse
     {
         /** @var Admin $admin */
         $admin = auth('admin')->user();
+        $page = (int) $request->validated('page');
+        $perPage = (int) $request->validated('per_page');
 
         return response()->json(
-            $this->scanner->history($admin, $this->scannerPostFromSession())
+            $this->scanner->dashboard($admin, $this->scannerPostFromSession(), $page, $perPage)
+        );
+    }
+
+    public function history(StaffScannerHistoryRequest $request): JsonResponse
+    {
+        /** @var Admin $admin */
+        $admin = auth('admin')->user();
+        $page = (int) $request->validated('page');
+        $perPage = (int) $request->validated('per_page');
+
+        return response()->json(
+            $this->scanner->history($admin, $this->scannerPostFromSession(), $page, $perPage)
         );
     }
 

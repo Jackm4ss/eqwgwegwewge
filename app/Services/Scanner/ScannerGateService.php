@@ -10,7 +10,7 @@ use Throwable;
 
 class ScannerGateService
 {
-    private const CACHE_KEY = 'scanner:gates:options';
+    public const CACHE_KEY = 'scanner:gates:options';
     private const TABLE = 'scanner_gates';
 
     public function storageReady(): bool

@@ -53,9 +53,12 @@ interface FormData {
   agreeTerms: boolean;
 }
 
+type DeliveryStatus = 'sent' | 'already_sent' | 'queued' | 'failed';
+
 interface RegisterResponse {
   message?: string;
   status?: 'ticket_ready' | 'ticket_ready_email_pending';
+  delivery_status?: DeliveryStatus;
   email_sent?: boolean;
   ticket_url?: string;
   ticket_qr_url?: string;
@@ -869,6 +872,7 @@ export function RegisterPage() {
     identityNumber: '',
   });
   const [ticketEmailSent, setTicketEmailSent] = useState(true);
+  const [ticketDeliveryStatus, setTicketDeliveryStatus] = useState<DeliveryStatus>('sent');
   const [trafficAttribution, setTrafficAttribution] = useState<TrafficAttributionPayload | null>(null);
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
   const previousCountryRef = useRef('');
@@ -1095,6 +1099,7 @@ export function RegisterPage() {
       identityNumber: '',
     });
     setTicketEmailSent(true);
+    setTicketDeliveryStatus('sent');
     reset(); // Clear form values
   };
 
@@ -1196,8 +1201,12 @@ export function RegisterPage() {
       }
 
       const ticketUrl = (result.ticket_url || '').trim();
+      const deliveryStatus: DeliveryStatus = result.delivery_status
+        ?? (result.email_sent === false ? 'failed' : 'sent');
       const successMessage = result.message || (
-        result.email_sent === false
+        deliveryStatus === 'queued'
+          ? 'Registration completed. Your ticket is ready and the email copy is being prepared now.'
+          : result.email_sent === false
           ? 'Registration completed. Your ticket is ready, but the email could not be sent right now.'
           : 'Your QR ticket has been sent to your email.'
       );
@@ -1213,6 +1222,7 @@ export function RegisterPage() {
         identityNumber: data.identity_number,
       });
       setTicketEmailSent(result.email_sent !== false);
+      setTicketDeliveryStatus(deliveryStatus);
       setIsSuccess(true);
 
       if (!ENABLE_LEGACY_SUCCESS_SCREEN) {
@@ -1246,6 +1256,8 @@ export function RegisterPage() {
   const isForeignRegistrant = countryVal !== '' && countryVal !== 'MY';
   const hasDirectTicketUrl = registeredTicketUrl.trim() !== '';
   const hasTicketQrUrl = registeredTicketQrUrl.trim() !== '';
+  const isTicketEmailQueued = ticketDeliveryStatus === 'queued';
+  const isTicketEmailFailed = ticketDeliveryStatus === 'failed';
   const availableIdentityTypes = isMalaysianRegistrant
     ? IDENTITY_TYPES
     : IDENTITY_TYPES.filter(option => option.value === 'passport');
@@ -1944,13 +1956,23 @@ export function RegisterPage() {
                       Your Ticket Is Ready
                     </p>
                     <p className="mt-2 text-sm md:text-base leading-relaxed text-sky-100">
-                      This ticket has also been sent to your email
+                      {isTicketEmailQueued
+                        ? 'This ticket is being emailed to'
+                        : ticketEmailSent
+                          ? 'This ticket has also been sent to your email'
+                          : 'This ticket could not be emailed right now for'}
                       <span className="font-bold text-white"> {registeredEmail || 'your email'}</span>.
-                      {ticketEmailSent ? ' Please check your inbox for a copy.' : ' The email copy could not be sent right now, so please use this browser ticket.'}
+                      {isTicketEmailQueued
+                        ? ' The email copy is being prepared now and should arrive shortly.'
+                        : ticketEmailSent
+                          ? ' Please check your inbox for a copy.'
+                          : ' The email copy could not be sent right now, so please use this browser ticket.'}
                     </p>
                     <p className="mt-3 text-xs md:text-sm leading-relaxed text-sky-200/90">
                       {registrationSuccessMessage || (
-                        ticketEmailSent
+                        isTicketEmailQueued
+                          ? 'Your browser ticket is ready below while the email copy is being prepared in the background.'
+                          : ticketEmailSent
                           ? 'Open the email to find your active festival pass and QR code, or use the browser ticket below anytime.'
                           : 'Your ticket is ready below. Use the browser ticket for event entry.'
                       )}
@@ -2007,13 +2029,17 @@ export function RegisterPage() {
                     <div>
                       <CheckCircle2 className="w-10 h-10 md:w-14 md:h-14 text-emerald-400 mx-auto mb-4" />
                       <h2 id="success-title" className="text-white text-2xl md:text-4xl font-black leading-tight tracking-tight mb-3" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                        Registration Successful!<br className="hidden sm:block" /> {ticketEmailSent ? 'Check Your Ticket Email' : 'Your Ticket Is Ready'}
+                        Registration Successful!<br className="hidden sm:block" /> {isTicketEmailQueued ? 'Ticket Email Is On The Way' : ticketEmailSent ? 'Check Your Ticket Email' : 'Your Ticket Is Ready'}
                       </h2>
                       <p className="hidden text-sky-200 text-base md:text-lg mb-1">
                         We’ve sent a verification link to
                       </p>
                       <p className="text-sky-200 text-base md:text-lg mb-1">
-                        {ticketEmailSent ? 'Your QR ticket has been sent to' : 'We could not send the ticket email right now for'}
+                        {isTicketEmailQueued
+                          ? 'Your QR ticket is ready and the email copy is being prepared for'
+                          : ticketEmailSent
+                            ? 'Your QR ticket has been sent to'
+                            : 'We could not send the ticket email right now for'}
                       </p>
                       <p className="text-sky-100 font-bold text-xl md:text-2xl" style={{ fontFamily: '"Kanit", sans-serif' }}>
                         {registeredEmail || 'your email'}
@@ -2022,7 +2048,9 @@ export function RegisterPage() {
 
                     <p className="text-sky-300 text-xs md:text-sm leading-relaxed max-w-sm mx-auto opacity-90">
                       {registrationSuccessMessage || (
-                        ticketEmailSent
+                        isTicketEmailQueued
+                          ? 'Open the browser ticket below right now while the email copy is still being prepared.'
+                          : ticketEmailSent
                           ? hasDirectTicketUrl
                             ? 'Open the email to find your active festival pass and QR code, or use the ticket button below anytime.'
                             : 'Open the email to find your active festival pass, QR code, and direct ticket link for event entry.'
@@ -2048,7 +2076,7 @@ export function RegisterPage() {
                         className="block w-full py-4 rounded-2xl bg-white text-sky-900 font-black text-sm md:text-base uppercase tracking-widest hover:bg-sky-50 transition-all shadow-lg"
                         style={{ fontFamily: '"Kanit", sans-serif' }}
                       >
-                        {ticketEmailSent ? 'Open Ticket in Browser' : 'Open My Ticket Now'}
+                        {isTicketEmailFailed ? 'Open My Ticket Now' : 'Open Ticket in Browser'}
                       </motion.a>
                     )}
 

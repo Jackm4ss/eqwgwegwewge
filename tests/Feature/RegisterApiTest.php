@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Contracts\UserRepositoryInterface;
+use App\Jobs\SendTicketReadyMailJob;
 use App\Mail\TicketReadyMail;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Tests\Fakes\InMemoryUserRepository;
 use Tests\TestCase;
 
@@ -23,6 +25,7 @@ class RegisterApiTest extends TestCase
             'services.recaptcha.enabled' => false,
             'services.recaptcha.site_key' => null,
             'services.recaptcha.secret_key' => null,
+            'registration.redis_mode' => 'disabled',
         ]);
         $this->repository = new InMemoryUserRepository;
         $this->app->instance(UserRepositoryInterface::class, $this->repository);
@@ -222,8 +225,42 @@ class RegisterApiTest extends TestCase
         $response = $this->postJson('/api/register', $this->validPayload());
 
         $response->assertCreated()
-            ->assertJsonStructure(['message', 'status', 'email_sent', 'ticket_url', 'ticket_qr_url', 'ticket_code'])
+            ->assertJsonStructure(['message', 'status', 'delivery_status', 'email_sent', 'ticket_url', 'ticket_qr_url', 'ticket_code'])
             ->assertJsonMissing(['redirect']);
+    }
+
+    public function test_register_queues_ticket_email_when_registration_redis_mode_is_required(): void
+    {
+        Mail::fake();
+        Queue::fake();
+
+        config([
+            'registration.redis_mode' => 'required',
+            'queue.default' => 'redis',
+            'cache.default' => 'redis',
+        ]);
+
+        $response = $this->postJson('/api/register', $this->validPayload());
+
+        $response->assertCreated()
+            ->assertJson([
+                'message' => 'Registration successful. Your ticket is ready and the email copy is being prepared now.',
+                'status' => 'ticket_ready',
+                'delivery_status' => 'queued',
+                'email_sent' => true,
+            ]);
+
+        $user = $this->repository->firstUser();
+
+        $this->assertNotNull($user);
+        $this->assertNotEmpty($user['ticket_ready_email_queued_at']);
+        $this->assertNull($user['ticket_ready_email_sent_at']);
+
+        Queue::assertPushed(SendTicketReadyMailJob::class, function (SendTicketReadyMailJob $job) use ($user): bool {
+            return $job->userId === $user['user_id'];
+        });
+
+        Mail::assertNothingSent();
     }
 
     public function test_register_accepts_legacy_combined_phone_number_payload(): void
