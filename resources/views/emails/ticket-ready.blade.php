@@ -32,6 +32,7 @@
     $messageCopy = (string) ($messageCopy ?? 'Please present your QR code and registered valid ID / passport at the gate.<br>QR only required to scan once per day');
     $supportNote = trim((string) ($supportNote ?? ''));
     $showMapsLink = (bool) ($showMapsLink ?? true);
+    $showValidityPill = (bool) ($showValidityPill ?? true);
     $emailPreviewText = trim((string) ($emailPreviewText ?? 'Your Songkran Festival 2026 ticket is ready. Open your ticket and present your QR code at the gate.'));
     $qrAltText = trim((string) ($qrAltText ?? 'Songkran Festival ticket QR code'));
     $qrImageFilename = trim((string) ($qrImageFilename ?? 'ticket-qrcode.png'));
@@ -604,18 +605,25 @@
 
                                 <tr>
                                     <td align="center" style="padding:22px 20px 12px;">
-                                        <table role="presentation" cellpadding="0" cellspacing="0" border="0"
-                                            style="margin:0 auto;">
-                                            <tr>
-                                                <td class="validity-pill"
-                                                    style="padding:10px 18px; border-radius:999px; background-color:#0a2f63; border:1px solid #4fa6ff;">
-                                                    <p class="ticket-validity-note"
-                                                        style="color:#ffffff; font-size:13px; line-height:18px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; text-align:center; text-shadow:none; margin:0;">
-                                                        Ticket valid from 9-19 April 2026
-                                                    </p>
-                                                </td>
-                                            </tr>
-                                        </table>
+                                        @if($showValidityPill)
+                                            <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+                                                style="margin:0 auto;">
+                                                <tr>
+                                                    <td class="validity-pill"
+                                                        style="padding:10px 18px; border-radius:999px; background-color:#0a2f63; border:1px solid #4fa6ff;">
+                                                        <p class="ticket-validity-note"
+                                                            style="color:#ffffff; font-size:13px; line-height:18px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; text-align:center; text-shadow:none; margin:0;">
+                                                            Ticket valid from 9-19 April 2026
+                                                        </p>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        @else
+                                            <p class="ticket-validity-note"
+                                                style="color:#ffffff; font-size:13px; line-height:18px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; text-align:center; text-shadow:none; margin:0;">
+                                                Ticket valid from 9-19 April 2026
+                                            </p>
+                                        @endif
                                     </td>
                                 </tr>
 

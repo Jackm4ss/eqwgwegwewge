@@ -178,6 +178,11 @@
 
         .ticket-validity-note {
             margin: 22px auto 20px;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            background: none;
+            box-shadow: none;
             font-size: 0.82rem;
             font-weight: 800;
             letter-spacing: 0.04em;
@@ -365,7 +370,7 @@
                 </div>
             </div>
 
-            <div class="ticket-validity-note">Ticket valid from 9-19 April 2026</div>
+            <p class="ticket-validity-note">Ticket valid from 9-19 April 2026</p>
 
             <div class="bottom-section">
                 <div class="message-box">

@@ -12,6 +12,7 @@
     $emailPreviewText = 'Your Songkran Festival QR pass was refreshed. Please use the latest QR code for event entry.';
     $qrAltText = 'Updated Songkran Festival ticket QR code';
     $qrImageFilename = 'updated-ticket-qrcode.png';
+    $showValidityPill = false;
 @endphp
 
 @include('emails.ticket-ready')
