@@ -36,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/Select';
-import { SponsorShowcaseCard } from '../ui/SponsorShowcaseCard';
 import {
   captureTrafficAttribution,
   type TrafficAttributionPayload,
@@ -417,6 +416,7 @@ const OTHER_SORTED_COUNTRIES = SORTED_COUNTRIES.filter(
 
 const TICKET_BACKGROUND_URL = '/images/BACKGROUND.jpg';
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
+const SPONSORS_FOOTER_URL = '/images/email-sponsors-footer.png';
 const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw';
 const ENABLE_LEGACY_SUCCESS_SCREEN = true;
 const TICKET_HEADER_FONT_FAMILY = '"Tilt Warp", sans-serif';
@@ -555,7 +555,14 @@ function TicketPreviewCard({
         </div>
 
         <div className="px-[18px]">
-          <SponsorShowcaseCard variant="ticket" className="w-full" />
+          <div className="rounded-[28px] border border-white/20 bg-[linear-gradient(180deg,rgba(214,236,244,0.98)_0%,rgba(206,230,241,0.94)_100%)] p-[14px] shadow-[0_12px_24px_rgba(0,0,0,0.1)]">
+            <img
+              src={SPONSORS_FOOTER_URL}
+              alt="Songkran Festival organiser, venue sponsor, sponsors, and media partners"
+              className="block h-auto w-full rounded-[20px]"
+              decoding="async"
+            />
+          </div>
         </div>
       </div>
     </div>

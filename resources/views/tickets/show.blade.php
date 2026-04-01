@@ -9,17 +9,7 @@
 
         $backgroundUrl = asset('images/BACKGROUND.jpg');
         $logoUrl = asset('images/Songkran logo.png');
-        $organiserUrl = asset('images/eq-solution.png');
-        $venueSponsorUrl = asset('images/123.png');
-        $sponsorEmbassyUrl = asset('images/Royal_Thai_Embassy_Seal.svg.png');
-        $sponsorDitpUrl = asset('images/ditp-new.png');
-        $sponsorAmazingThailandUrl = asset('images/amazing thailand.png');
-        $sponsorSinghaUrl = asset('images/singha-seeklogo.png');
-        $sponsorSnakeBrandUrl = asset('images/Snake-Brand-Logo.png');
-        $sponsorThaigoUrl = asset('images/thaigo.png');
-        $sponsorLayer0Url = asset('images/Layer 0.png');
-        $mediaWobUrl = asset('images/wob.png');
-        $mediaNoodouUrl = asset('images/noodou.png');
+        $sponsorsFooterUrl = asset('images/email-sponsors-footer.png');
         $mapToLocationUrl = asset('images/Map to Location.png');
     @endphp
 
@@ -274,158 +264,19 @@
         #bottom-info-card {
             width: 100%;
             margin: 0;
-            padding: 20px 20px;
-            border-radius: 32px;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            background: linear-gradient(180deg, rgba(214, 236, 244, 0.96) 0%, rgba(206, 230, 241, 0.92) 100%);
+            padding: 14px 14px;
+            border-radius: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: linear-gradient(180deg, rgba(214, 236, 244, 0.98) 0%, rgba(206, 230, 241, 0.94) 100%);
             box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
             box-sizing: border-box;
         }
 
-        .ticket-card-row {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 20px 24px;
-            align-items: start;
-        }
-
-        .ticket-card-row+.ticket-card-row {
-            margin-top: 20px;
-        }
-
-        .ticket-card-cell {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
+        .sponsors-footer-image {
+            display: block;
             width: 100%;
-        }
-
-        .ticket-card-label-wrap {
-            display: flex;
-            width: 100%;
-            min-height: 2.5rem;
-            align-items: flex-start;
-            justify-content: center;
-            margin-bottom: 8px;
-        }
-
-        .ticket-card-content {
-            display: flex;
-            width: 100%;
-            min-height: 44px;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .ticket-card-logo-wrap {
-            display: flex;
-            min-height: 44px;
-            align-items: center;
-            justify-content: center;
-            padding: 0 12px;
-        }
-
-        .col-title {
-            margin: 0;
-            color: rgba(0, 0, 0, 0.68);
-            font-family: "Tilt Warp", sans-serif;
-            font-size: 0.58rem;
-            line-height: 1.2;
-            font-weight: 800;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-        }
-
-        .logo-organiser {
-            width: auto;
-            height: 24px;
-            object-fit: contain;
-        }
-
-        .logo-venue {
-            width: auto;
-            height: 40px;
-            object-fit: contain;
-        }
-
-        .sponsor-grid {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            gap: 14px;
-        }
-
-        .sponsor-grid-row {
-            display: grid;
-            width: 100%;
-            align-items: center;
-            justify-items: center;
-        }
-
-        .sponsor-grid-row-top {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 16px 12px;
-        }
-
-        .sponsor-grid-row-bottom {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 14px 14px;
-            padding: 0 10px;
-        }
-
-        .sponsor-grid-item {
-            display: flex;
-            min-height: 34px;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-        }
-
-        .logo-sponsor-embassy,
-        .logo-sponsor-snake {
-            width: auto;
-            height: 34px;
-            object-fit: contain;
-        }
-
-        .logo-sponsor-ditp {
-            width: auto;
-            height: 15px;
-            object-fit: contain;
-        }
-
-        .logo-sponsor-amazing,
-        .logo-sponsor-singha,
-        .logo-sponsor-thaigo,
-        .logo-sponsor-layer {
-            width: auto;
-            height: 17px;
-            object-fit: contain;
-        }
-
-        .media-row {
-            display: flex;
-            width: 100%;
-            justify-content: center;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .media-row-item {
-            display: flex;
-            min-height: 56px;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .logo-media {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            border: 3px solid #ffffff;
-            object-fit: cover;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+            height: auto;
+            border-radius: 20px;
         }
 
         .ticket-download-wrap {
@@ -530,85 +381,9 @@
 
                 <div class="bottom-info-wrap">
                     <div id="bottom-info-card">
-                        <div class="ticket-card-row">
-                            <div class="ticket-card-cell">
-                                <div class="ticket-card-label-wrap">
-                                    <div class="col-title">ORGANISER</div>
-                                </div>
-                                <div class="ticket-card-content">
-                                    <div class="ticket-card-logo-wrap">
-                                        <img src="{{ $organiserUrl }}" alt="eq solutions" class="logo-organiser">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="ticket-card-cell">
-                                <div class="ticket-card-label-wrap">
-                                    <div class="col-title">VENUE SPONSOR</div>
-                                </div>
-                                <div class="ticket-card-content">
-                                    <div class="ticket-card-logo-wrap">
-                                        <img src="{{ $venueSponsorUrl }}" alt="1 Utama" class="logo-venue">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="ticket-card-row">
-                            <div class="ticket-card-cell">
-                                <div class="ticket-card-label-wrap">
-                                    <div class="col-title">SPONSORS</div>
-                                </div>
-                                <div class="ticket-card-content">
-                                    <div class="sponsor-grid">
-                                        <div class="sponsor-grid-row sponsor-grid-row-top">
-                                            <div class="sponsor-grid-item">
-                                                <img src="{{ $sponsorEmbassyUrl }}" alt="Royal Thai Embassy"
-                                                    class="logo-sponsor-embassy">
-                                            </div>
-                                            <div class="sponsor-grid-item">
-                                                <img src="{{ $sponsorDitpUrl }}" alt="DITP" class="logo-sponsor-ditp">
-                                            </div>
-                                            <div class="sponsor-grid-item">
-                                                <img src="{{ $sponsorAmazingThailandUrl }}" alt="Amazing Thailand"
-                                                    class="logo-sponsor-amazing">
-                                            </div>
-                                            <div class="sponsor-grid-item">
-                                                <img src="{{ $sponsorSinghaUrl }}" alt="Singha" class="logo-sponsor-singha">
-                                            </div>
-                                        </div>
-                                        <div class="sponsor-grid-row sponsor-grid-row-bottom">
-                                            <div class="sponsor-grid-item">
-                                                <img src="{{ $sponsorSnakeBrandUrl }}" alt="Snake Brand"
-                                                    class="logo-sponsor-snake">
-                                            </div>
-                                            <div class="sponsor-grid-item">
-                                                <img src="{{ $sponsorThaigoUrl }}" alt="Thaigo" class="logo-sponsor-thaigo">
-                                            </div>
-                                            <div class="sponsor-grid-item">
-                                                <img src="{{ $sponsorLayer0Url }}" alt="Layer 0" class="logo-sponsor-layer">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="ticket-card-cell">
-                                <div class="ticket-card-label-wrap">
-                                    <div class="col-title">MEDIA PARTNER</div>
-                                </div>
-                                <div class="ticket-card-content">
-                                    <div class="media-row">
-                                        <div class="media-row-item">
-                                            <img src="{{ $mediaWobUrl }}" alt="WOB" class="logo-media">
-                                        </div>
-                                        <div class="media-row-item">
-                                            <img src="{{ $mediaNoodouUrl }}" alt="Noodou" class="logo-media">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <img src="{{ $sponsorsFooterUrl }}"
+                            alt="Songkran Festival organiser, venue sponsor, sponsors, and media partners"
+                            class="sponsors-footer-image">
                     </div>
                 </div>
             </div>
