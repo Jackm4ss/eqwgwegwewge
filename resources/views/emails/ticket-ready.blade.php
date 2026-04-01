@@ -217,8 +217,8 @@
         }
 
         .identity-card {
-            background-color: #F8FCFF;
-            border: 1px solid #C8DDF2;
+            background-color: #00C0FD;
+            border: 1px solid #00C0FD;
             border-radius: 20px;
             box-shadow: 0 10px 24px rgba(2, 12, 27, 0.24);
         }
@@ -228,7 +228,7 @@
         }
 
         .identity-name {
-            color: #0A2F63;
+            color: #052F4A;
             font-size: 17px;
             line-height: 24px;
             font-weight: 800;
@@ -238,7 +238,7 @@
         }
 
         .identity-number {
-            color: #294A72;
+            color: #052F4A;
             font-size: 14px;
             line-height: 20px;
             font-weight: 600;
@@ -286,13 +286,6 @@
             text-align: center;
             text-shadow: none;
             margin: 0;
-        }
-
-        .validity-pill {
-            background-color: #0a2f63;
-            border: 1px solid #4fa6ff;
-            border-radius: 999px;
-            box-shadow: 0 10px 20px rgba(2, 12, 27, 0.18);
         }
 
         .entry-code-card {
@@ -354,8 +347,8 @@
             display: inline-block;
             padding: 14px 28px;
             border-radius: 999px;
-            background-color: #F8FCFF;
-            color: #0A2F63;
+            background-color: #00C0FD;
+            color: #052F4A;
             font-size: 15px;
             line-height: 20px;
             font-weight: 800;
@@ -556,10 +549,10 @@
                                                     <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
                                                         xmlns:w="urn:schemas-microsoft-com:office:word"
                                                         href="{{ $ticketUrl }}" style="height:48px; v-text-anchor:middle; width:170px;"
-                                                        arcsize="50%" stroke="f" fillcolor="#F8FCFF">
+                                                        arcsize="50%" stroke="f" fillcolor="#00C0FD">
                                                         <w:anchorlock/>
                                                         <center
-                                                            style="color:#0A2F63; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
+                                                            style="color:#052F4A; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
                                                             {{ $ticketButtonLabel }}
                                                         </center>
                                                     </v:roundrect>
@@ -568,11 +561,11 @@
                                                         <table role="presentation" cellpadding="0" cellspacing="0"
                                                             border="0" class="button-table" style="margin:0 auto;">
                                                         <tr>
-                                                            <td align="center" bgcolor="#F8FCFF"
-                                                                style="border-radius:999px; background-color:#F8FCFF; box-shadow:0 12px 24px rgba(2,12,27,0.2);">
+                                                            <td align="center" bgcolor="#00C0FD"
+                                                                style="border-radius:999px; background-color:#00C0FD; box-shadow:0 12px 24px rgba(2,12,27,0.2);">
                                                                 <a href="{{ $ticketUrl }}" target="_blank"
                                                                     rel="noopener noreferrer" class="button-link"
-                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background-color:#F8FCFF; color:#0A2F63; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
+                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background-color:#00C0FD; color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
                                                                     {{ $ticketButtonLabel }}
                                                                 </a>
                                                             </td>
@@ -586,18 +579,18 @@
                                         <table role="presentation" cellpadding="0" cellspacing="0" border="0"
                                             width="85%" style="width:85%; max-width:320px; margin:28px auto 0;">
                                             <tr>
-                                                <td class="identity-card"
-                                                    style="background-color:#F8FCFF; border:1px solid #C8DDF2; border-radius:20px; box-shadow:0 10px 24px rgba(2,12,27,0.24);">
+                                                <td class="identity-card" bgcolor="#00C0FD"
+                                                    style="background-color:#00C0FD; border:1px solid #00C0FD; border-radius:20px; box-shadow:0 10px 24px rgba(2,12,27,0.24);">
                                                     <table role="presentation" width="100%" cellpadding="0"
                                                         cellspacing="0" border="0">
                                                         <tr>
                                                             <td align="center" style="padding:30px 35px 28px;">
                                                                 <p class="identity-name"
-                                                                    style="color:#0A2F63; font-size:17px; line-height:24px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; margin:0 0 4px;">
+                                                                    style="color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:17px; line-height:24px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; margin:0 0 4px;">
                                                                     {{ mb_strtoupper($fullName) }}
                                                                 </p>
                                                                 <p class="identity-number"
-                                                                    style="color:#294A72; font-size:14px; line-height:20px; font-weight:600; margin:0;">
+                                                                    style="color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:14px; line-height:20px; font-weight:600; margin:0;">
                                                                     {{ $identityDisplay }}
                                                                 </p>
                                                             </td>
@@ -612,25 +605,10 @@
 
                                 <tr>
                                     <td align="center" style="padding:22px 20px 12px;">
-                                        @if($showValidityPill)
-                                            <table role="presentation" cellpadding="0" cellspacing="0" border="0"
-                                                style="margin:0 auto;">
-                                                <tr>
-                                                    <td class="validity-pill"
-                                                        style="padding:10px 18px; border-radius:999px; background-color:#0a2f63; border:1px solid #4fa6ff;">
-                                                        <p class="ticket-validity-note"
-                                                            style="color:#ffffff; font-size:13px; line-height:18px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; text-align:center; text-shadow:none; margin:0;">
-                                                            Ticket valid from 9-19 April 2026
-                                                        </p>
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                        @else
-                                            <p class="ticket-validity-note"
-                                                style="color:#ffffff; font-size:13px; line-height:18px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; text-align:center; text-shadow:none; margin:0;">
-                                                Ticket valid from 9-19 April 2026
-                                            </p>
-                                        @endif
+                                        <p class="ticket-validity-note"
+                                            style="color:#ffffff; font-size:13px; line-height:18px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; text-align:center; text-shadow:none; margin:0;">
+                                            Ticket valid from 9-19 April 2026
+                                        </p>
                                     </td>
                                 </tr>
 
