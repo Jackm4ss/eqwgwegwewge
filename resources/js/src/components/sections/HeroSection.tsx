@@ -64,6 +64,23 @@ export function HeroSection() {
   const px2 = useSpring(px2Source, { stiffness: 50, damping: 25 });
   const py2 = useSpring(py2Source, { stiffness: 50, damping: 25 });
   const { days, hours, minutes, seconds, live } = useCountdown();
+  const [heroViewport, setHeroViewport] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const syncHeroViewport = () => {
+      setHeroViewport({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    syncHeroViewport();
+    window.addEventListener("resize", syncHeroViewport);
+
+    return () => {
+      window.removeEventListener("resize", syncHeroViewport);
+    };
+  }, []);
 
   const handleMouse = (event: React.MouseEvent) => {
     const cx = (event.clientX / window.innerWidth - 0.5) * 40;
@@ -99,11 +116,69 @@ export function HeroSection() {
     });
   };
 
+  const heroViewportHeight = heroViewport.height > 0 ? `${heroViewport.height}px` : "100svh";
+  const isCompactTabletHero =
+    heroViewport.width >= 768 &&
+    heroViewport.width < 1024 &&
+    heroViewport.height > 0 &&
+    heroViewport.height <= 980;
+  const isCompactDesktopHero =
+    heroViewport.width >= 1024 && heroViewport.height > 0 && heroViewport.height <= 900;
+  const heroShellClassName = isCompactDesktopHero
+    ? "relative z-10 flex h-full flex-col items-center justify-center py-8 lg:py-10"
+    : isCompactTabletHero
+      ? "relative z-10 flex h-full flex-col items-center justify-center py-7 md:py-8"
+    : "relative z-10 flex h-full flex-col items-center justify-start pt-10 md:justify-center md:py-10 lg:py-14";
+  const heroContentClassName = isCompactDesktopHero
+    ? "flex w-full flex-col items-center gap-2 px-4 md:gap-3"
+    : isCompactTabletHero
+      ? "flex w-full flex-col items-center gap-2 px-4 md:gap-3"
+    : "flex w-full flex-col items-center gap-3 px-4 md:gap-5";
+  const logoBlockClassName = isCompactDesktopHero
+    ? "relative mt-3 mb-1 flex items-center justify-center"
+    : isCompactTabletHero
+      ? "relative mt-2 mb-1 flex items-center justify-center md:mt-2 md:mb-3"
+    : "relative mt-0 mb-2 flex items-start justify-center md:mt-4 md:mb-5 md:items-center lg:mt-6 lg:mb-6";
+  const registerWrapClassName = isCompactDesktopHero
+    ? "relative z-20 mt-4 px-4 pb-5 md:px-8 lg:px-14"
+    : isCompactTabletHero
+      ? "relative z-20 mt-4 px-4 pb-6 md:px-8"
+    : "relative z-20 mt-6 px-4 md:mb-8 md:px-8 lg:px-14";
+  const steamHeight = isCompactDesktopHero
+    ? "clamp(145px, 22vh, 250px)"
+    : isCompactTabletHero
+      ? "clamp(145px, 21vh, 260px)"
+      : "clamp(160px, 26vh, 350px)";
+  const logoHeight = isCompactDesktopHero
+    ? "clamp(118px, 18vh, 210px)"
+    : isCompactTabletHero
+      ? "clamp(120px, 17vh, 220px)"
+      : "clamp(130px, 22vh, 320px)";
+  const songkranLogoHeight = isCompactDesktopHero
+    ? "clamp(118px, 20vh, 220px)"
+    : isCompactTabletHero
+      ? "clamp(120px, 19vh, 210px)"
+      : "clamp(130px, 24vh, 280px)";
+  const stageHeight = isCompactDesktopHero
+    ? "clamp(165px, 27vh, 320px)"
+    : isCompactTabletHero
+      ? "clamp(185px, 29vh, 300px)"
+      : "clamp(180px, 32vh, 400px)";
+  const textWrapClassName = isCompactDesktopHero
+    ? "w-full max-w-[700px]"
+    : isCompactTabletHero
+      ? "w-full max-w-[640px]"
+      : "w-full max-w-[820px]";
+
   return (
     <section
       id="home-hero-section"
       className="relative min-h-screen overflow-hidden"
-      style={{ background: "transparent" }}
+      style={{
+        background: "transparent",
+        minHeight: heroViewportHeight,
+        height: heroViewportHeight,
+      }}
       onMouseMove={handleMouse}
     >
       <div className="absolute inset-0 pointer-events-none">
@@ -126,17 +201,17 @@ export function HeroSection() {
         />
       </motion.div>
 
-      <motion.div className="relative z-10 flex min-h-screen flex-col items-center justify-start pt-16 md:justify-center md:py-10 lg:py-14">
-        <div className="flex w-full flex-col items-center gap-3 px-4 md:gap-5">
+      <motion.div className={heroShellClassName} style={{ minHeight: heroViewportHeight }}>
+        <div className={heroContentClassName}>
           <div
-            className="relative mt-1 mb-2 flex items-start justify-center md:mt-4 md:mb-5 md:items-center lg:mt-6 lg:mb-6"
-            style={{ width: "100vw", height: "clamp(130px, 22vh, 320px)" }}
+            className={logoBlockClassName}
+            style={{ width: "100vw", height: logoHeight }}
           >
             <div
               className="absolute left-1/2 top-0 -translate-x-1/2"
               style={{
                 width: "calc(100vw + 10rem)",
-                height: "clamp(160px, 26vh, 350px)",
+                height: steamHeight,
                 zIndex: 0,
                 opacity: 0.92,
               }}
@@ -167,7 +242,7 @@ export function HeroSection() {
                 filter: "drop-shadow(0 0 28px rgba(47,167,216,0.55))",
                 position: "relative",
                 width: "90vw",
-                height: "clamp(130px, 24vh, 280px)",
+                height: songkranLogoHeight,
                 zIndex: 1,
               }}
               initial={{ opacity: 0, y: -20 }}
@@ -193,7 +268,7 @@ export function HeroSection() {
               y: py2,
               filter: "drop-shadow(0 0 24px rgba(47,167,216,0.35))",
               width: "100vw",
-              height: "clamp(180px, 32vh, 400px)",
+              height: stageHeight,
             }}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -220,7 +295,7 @@ export function HeroSection() {
               src="/images/text.png"
               alt="12PM-12AM, 9-19 APRIL, @GF Forecourt Outdoor Carpark, 1 Utama, Malaysia's Premier Songkran Festival"
               loading="eager"
-              wrapperClassName="w-full max-w-[820px]"
+              wrapperClassName={textWrapClassName}
               className="h-auto w-full"
               style={{
                 objectFit: "contain",
@@ -235,7 +310,7 @@ export function HeroSection() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 1.2, duration: 0.5, type: "spring" }}
-          className="relative z-20 mt-6 px-4 md:mb-8 md:px-8 lg:px-14"
+          className={registerWrapClassName}
         >
           <button
             onClick={goToRegister}
