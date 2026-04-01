@@ -182,7 +182,7 @@
         }
 
         .notice-eyebrow {
-            color: #052F4A;
+            color: #ffffff;
             font-size: 10px;
             line-height: 14px;
             font-weight: 800;
@@ -192,7 +192,7 @@
         }
 
         .notice-title {
-            color: #052F4A;
+            color: #ffffff;
             font-size: 24px;
             line-height: 30px;
             font-weight: 800;
@@ -200,7 +200,7 @@
         }
 
         .notice-copy {
-            color: #052F4A;
+            color: #ffffff;
             font-size: 14px;
             line-height: 22px;
             font-weight: 700;
@@ -227,7 +227,7 @@
         }
 
         .identity-name {
-            color: #052F4A;
+            color: #ffffff;
             font-size: 17px;
             line-height: 24px;
             font-weight: 800;
@@ -237,7 +237,7 @@
         }
 
         .identity-number {
-            color: #052F4A;
+            color: #ffffff;
             font-size: 14px;
             line-height: 20px;
             font-weight: 600;
@@ -347,7 +347,7 @@
             padding: 14px 28px;
             border-radius: 999px;
             background-color: #00C0FD;
-            color: #052F4A;
+            color: #ffffff;
             font-size: 15px;
             line-height: 20px;
             font-weight: 800;
@@ -479,19 +479,19 @@
                                                                 <td align="center" style="padding:18px 22px;">
                                                                     @if($noticeEyebrow !== '')
                                                                         <p class="notice-eyebrow"
-                                                                            style="color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
+                                                                            style="color:#ffffff; -webkit-text-fill-color:#ffffff; font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
                                                                             {{ $noticeEyebrow }}
                                                                         </p>
                                                                     @endif
                                                                     @if($noticeTitle !== '')
                                                                         <p class="notice-title"
-                                                                            style="color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:24px; line-height:30px; font-weight:800; margin:0 0 10px;">
+                                                                            style="color:#ffffff; -webkit-text-fill-color:#ffffff; font-size:24px; line-height:30px; font-weight:800; margin:0 0 10px;">
                                                                             {{ $noticeTitle }}
                                                                         </p>
                                                                     @endif
                                                                     @if($noticeCopy !== '')
                                                                         <p class="notice-copy"
-                                                                            style="color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:14px; line-height:22px; font-weight:700; margin:0;">
+                                                                            style="color:#ffffff; -webkit-text-fill-color:#ffffff; font-size:14px; line-height:22px; font-weight:700; margin:0;">
                                                                             {{ $noticeCopy }}
                                                                         </p>
                                                                     @endif
@@ -551,7 +551,7 @@
                                                         arcsize="50%" stroke="f" fillcolor="#00C0FD">
                                                         <w:anchorlock/>
                                                         <center
-                                                            style="color:#052F4A; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
+                                                            style="color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
                                                             {{ $ticketButtonLabel }}
                                                         </center>
                                                     </v:roundrect>
@@ -564,7 +564,7 @@
                                                                 style="border-radius:999px; background-color:#00C0FD; box-shadow:0 12px 24px rgba(2,12,27,0.2);">
                                                                 <a href="{{ $ticketUrl }}" target="_blank"
                                                                     rel="noopener noreferrer" class="button-link"
-                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background-color:#00C0FD; color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
+                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background-color:#00C0FD; color:#ffffff; -webkit-text-fill-color:#ffffff; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
                                                                     {{ $ticketButtonLabel }}
                                                                 </a>
                                                             </td>
@@ -585,11 +585,11 @@
                                                         <tr>
                                                             <td align="center" style="padding:30px 35px 28px;">
                                                                 <p class="identity-name"
-                                                                    style="color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:17px; line-height:24px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; margin:0 0 4px;">
+                                                                    style="color:#ffffff; -webkit-text-fill-color:#ffffff; font-size:17px; line-height:24px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; margin:0 0 4px;">
                                                                     {{ mb_strtoupper($fullName) }}
                                                                 </p>
                                                                 <p class="identity-number"
-                                                                    style="color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:14px; line-height:20px; font-weight:600; margin:0;">
+                                                                    style="color:#ffffff; -webkit-text-fill-color:#ffffff; font-size:14px; line-height:20px; font-weight:600; margin:0;">
                                                                     {{ $identityDisplay }}
                                                                 </p>
                                                             </td>
