@@ -101,5 +101,20 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(3)->by($request->ip().'|'.$searchType.'|'.$identifier),
             ];
         });
+
+        RateLimiter::for('public-report-submit', function (Request $request) {
+            $identifier = strtolower(trim((string) $request->input('email', '')))
+                .'|'
+                .preg_replace('/\D+/', '', (string) $request->input('phone', ''));
+
+            if ($identifier === '|') {
+                $identifier = 'guest';
+            }
+
+            return [
+                Limit::perMinute(6)->by($request->ip()),
+                Limit::perMinute(2)->by($request->ip().'|'.$identifier),
+            ];
+        });
     }
 }

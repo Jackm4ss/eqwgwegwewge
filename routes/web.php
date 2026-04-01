@@ -60,6 +60,21 @@ $renderRegisterSpa = static function () {
     ]);
 };
 
+$renderReportSpa = static function () {
+    $spaConfig = AppRouting::spaConfig('public');
+    $spaConfig['paths']['landing'] = [];
+    $spaConfig['paths']['register'] = [];
+    $spaConfig['paths']['forgotQr'] = [];
+    $spaConfig['paths']['report'] = ['/', AppRouting::routePath('report.form')];
+
+    return view('welcome', [
+        'spaContext' => 'public',
+        'spaConfig' => $spaConfig,
+        'staffScannerPosts' => config('scanner.posts', ['Gate A']),
+        'pwaManifestUrl' => null,
+    ]);
+};
+
 $redirectAuthenticatedAdmin = static function () {
     if (! Auth::guard('admin')->check()) {
         return null;
@@ -182,6 +197,9 @@ $publicRoutes = static function () use ($renderSpa, $isSubdomainMode, $adminLogi
     Route::get('/forgot-qr', static fn () => $renderSpa('public'))
         ->name('forgot-qr.form');
 
+    Route::get('/report', static fn () => $renderSpa('public'))
+        ->name('report.form');
+
     Route::post('/register', function (RegisterRequest $request, RegistrationService $service) {
         try {
             $result = $service->register($request->validated(), $request->ip());
@@ -264,12 +282,21 @@ $groupForDomain(AppRouting::hostFor('public'), $publicRoutes);
 if ($isSubdomainMode) {
     $registerHost = AppRouting::hostFor('register');
     $publicHost = AppRouting::hostFor('public');
+    $helpHost = AppRouting::hostFor('help');
 
     if ($registerHost !== null && $registerHost !== '' && $registerHost !== $publicHost) {
         $groupForDomain($registerHost, static function () use ($renderRegisterSpa) {
             Route::get('/', $renderRegisterSpa);
             Route::get('/register', $renderRegisterSpa);
             Route::get('/forgot-qr', $renderRegisterSpa);
+            Route::get('/report', $renderRegisterSpa);
+        });
+    }
+
+    if ($helpHost !== null && $helpHost !== '' && $helpHost !== $publicHost && $helpHost !== $registerHost) {
+        $groupForDomain($helpHost, static function () use ($renderReportSpa) {
+            Route::get('/', $renderReportSpa);
+            Route::get('/report', $renderReportSpa);
         });
     }
 }
@@ -338,7 +365,7 @@ if ($isSubdomainMode) {
                     ->name('reports.index');
 
                 Route::get('/exports/{type}/{format}', ExportController::class)
-                    ->whereIn('type', ['users', 'attendance', 'admin-logs', 'daily-report', 'overall-report'])
+                    ->whereIn('type', ['users', 'attendance', 'admin-logs', 'daily-report', 'overall-report', 'public-reports'])
                     ->whereIn('format', ['csv', 'xlsx'])
                     ->name('exports.download');
             });
@@ -411,7 +438,7 @@ if ($isSubdomainMode) {
                     ->name('reports.index');
 
                 Route::get('/exports/{type}/{format}', ExportController::class)
-                    ->whereIn('type', ['users', 'attendance', 'admin-logs', 'daily-report', 'overall-report'])
+                    ->whereIn('type', ['users', 'attendance', 'admin-logs', 'daily-report', 'overall-report', 'public-reports'])
                     ->whereIn('format', ['csv', 'xlsx'])
                     ->name('exports.download');
             });

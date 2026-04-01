@@ -21,6 +21,7 @@
     $rangeDays = (int) data_get($dashboard, 'date_range.days', 7);
     $isFilteredRange = (bool) data_get($dashboard, 'date_range.is_filtered', false);
     $campaignLinkSummary = $campaignLinkSummary ?? ['storage_ready' => false, 'total' => 0, 'active' => 0, 'homepage' => 0, 'register' => 0];
+    $publicReportSummary = $publicReportSummary ?? [];
   @endphp
 
   <div class="card mb-6">
@@ -61,6 +62,50 @@
           <div class="border rounded-3 p-3 h-100">
             <small class="text-muted d-block mb-1">Register page links</small>
             <h4 class="mb-0">{{ number_format((int) data_get($campaignLinkSummary, 'register', 0)) }}</h4>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-6">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-4">
+        <div>
+          <span class="badge bg-label-warning mb-2">Help Desk</span>
+          <h5 class="mb-1">Public Reports</h5>
+          <p class="text-muted mb-0">
+            View incoming help desk reports from the public form, including case IDs, incident time, chronology, and IP address.
+          </p>
+        </div>
+        <a href="{{ route('admin.reports.index') }}" class="btn btn-primary">
+          Open Public Reports
+        </a>
+      </div>
+
+      <div class="row g-3 mt-1">
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Total reports</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($publicReportSummary, 'total', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Incident / Security</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($publicReportSummary, 'incident_security', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Lost Item + Locker</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($publicReportSummary, 'lost_item', 0) + (int) data_get($publicReportSummary, 'lost_locker_card', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Medical Attention</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($publicReportSummary, 'medical_attention', 0)) }}</h4>
           </div>
         </div>
       </div>

@@ -51,6 +51,7 @@
     <meta name="twitter:image:alt" content="Songkran Festival 2026 logo">
     <meta name="recaptcha-enabled" content="{{ config('services.recaptcha.enabled') ? '1' : '0' }}">
     <meta name="recaptcha-site-key" content="{{ config('services.recaptcha.site_key') }}">
+    <meta name="request-ip" content="{{ request()->ip() }}">
     <meta name="register-url" content="{{ config('admin.future_urls.register') ?: route('register.form') }}">
     <meta name="staff-scanner-posts" content="{{ json_encode($staffScannerPosts ?? ['Gate A']) }}">
     @if (! empty($pwaManifestUrl))

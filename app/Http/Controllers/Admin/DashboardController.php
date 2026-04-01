@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\Admin\AdminPanelService;
 use App\Services\Admin\CampaignLinkService;
+use App\Services\PublicReportService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
@@ -14,6 +15,7 @@ class DashboardController extends Controller
         Request $request,
         AdminPanelService $adminPanel,
         CampaignLinkService $campaignLinkService,
+        PublicReportService $publicReportService,
     ): View
     {
         $filters = $request->only(['from', 'to']);
@@ -23,6 +25,7 @@ class DashboardController extends Controller
             'filters' => $filters,
             'firestoreAvailable' => $adminPanel->firestoreAvailable(),
             'campaignLinkSummary' => $campaignLinkService->dashboardSummary(),
+            'publicReportSummary' => $publicReportService->summary(),
         ]);
     }
 }

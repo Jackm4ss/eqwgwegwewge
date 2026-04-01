@@ -4,6 +4,7 @@ export type SpaPathKey =
   | 'landing'
   | 'register'
   | 'forgotQr'
+  | 'report'
   | 'adminLogin'
   | 'staffLogin'
   | 'staffHome';
@@ -13,6 +14,7 @@ export type SpaUrlKey =
   | 'registerForm'
   | 'registerApi'
   | 'forgotQrLookupApi'
+  | 'reportSubmitApi'
   | 'forgotPassword'
   | 'login'
   | 'adminLoginSubmit'
@@ -50,6 +52,7 @@ const FALLBACK_CONFIG: SpaConfig = {
     landing: ['/'],
     register: ['/register'],
     forgotQr: ['/forgot-qr'],
+    report: ['/report'],
     adminLogin: ['/login'],
     staffLogin: ['/staff/login'],
     staffHome: ['/staff'],
@@ -59,6 +62,7 @@ const FALLBACK_CONFIG: SpaConfig = {
     registerForm: '/register',
     registerApi: '/api/register',
     forgotQrLookupApi: '/api/forgot-qr/lookup',
+    reportSubmitApi: '/api/report',
     forgotPassword: '/forgot-password',
     login: '/login',
     adminLoginSubmit: '/admin/login',
@@ -138,6 +142,7 @@ function buildConfig(): SpaConfig {
     landing: normalizePaths(rawPaths.landing),
     register: normalizePaths(rawPaths.register),
     forgotQr: normalizePaths(rawPaths.forgotQr),
+    report: normalizePaths(rawPaths.report),
     adminLogin: normalizePaths(rawPaths.adminLogin),
     staffLogin: normalizePaths(rawPaths.staffLogin),
     staffHome: normalizePaths(rawPaths.staffHome),

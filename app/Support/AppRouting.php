@@ -34,6 +34,11 @@ final class AppRouting
         return (string) (config('routing.admin_url') ?: config('app.url'));
     }
 
+    public static function helpUrl(): string
+    {
+        return (string) (config('routing.help_url') ?: config('app.url'));
+    }
+
     public static function staffUrl(): string
     {
         return (string) (config('routing.staff_url') ?: config('app.url'));
@@ -52,6 +57,7 @@ final class AppRouting
     {
         return match ($area) {
             'admin' => self::adminUrl(),
+            'help' => self::helpUrl(),
             'register' => self::registerUrl(),
             'staff' => self::staffUrl(),
             default => self::publicUrl(),
@@ -103,6 +109,7 @@ final class AppRouting
                     'landing' => ['/'],
                     'register' => [self::routePath('register.form')],
                     'forgotQr' => [self::routePath('forgot-qr.form')],
+                    'report' => [self::routePath('report.form')],
                 ],
             },
             'urls' => [
@@ -110,6 +117,7 @@ final class AppRouting
                 'registerForm' => route('register.form'),
                 'registerApi' => url('/api/register'),
                 'forgotQrLookupApi' => url('/api/forgot-qr/lookup'),
+                'reportSubmitApi' => url('/api/report'),
                 'forgotPassword' => route('password.request'),
                 'login' => route('login'),
                 'adminLoginSubmit' => route('admin.login.store'),

@@ -24,6 +24,7 @@
 /storage/app/private/admin-backups/*
 /storage/app/private/test-admin-backups/*
 /database/*.sqlite
+/public/database/*.sqlite
 
 # OS junk
 .DS_Store
