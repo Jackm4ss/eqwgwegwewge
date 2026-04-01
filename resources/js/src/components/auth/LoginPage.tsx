@@ -453,6 +453,10 @@ export function LoginPage() {
                         <code className="bg-red-100 px-1 py-0.5 rounded text-red-800 font-mono">
                           admin01@songkran.local
                         </code>{' '}
+                        with password{' '}
+                        <code className="bg-red-100 px-1 py-0.5 rounded text-red-800 font-mono">
+                          00000000
+                        </code>{' '}
                         for local development.
                       </p>
                     </motion.div>

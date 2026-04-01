@@ -7,6 +7,7 @@ use App\Services\Admin\AdminPanelService;
 use Database\Seeders\AdminSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class AdminAuthenticationTest extends TestCase
@@ -86,6 +87,35 @@ class AdminAuthenticationTest extends TestCase
 
         $this->assertAuthenticated('admin');
         $this->assertGreaterThan(0, Admin::query()->where('role', 'admin')->count());
+        $this->assertDatabaseHas('admins', [
+            'email' => 'admin01@songkran.local',
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_admin_login_bootstraps_local_sqlite_auth_when_schema_and_password_are_missing(): void
+    {
+        $this->app['env'] = 'local';
+        config(['admin.bootstrap_password' => '']);
+
+        Schema::dropIfExists('admins');
+
+        $response = $this->withSession(['_token' => 'csrf-token'])
+            ->postJson('/admin/login', [
+                'email' => 'admin01@songkran.local',
+                'password' => '00000000',
+            ], [
+                'X-CSRF-TOKEN' => 'csrf-token',
+            ]);
+
+        $response->assertOk()
+            ->assertJson([
+                'message' => 'Login successful.',
+                'redirect' => route('admin.dashboard'),
+            ]);
+
+        $this->assertAuthenticated('admin');
         $this->assertDatabaseHas('admins', [
             'email' => 'admin01@songkran.local',
             'role' => 'admin',
