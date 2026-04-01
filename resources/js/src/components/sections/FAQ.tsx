@@ -125,6 +125,12 @@ const faqs: FAQItem[] = [
     ],
   },
   {
+    q: "Is there a limit to how many people can enter at one time?",
+    a: [
+      "Yes. Entry is on a first come, first served basis due to venue capacity limits. If full capacity is reached, visitors will be placed on a waiting list and allowed in as others exit the event grounds.",
+    ],
+  },
+  {
     q: "CCTV & Surveillance",
     a: [
       "The event venue are under 24-hour video surveillance for the purposes of security and crime prevention. By entering, you consent to the collection and processing of your image in accordance with our Privacy Policy.",
