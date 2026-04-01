@@ -217,7 +217,7 @@
 
         .identity-card {
             background-color: #00C0FD;
-            border: 1px solid #00C0FD;
+            border: 0;
             border-radius: 20px;
             box-shadow: 0 10px 24px rgba(2, 12, 27, 0.24);
         }
@@ -472,7 +472,7 @@
                                                 border="0" style="width:100%; max-width:460px; margin:24px auto 0;">
                                                 <tr>
                                                     <td class="notice-card" bgcolor="#00C0FD"
-                                                        style="border-radius:22px; border:1px solid #00C0FD; background-color:#00C0FD; box-shadow:0 14px 30px rgba(15,23,42,0.18);">
+                                                        style="border-radius:22px; border:0; background-color:#00C0FD; box-shadow:0 14px 30px rgba(15,23,42,0.18);">
                                                         <table role="presentation" width="100%" cellpadding="0"
                                                             cellspacing="0" border="0">
                                                             <tr>
@@ -579,7 +579,7 @@
                                             width="85%" style="width:85%; max-width:320px; margin:28px auto 0;">
                                             <tr>
                                                 <td class="identity-card" bgcolor="#00C0FD"
-                                                    style="background-color:#00C0FD; border:1px solid #00C0FD; border-radius:20px; box-shadow:0 10px 24px rgba(2,12,27,0.24);">
+                                                    style="background-color:#00C0FD; border:0; border-radius:20px; box-shadow:0 10px 24px rgba(2,12,27,0.24);">
                                                     <table role="presentation" width="100%" cellpadding="0"
                                                         cellspacing="0" border="0">
                                                         <tr>
