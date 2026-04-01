@@ -8,21 +8,13 @@
     };
 
     $backgroundSrc = $publicImageUrl('BACKGROUND.jpg');
-    $glassBackgroundSrc = $publicImageUrl('whitebackground.jpg');
     $logoSrc = $publicImageUrl('Songkran logo.png');
-    $organiserSrc = $publicImageUrl('eq-solution.png');
     $eventHeaderSrc = $publicImageUrl('ticket-event-header-email.png');
-    $venueSponsorSrc = $publicImageUrl('123.png');
-    $sponsorEmbassySrc = $publicImageUrl('Royal_Thai_Embassy_Seal.svg.png');
-    $sponsorDitpSrc = $publicImageUrl('ditp-new.png');
-    $sponsorAmazingThailandSrc = $publicImageUrl('amazing thailand.png');
-    $sponsorSinghaSrc = $publicImageUrl('singha-seeklogo.png');
-    $sponsorSnakeBrandSrc = $publicImageUrl('Snake-Brand-Logo.png');
-    $sponsorThaigoSrc = $publicImageUrl('thaigo.png');
-    $sponsorLayer0Src = $publicImageUrl('Layer 0.png');
     $mapToLocationSrc = $publicImageUrl('Map to Location.png');
-    $mediaWobSrc = $publicImageUrl('wob.png');
-    $mediaNoodouSrc = $publicImageUrl('noodou.png');
+    $sponsorsFooterFilename = 'email-sponsors-footer.png';
+    $sponsorsFooterSrc = file_exists(public_path('images/' . $sponsorsFooterFilename))
+        ? $publicImageUrl($sponsorsFooterFilename)
+        : '';
 
     $identityNumber = trim((string) ($user['identity_number'] ?? ''));
     $identityDisplay = $identityNumber !== '' ? $identityNumber : '-';
@@ -173,13 +165,9 @@
 
         .notice-card {
             border-radius: 22px;
-            border: 1px solid #d5e7ee;
-            background-color: #f6fbfd;
-            background-image: url('{{ $glassBackgroundSrc }}');
-            background-repeat: no-repeat;
-            background-position: center center;
-            background-size: cover;
-            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+            border: 1px solid #4fa6ff;
+            background-color: #0a2f63;
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
         }
 
         .notice-card td {
@@ -187,7 +175,7 @@
         }
 
         .notice-eyebrow {
-            color: rgba(15, 23, 42, 0.68);
+            color: #bfe0ff;
             font-size: 10px;
             line-height: 14px;
             font-weight: 800;
@@ -197,7 +185,7 @@
         }
 
         .notice-title {
-            color: #0f172a;
+            color: #ffffff;
             font-size: 24px;
             line-height: 30px;
             font-weight: 800;
@@ -205,7 +193,7 @@
         }
 
         .notice-copy {
-            color: rgba(15, 23, 42, 0.78);
+            color: #e3efff;
             font-size: 14px;
             line-height: 22px;
             font-weight: 700;
@@ -221,29 +209,10 @@
         }
 
         .identity-card {
-            background-color: #f6fbfd;
-            background-image: url('{{ $glassBackgroundSrc }}');
-            background-repeat: no-repeat;
-            background-position: center center;
-            background-size: cover;
-            border: 1px solid #d8e8ef;
+            background-color: #0a274e;
+            border: 1px solid #4fa6ff;
             border-radius: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-        }
-
-        .footer-card {
-            background-color: #eef7fa;
-            background-image: url('{{ $glassBackgroundSrc }}');
-            background-repeat: no-repeat;
-            background-position: center center;
-            background-size: cover;
-            border: 1px solid #d8e8ef;
-            border-radius: 16px;
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
-        }
-
-        .footer-card-body {
-            padding: 20px 16px;
+            box-shadow: 0 10px 24px rgba(2, 12, 27, 0.24);
         }
 
         .identity-card td {
@@ -251,7 +220,7 @@
         }
 
         .identity-name {
-            color: #000000;
+            color: #ffffff;
             font-size: 17px;
             line-height: 24px;
             font-weight: 800;
@@ -261,7 +230,7 @@
         }
 
         .identity-number {
-            color: rgba(0, 0, 0, 0.9);
+            color: #d9e9ff;
             font-size: 14px;
             line-height: 20px;
             font-weight: 600;
@@ -307,15 +276,22 @@
             letter-spacing: 0.04em;
             text-transform: uppercase;
             text-align: center;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.45);
+            text-shadow: none;
             margin: 0;
+        }
+
+        .validity-pill {
+            background-color: #0a2f63;
+            border: 1px solid #4fa6ff;
+            border-radius: 999px;
+            box-shadow: 0 10px 20px rgba(2, 12, 27, 0.18);
         }
 
         .entry-code-card {
             border-radius: 22px;
-            border: 1px solid #d8e8ef;
-            background-color: #f7fbfd;
-            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+            border: 1px solid #4fa6ff;
+            background-color: #0a2f63;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
         }
 
         .entry-code-card td {
@@ -323,7 +299,7 @@
         }
 
         .entry-code-label {
-            color: rgba(15, 23, 42, 0.68);
+            color: #bfe0ff;
             font-size: 10px;
             line-height: 14px;
             font-weight: 800;
@@ -333,7 +309,7 @@
         }
 
         .entry-code-value {
-            color: #0f172a;
+            color: #ffffff;
             font-size: 17px;
             line-height: 22px;
             font-weight: 800;
@@ -342,7 +318,7 @@
         }
 
         .entry-code-help {
-            color: rgba(15, 23, 42, 0.72);
+            color: #d7e8ff;
             font-size: 12px;
             line-height: 18px;
             font-weight: 700;
@@ -370,68 +346,21 @@
             display: inline-block;
             padding: 14px 28px;
             border-radius: 999px;
-            background: rgba(255, 255, 255, 0.95);
-            color: #0956c8;
+            background-color: #0a2f63;
+            color: #ffffff;
             font-size: 15px;
             line-height: 20px;
             font-weight: 800;
             text-decoration: none;
-            box-shadow: 0 12px 24px rgba(2, 132, 199, 0.24);
+            box-shadow: 0 12px 24px rgba(2, 12, 27, 0.2);
         }
 
-        .footer-heading {
-            color: rgba(0, 0, 0, 0.68);
-            font-size: 9px;
-            line-height: 12px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.14em;
-            margin: 0 0 8px;
-            font-family: Arial, Helvetica, sans-serif;
-        }
-
-        .footer-text {
-            color: #000000;
-            font-size: 14px;
-            line-height: 22px;
-            font-weight: 500;
-            margin: 0;
-        }
-
-        .footer-organiser-logo {
-            max-height: 24px;
-            width: auto;
-        }
-
-        .logo-venue {
-            max-height: 40px;
-            width: auto;
-        }
-
-        .logo-sponsor-embassy,
-        .logo-sponsor-snake {
-            max-height: 34px;
-            width: auto;
-        }
-
-        .logo-sponsor-ditp {
-            max-height: 15px;
-            width: auto;
-        }
-
-        .logo-sponsor-amazing,
-        .logo-sponsor-singha,
-        .logo-sponsor-thaigo,
-        .logo-sponsor-layer {
-            max-height: 17px;
-            width: auto;
-        }
-
-        .logo-media {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            border: 3px solid #ffffff;
+        .footer-sponsors-image {
+            width: 100%;
+            max-width: 520px;
+            height: auto;
+            display: block;
+            margin: 0 auto;
         }
 
         .spacer-24 {
@@ -543,27 +472,26 @@
                                                 border="0" style="width:100%; max-width:460px; margin:24px auto 0;">
                                                 <tr>
                                                     <td class="notice-card"
-                                                        background="{{ $glassBackgroundSrc }}"
-                                                        style="border-radius:22px; border:1px solid #d5e7ee; background-color:#f6fbfd; background-image:url('{{ $glassBackgroundSrc }}'); background-repeat:no-repeat; background-position:center center; background-size:cover; box-shadow:0 14px 30px rgba(15,23,42,0.12);">
+                                                        style="border-radius:22px; border:1px solid #4fa6ff; background-color:#0a2f63; box-shadow:0 14px 30px rgba(15,23,42,0.18);">
                                                         <table role="presentation" width="100%" cellpadding="0"
                                                             cellspacing="0" border="0">
                                                             <tr>
                                                                 <td align="center" style="padding:18px 22px;">
                                                                     @if($noticeEyebrow !== '')
                                                                         <p class="notice-eyebrow"
-                                                                            style="color:rgba(15,23,42,0.68); font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
+                                                                            style="color:#bfe0ff; font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
                                                                             {{ $noticeEyebrow }}
                                                                         </p>
                                                                     @endif
                                                                     @if($noticeTitle !== '')
                                                                         <p class="notice-title"
-                                                                            style="color:#0f172a; font-size:24px; line-height:30px; font-weight:800; margin:0 0 10px;">
+                                                                            style="color:#ffffff; font-size:24px; line-height:30px; font-weight:800; margin:0 0 10px;">
                                                                             {{ $noticeTitle }}
                                                                         </p>
                                                                     @endif
                                                                     @if($noticeCopy !== '')
                                                                         <p class="notice-copy"
-                                                                            style="color:rgba(15,23,42,0.78); font-size:14px; line-height:22px; font-weight:700; margin:0;">
+                                                                            style="color:#e3efff; font-size:14px; line-height:22px; font-weight:700; margin:0;">
                                                                             {{ $noticeCopy }}
                                                                         </p>
                                                                     @endif
@@ -620,23 +548,23 @@
                                                     <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
                                                         xmlns:w="urn:schemas-microsoft-com:office:word"
                                                         href="{{ $ticketUrl }}" style="height:48px; v-text-anchor:middle; width:170px;"
-                                                        arcsize="50%" stroke="f" fillcolor="#FFFFFF">
+                                                        arcsize="50%" stroke="f" fillcolor="#0A2F63">
                                                         <w:anchorlock/>
                                                         <center
-                                                            style="color:#0956c8; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
+                                                            style="color:#FFFFFF; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
                                                             {{ $ticketButtonLabel }}
                                                         </center>
                                                     </v:roundrect>
                                                     <![endif]-->
                                                     <!--[if !mso]><!-- -->
-                                                    <table role="presentation" cellpadding="0" cellspacing="0"
-                                                        border="0" class="button-table" style="margin:0 auto;">
+                                                        <table role="presentation" cellpadding="0" cellspacing="0"
+                                                            border="0" class="button-table" style="margin:0 auto;">
                                                         <tr>
-                                                            <td align="center" bgcolor="#FFFFFF"
-                                                                style="border-radius:999px; background-color:#FFFFFF; box-shadow:0 12px 24px rgba(2,132,199,0.24);">
+                                                            <td align="center" bgcolor="#0A2F63"
+                                                                style="border-radius:999px; background-color:#0A2F63; box-shadow:0 12px 24px rgba(2,12,27,0.2);">
                                                                 <a href="{{ $ticketUrl }}" target="_blank"
                                                                     rel="noopener noreferrer" class="button-link"
-                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background-color:#FFFFFF; color:#0956c8; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
+                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background-color:#0A2F63; color:#FFFFFF; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
                                                                     {{ $ticketButtonLabel }}
                                                                 </a>
                                                             </td>
@@ -651,18 +579,17 @@
                                             width="85%" style="width:85%; max-width:320px; margin:28px auto 0;">
                                             <tr>
                                                 <td class="identity-card"
-                                                    background="{{ $glassBackgroundSrc }}"
-                                                    style="background-color:#f6fbfd; background-image:url('{{ $glassBackgroundSrc }}'); background-repeat:no-repeat; background-position:center center; background-size:cover; border:1px solid #d8e8ef; border-radius:20px; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+                                                    style="background-color:#0a274e; border:1px solid #4fa6ff; border-radius:20px; box-shadow:0 10px 24px rgba(2,12,27,0.24);">
                                                     <table role="presentation" width="100%" cellpadding="0"
                                                         cellspacing="0" border="0">
                                                         <tr>
                                                             <td align="center" style="padding:30px 35px 28px;">
                                                                 <p class="identity-name"
-                                                                    style="color:#000000; font-size:17px; line-height:24px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; margin:0 0 4px;">
+                                                                    style="color:#FFFFFF; font-size:17px; line-height:24px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; margin:0 0 4px;">
                                                                     {{ mb_strtoupper($fullName) }}
                                                                 </p>
                                                                 <p class="identity-number"
-                                                                    style="color:rgba(0,0,0,0.9); font-size:14px; line-height:20px; font-weight:600; margin:0;">
+                                                                    style="color:#D9E9FF; font-size:14px; line-height:20px; font-weight:600; margin:0;">
                                                                     {{ $identityDisplay }}
                                                                 </p>
                                                             </td>
@@ -677,10 +604,18 @@
 
                                 <tr>
                                     <td align="center" style="padding:22px 20px 12px;">
-                                        <p class="ticket-validity-note"
-                                            style="color:#ffffff; font-size:13px; line-height:18px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; text-align:center; text-shadow:1px 1px 3px rgba(0,0,0,0.45); margin:0;">
-                                            Ticket valid from 9-19 April 2026
-                                        </p>
+                                        <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+                                            style="margin:0 auto;">
+                                            <tr>
+                                                <td class="validity-pill"
+                                                    style="padding:10px 18px; border-radius:999px; background-color:#0a2f63; border:1px solid #4fa6ff;">
+                                                    <p class="ticket-validity-note"
+                                                        style="color:#ffffff; font-size:13px; line-height:18px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; text-align:center; text-shadow:none; margin:0;">
+                                                        Ticket valid from 9-19 April 2026
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
                                     </td>
                                 </tr>
 
@@ -733,172 +668,12 @@
                                                         cellspacing="0" border="0">
                                                         <tr>
                                                             <td style="padding:0 6px;">
-                                                                <table role="presentation" width="100%"
-                                                                    cellpadding="0" cellspacing="0" border="0"
-                                                                    class="footer-card"
-                                                                    background="{{ $glassBackgroundSrc }}"
-                                                                    style="width:100%; background-color:#eef7fa; background-image:url('{{ $glassBackgroundSrc }}'); background-repeat:no-repeat; background-position:center center; background-size:cover; border:1px solid #d8e8ef; border-radius:16px; box-shadow:0 12px 24px rgba(0,0,0,0.1);">
-                                                                    <tr>
-                                                                        <td class="footer-card-body"
-                                                                            style="padding:20px 16px;">
-                                                                            <table role="presentation" width="100%"
-                                                                                cellpadding="0" cellspacing="0"
-                                                                                border="0">
-                                                                    <tr>
-                                                                        <td width="50%" align="center" valign="top"
-                                                                            style="width:50%; padding:0 12px 20px;">
-                                                                            <p class="footer-heading"
-                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:Arial, Helvetica, sans-serif;">
-                                                                                ORGANISER
-                                                                            </p>
-                                                                            @if($organiserSrc)
-                                                                                <img src="{{ $organiserSrc }}"
-                                                                                    alt="eq solutions"
-                                                                                    class="footer-organiser-logo"
-                                                                                    style="display:inline-block; vertical-align:middle; max-height:24px; width:auto;">
-                                                                            @endif
-                                                                        </td>
-                                                                        <td width="50%" align="center" valign="top"
-                                                                            style="width:50%; padding:0 12px 20px;">
-                                                                            <p class="footer-heading"
-                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:Arial, Helvetica, sans-serif;">
-                                                                                VENUE SPONSOR
-                                                                            </p>
-                                                                        @if($venueSponsorSrc)
-                                                                            <img src="{{ $venueSponsorSrc }}"
-                                                                                alt="1 Utama"
-                                                                                class="logo-venue"
-                                                                                style="display:inline-block; vertical-align:middle; max-height:40px; width:auto;">
-                                                                        @endif
-                                                                    </td>
-                                                                </tr>
-                                                                <tr>
-                                                                        <td width="50%" align="center" valign="top"
-                                                                            style="width:50%; padding:0 12px;">
-                                                                            <p class="footer-heading"
-                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:Arial, Helvetica, sans-serif;">
-                                                                                SPONSORS
-                                                                            </p>
-                                                                            <table role="presentation" width="100%"
-                                                                                cellpadding="0" cellspacing="0"
-                                                                                border="0">
-                                                                                <tr>
-                                                                                    <td width="25%" align="center"
-                                                                                        valign="middle"
-                                                                                        style="padding:0 4px 10px;">
-                                                                                        @if($sponsorEmbassySrc)
-                                                                                            <img src="{{ $sponsorEmbassySrc }}"
-                                                                                                alt="Royal Thai Embassy"
-                                                                                                class="logo-sponsor-embassy"
-                                                                                                style="display:inline-block; vertical-align:middle; max-height:34px; width:auto;">
-                                                                                        @endif
-                                                                                    </td>
-                                                                                    <td width="25%" align="center"
-                                                                                        valign="middle"
-                                                                                        style="padding:0 4px 10px;">
-                                                                                        @if($sponsorDitpSrc)
-                                                                                            <img src="{{ $sponsorDitpSrc }}"
-                                                                                                alt="DITP"
-                                                                                                class="logo-sponsor-ditp"
-                                                                                                style="display:inline-block; vertical-align:middle; max-height:15px; width:auto;">
-                                                                                        @endif
-                                                                                    </td>
-                                                                                    <td width="25%" align="center"
-                                                                                        valign="middle"
-                                                                                        style="padding:0 4px 10px;">
-                                                                                        @if($sponsorAmazingThailandSrc)
-                                                                                            <img src="{{ $sponsorAmazingThailandSrc }}"
-                                                                                                alt="Amazing Thailand"
-                                                                                                class="logo-sponsor-amazing"
-                                                                                                style="display:inline-block; vertical-align:middle; max-height:17px; width:auto;">
-                                                                                        @endif
-                                                                                    </td>
-                                                                                    <td width="25%" align="center"
-                                                                                        valign="middle"
-                                                                                        style="padding:0 4px 10px;">
-                                                                                        @if($sponsorSinghaSrc)
-                                                                                            <img src="{{ $sponsorSinghaSrc }}"
-                                                                                                alt="Singha"
-                                                                                                class="logo-sponsor-singha"
-                                                                                                style="display:inline-block; vertical-align:middle; max-height:17px; width:auto;">
-                                                                                        @endif
-                                                                                    </td>
-                                                                                </tr>
-                                                                                <tr>
-                                                                                    <td width="25%" align="center"
-                                                                                        valign="middle"
-                                                                                        style="padding:0 4px;">
-                                                                                        @if($sponsorSnakeBrandSrc)
-                                                                                            <img src="{{ $sponsorSnakeBrandSrc }}"
-                                                                                                alt="Snake Brand"
-                                                                                                class="logo-sponsor-snake"
-                                                                                                style="display:inline-block; vertical-align:middle; max-height:34px; width:auto;">
-                                                                                        @endif
-                                                                                    </td>
-                                                                                    <td width="25%" align="center"
-                                                                                        valign="middle"
-                                                                                        style="padding:0 4px;">
-                                                                                        @if($sponsorThaigoSrc)
-                                                                                            <img src="{{ $sponsorThaigoSrc }}"
-                                                                                                alt="Thaigo"
-                                                                                                class="logo-sponsor-thaigo"
-                                                                                                style="display:inline-block; vertical-align:middle; max-height:17px; width:auto;">
-                                                                                        @endif
-                                                                                    </td>
-                                                                                    <td width="25%" align="center"
-                                                                                        valign="middle"
-                                                                                        style="padding:0 4px;">
-                                                                                        @if($sponsorLayer0Src)
-                                                                                            <img src="{{ $sponsorLayer0Src }}"
-                                                                                                alt="Layer 0"
-                                                                                                class="logo-sponsor-layer"
-                                                                                                style="display:inline-block; vertical-align:middle; max-height:17px; width:auto;">
-                                                                                        @endif
-                                                                                    </td>
-                                                                                    <td width="25%" align="center"
-                                                                                        valign="middle"
-                                                                                        style="padding:0 4px; font-size:0; line-height:0;">
-                                                                                        &nbsp;
-                                                                                    </td>
-                                                                                </tr>
-                                                                            </table>
-                                                                        </td>
-                                                                        <td width="50%" align="center" valign="top"
-                                                                            style="width:50%; padding:0 12px;">
-                                                                            <p class="footer-heading"
-                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:Arial, Helvetica, sans-serif;">
-                                                                                MEDIA PARTNER
-                                                                            </p>
-                                                                            <table role="presentation"
-                                                                                cellpadding="0" cellspacing="0"
-                                                                                border="0"
-                                                                                style="margin:0 auto;">
-                                                                                <tr>
-                                                                                    <td align="center"
-                                                                                        valign="middle"
-                                                                                        style="padding:0 6px;">
-                                                                                        @if($mediaWobSrc)
-                                                                                            <img src="{{ $mediaWobSrc }}"
-                                                                                                alt="WOB"
-                                                                                                class="logo-media"
-                                                                                                style="display:inline-block; vertical-align:middle; width:42px; height:42px; border-radius:50%; border:3px solid #ffffff;">
-                                                                                        @endif
-                                                                                    </td>
-                                                                                    <td align="center"
-                                                                                        valign="middle"
-                                                                                        style="padding:0 6px;">
-                                                                                        @if($mediaNoodouSrc)
-                                                                                            <img src="{{ $mediaNoodouSrc }}"
-                                                                                                alt="Noodou"
-                                                                                                class="logo-media"
-                                                                                                style="display:inline-block; vertical-align:middle; width:42px; height:42px; border-radius:50%; border:3px solid #ffffff;">
-                                                                                        @endif
-                                                                                    </td>
-                                                                                </tr>
-                                                                            </table>
-                                                                        </td>
-                                                                    </tr>
-                                                                </table>
+                                                                @if($sponsorsFooterSrc !== '')
+                                                                    <img src="{{ $sponsorsFooterSrc }}"
+                                                                        alt="Songkran Festival organiser, venue sponsor, sponsors, and media partners"
+                                                                        width="520" class="footer-sponsors-image"
+                                                                        style="display:block; width:100%; max-width:520px; height:auto; margin:0 auto;">
+                                                                @endif
                                                             </td>
                                                         </tr>
                                                     </table>

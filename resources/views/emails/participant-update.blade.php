@@ -2,6 +2,12 @@
     This legacy shared layout stays here as the fallback while the refreshed design awaits final approval. --}}
 @php
     $mailMessage = isset($message) && is_object($message) ? $message : null;
+    $publicImageUrl = static function (string $filename): string {
+        $baseUrl = rtrim((string) config('app.url'), '/');
+        $resolvedBaseUrl = $baseUrl !== '' ? $baseUrl : rtrim(url('/'), '/');
+
+        return $resolvedBaseUrl . '/images/' . rawurlencode($filename);
+    };
     $isQrRefresh = $updateType === 'qr_regenerated';
     $isDeletion = $updateType === 'participant_deleted';
     $preheader = $isDeletion
@@ -25,19 +31,39 @@
     $ticketId = trim((string) ($ticket['ticket_id'] ?? ''));
     $ticketCode = trim((string) ($ticket['ticket_code'] ?? ''));
     $ticketQrSrc = trim((string) ($ticketQrUrl ?? ''));
+    $qrBinary = isset($qrPngBinary) ? $qrPngBinary : null;
     $bodyLead = $isDeletion
         ? 'This notice confirms that your registration is no longer active in the <strong>Songkran Festival 2026</strong> system.'
         : 'This update was made by the <strong>Songkran Festival 2026</strong> admin team. Please keep this email for your latest participant and ticket reference.';
     $footerCopy = $isDeletion
         ? 'If this removal was unexpected, please contact the Songkran Festival support team before creating a new registration.'
         : 'If you did not expect this update, please contact the Songkran Festival support team.';
+    $useDarkSafeCards = $isQrRefresh;
+    $panelBackground = $useDarkSafeCards ? '#0a274e' : '#f8fcff';
+    $panelBorder = $useDarkSafeCards ? '#4fa6ff' : '#dbeafe';
+    $panelHeadingColor = $useDarkSafeCards ? '#bfe0ff' : '#0284c7';
+    $panelTextColor = $useDarkSafeCards ? '#e3efff' : '#475569';
+    $panelStrongColor = $useDarkSafeCards ? '#ffffff' : '#0f172a';
+    $panelShadow = $useDarkSafeCards
+        ? '0 16px 32px rgba(2, 12, 27, 0.18)'
+        : '0 16px 32px rgba(14, 165, 233, 0.12)';
+    $badgeBackground = $useDarkSafeCards ? '#0a2f63' : '#e0f2fe';
+    $badgeTextColor = $useDarkSafeCards ? '#bfe0ff' : '#0369a1';
+    $buttonColor = $useDarkSafeCards ? '#0A2F63' : '#0ea5e9';
+    $buttonShadow = $useDarkSafeCards
+        ? '0 10px 24px rgba(2, 12, 27, 0.22)'
+        : '0 10px 24px rgba(14, 165, 233, 0.28)';
+    $sponsorsFooterFilename = 'email-sponsors-footer.png';
+    $sponsorsFooterSrc = $isQrRefresh && file_exists(public_path('images/' . $sponsorsFooterFilename))
+        ? $publicImageUrl($sponsorsFooterFilename)
+        : '';
 
     if ($ticketQrSrc === '' && $ticketId !== '') {
         $ticketQrSrc = \Illuminate\Support\Facades\URL::signedRoute('ticket.qr', ['ticketId' => $ticketId]);
     }
 
-    if ($ticketQrSrc === '' && $mailMessage && $qrPngBinary) {
-        $ticketQrSrc = $mailMessage->embedData($qrPngBinary, 'updated-ticket-qrcode.png', 'image/png');
+    if ($ticketQrSrc === '' && $mailMessage && $qrBinary) {
+        $ticketQrSrc = $mailMessage->embedData($qrBinary, 'updated-ticket-qrcode.png', 'image/png');
     }
 @endphp
 
@@ -77,19 +103,19 @@
                             </p>
 
                             @if ($changes !== [])
-                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px; border:1px solid #dbeafe; border-radius:22px; background-color:#f8fcff;">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px; border:1px solid {{ $panelBorder }}; border-radius:22px; background-color:{{ $panelBackground }};">
                                     <tr>
                                         <td style="padding:20px 22px;">
-                                            <p style="margin:0 0 14px; font-family:'Segoe UI', Arial, sans-serif; font-size:13px; line-height:1.5; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#0284c7;">
+                                            <p style="margin:0 0 14px; font-family:'Segoe UI', Arial, sans-serif; font-size:13px; line-height:1.5; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:{{ $panelHeadingColor }};">
                                                 Update Summary
                                             </p>
 
                                             @foreach ($changes as $change)
                                                 <div style="{{ $loop->last ? '' : 'margin-bottom:14px;' }}">
-                                                    <p style="margin:0 0 4px; font-family:'Segoe UI', Arial, sans-serif; font-size:13px; line-height:1.5; font-weight:700; color:#0f172a;">
+                                                    <p style="margin:0 0 4px; font-family:'Segoe UI', Arial, sans-serif; font-size:13px; line-height:1.5; font-weight:700; color:{{ $panelStrongColor }};">
                                                         {{ $change['label'] ?? '-' }}
                                                     </p>
-                                                    <p style="margin:0; font-family:'Segoe UI', Arial, sans-serif; font-size:14px; line-height:1.8; color:#475569;">
+                                                    <p style="margin:0; font-family:'Segoe UI', Arial, sans-serif; font-size:14px; line-height:1.8; color:{{ $panelTextColor }};">
                                                         {{ $change['value'] ?? '-' }}
                                                     </p>
                                                 </div>
@@ -100,13 +126,13 @@
                             @endif
 
                             @if ($ticketCode !== '')
-                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px; border:1px solid #dbeafe; border-radius:22px; background:linear-gradient(135deg, rgba(14,165,233,0.1) 0%, rgba(34,211,238,0.08) 100%); background-color:#f8fcff;">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px; border:1px solid {{ $panelBorder }}; border-radius:22px; background-color:{{ $panelBackground }};">
                                     <tr>
                                         <td style="padding:20px 22px;">
-                                            <p style="margin:0 0 8px; font-family:'Segoe UI', Arial, sans-serif; font-size:13px; line-height:1.5; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#0284c7;">
+                                            <p style="margin:0 0 8px; font-family:'Segoe UI', Arial, sans-serif; font-size:13px; line-height:1.5; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:{{ $panelHeadingColor }};">
                                                 Ticket Code
                                             </p>
-                                            <p style="margin:0; font-family:'Segoe UI', Arial, sans-serif; font-size:22px; line-height:1.6; font-weight:900; color:#0f172a; word-break:break-word;">
+                                            <p style="margin:0; font-family:'Segoe UI', Arial, sans-serif; font-size:22px; line-height:1.6; font-weight:900; color:{{ $panelStrongColor }}; word-break:break-word;">
                                                 {{ $ticketCode }}
                                             </p>
                                         </td>
@@ -114,13 +140,13 @@
                                 </table>
                             @endif
 
-                            @if ($qrPngBinary || $ticketQrSrc !== '')
-                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px; border:1px solid #dbeafe; border-radius:28px; background-color:#f8fcff;">
+                            @if ($qrBinary || $ticketQrSrc !== '')
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px; border:1px solid {{ $panelBorder }}; border-radius:28px; background-color:{{ $panelBackground }};">
                                     <tr>
                                         <td align="center" style="padding:24px 18px;">
                                             <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 16px;">
                                                 <tr>
-                                                    <td style="padding:8px 14px; border-radius:999px; background-color:#e0f2fe; color:#0369a1; font-family:'Segoe UI', Arial, sans-serif; font-size:12px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase;">
+                                                    <td style="padding:8px 14px; border-radius:999px; background-color:{{ $badgeBackground }}; color:{{ $badgeTextColor }}; font-family:'Segoe UI', Arial, sans-serif; font-size:12px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase;">
                                                         Latest Festival QR Pass
                                                     </td>
                                                 </tr>
@@ -128,7 +154,7 @@
 
                                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:252px; margin:0 auto;">
                                                 <tr>
-                                                    <td align="center" style="padding:16px; border-radius:24px; background:linear-gradient(180deg, #ffffff 0%, #eff8ff 100%); background-color:#ffffff; box-shadow:0 16px 32px rgba(14, 165, 233, 0.12);">
+                                                    <td align="center" style="padding:16px; border-radius:24px; background-color:#ffffff; box-shadow:{{ $panelShadow }};">
                                                         @if ($ticketQrSrc !== '')
                                                             <img
                                                                 src="{{ $ticketQrSrc }}"
@@ -138,7 +164,7 @@
                                                                 style="display:block; width:100%; max-width:200px; height:auto; margin:0 auto; border:0; outline:none; text-decoration:none;"
                                                             >
                                                         @else
-                                                            <p style="margin:0; font-family:'Segoe UI', Arial, sans-serif; font-size:14px; line-height:1.8; color:#475569;">
+                                                            <p style="margin:0; font-family:'Segoe UI', Arial, sans-serif; font-size:14px; line-height:1.8; color:{{ $panelTextColor }};">
                                                                 QR code available from the ticket link below.
                                                             </p>
                                                         @endif
@@ -146,7 +172,7 @@
                                                 </tr>
                                             </table>
 
-                                            <p style="margin:16px 0 0; font-family:'Segoe UI', Arial, sans-serif; font-size:14px; line-height:1.8; color:#475569;">
+                                            <p style="margin:16px 0 0; font-family:'Segoe UI', Arial, sans-serif; font-size:14px; line-height:1.8; color:{{ $panelTextColor }};">
                                                 Please discard any older QR image and keep only this latest version for event entry.
                                             </p>
                                         </td>
@@ -162,7 +188,7 @@
                                             <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
                                                 xmlns:w="urn:schemas-microsoft-com:office:word"
                                                 href="{{ $ticketUrl }}" style="height:50px; v-text-anchor:middle; width:220px;"
-                                                arcsize="50%" stroke="f" fillcolor="#0ea5e9">
+                                                arcsize="50%" stroke="f" fillcolor="{{ $buttonColor }}">
                                                 <w:anchorlock/>
                                                 <center
                                                     style="color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
@@ -173,7 +199,7 @@
                                             <!--[if !mso]><!-- -->
                                             <a
                                                 href="{{ $ticketUrl }}"
-                                                style="display:inline-block; padding:15px 28px; border-radius:999px; background-color:#0ea5e9; color:#ffffff; text-decoration:none; font-family:'Segoe UI', Arial, sans-serif; font-size:15px; font-weight:800; letter-spacing:0.02em; box-shadow:0 10px 24px rgba(14, 165, 233, 0.28);"
+                                                style="display:inline-block; padding:15px 28px; border-radius:999px; background-color:{{ $buttonColor }}; color:#ffffff; text-decoration:none; font-family:'Segoe UI', Arial, sans-serif; font-size:15px; font-weight:800; letter-spacing:0.02em; box-shadow:{{ $buttonShadow }};"
                                             >
                                                 {{ $ctaLabel }}
                                             </a>
@@ -182,17 +208,17 @@
                                     </tr>
                                 </table>
 
-                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px; border:1px solid #dbeafe; border-radius:22px; background-color:#f8fcff;">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px; border:1px solid {{ $panelBorder }}; border-radius:22px; background-color:{{ $panelBackground }};">
                                     <tr>
                                         <td style="padding:20px 22px;">
-                                            <p style="margin:0 0 8px; font-family:'Segoe UI', Arial, sans-serif; font-size:13px; line-height:1.5; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#0284c7;">
+                                            <p style="margin:0 0 8px; font-family:'Segoe UI', Arial, sans-serif; font-size:13px; line-height:1.5; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:{{ $panelHeadingColor }};">
                                                 Direct Access Link
                                             </p>
-                                            <p style="margin:0; font-family:'Segoe UI', Arial, sans-serif; font-size:14px; line-height:1.8; color:#475569;">
+                                            <p style="margin:0; font-family:'Segoe UI', Arial, sans-serif; font-size:14px; line-height:1.8; color:{{ $panelTextColor }};">
                                                 If the button above does not open correctly, copy and paste this link into your browser:
                                             </p>
                                             <p style="margin:10px 0 0; word-break:break-all;">
-                                                <a href="{{ $ticketUrl }}" style="font-family:'Segoe UI', Arial, sans-serif; font-size:13px; line-height:1.7; color:#0284c7; text-decoration:underline;">
+                                                <a href="{{ $ticketUrl }}" style="font-family:'Segoe UI', Arial, sans-serif; font-size:13px; line-height:1.7; color:{{ $panelHeadingColor }}; text-decoration:underline;">
                                                     {{ $ticketUrl }}
                                                 </a>
                                             </p>
@@ -204,6 +230,21 @@
                             <p style="margin:0; font-family:'Segoe UI', Arial, sans-serif; font-size:14px; line-height:1.8; color:#64748b;">
                                 {{ $footerCopy }}
                             </p>
+
+                            @if ($sponsorsFooterSrc !== '')
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0;">
+                                    <tr>
+                                        <td align="center">
+                                            <img
+                                                src="{{ $sponsorsFooterSrc }}"
+                                                alt="Songkran Festival organiser, venue sponsor, sponsors, and media partners"
+                                                width="520"
+                                                style="display:block; width:100%; max-width:520px; height:auto; margin:0 auto; border:0; outline:none; text-decoration:none;"
+                                            >
+                                        </td>
+                                    </tr>
+                                </table>
+                            @endif
                         </td>
                     </tr>
                 </table>
