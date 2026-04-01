@@ -94,7 +94,7 @@ export function SponsorShowcaseCard({
     };
   const topSectionClassName = isTicketVariant
     ? "grid grid-cols-2 gap-x-6 gap-y-5"
-    : "grid gap-10 border-b border-black/5 pb-10 md:grid-cols-2 md:gap-16 lg:gap-24";
+    : "grid gap-10 border-b border-black/5 pb-10 md:grid-cols-[1.6fr_1fr] md:gap-16 lg:gap-24";
   const bottomSectionClassName = isTicketVariant
     ? "mt-5 grid grid-cols-2 gap-x-6 gap-y-5 items-start"
     : "mt-10 grid gap-12 md:grid-cols-[1.6fr_1fr] md:gap-16 lg:mt-14 lg:gap-24";
