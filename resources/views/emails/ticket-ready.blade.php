@@ -38,6 +38,13 @@
     $qrImageFilename = trim((string) ($qrImageFilename ?? 'ticket-qrcode.png'));
     $ticketId = trim((string) ($ticket['ticket_id'] ?? ''));
     $ticketQrSrc = trim((string) ($ticketQrUrl ?? ''));
+    $cardSurfaceColor = '#F8FCFF';
+    $cardBorderColor = '#C8DDF2';
+    $cardHeadingColor = '#0A2F63';
+    $cardTitleColor = '#0A2F63';
+    $cardCopyColor = '#294A72';
+    $buttonSurfaceColor = '#F8FCFF';
+    $buttonTextColor = '#0A2F63';
 
     if ($ticketQrSrc === '' && $ticketId !== '') {
         $ticketQrSrc = \Illuminate\Support\Facades\URL::signedRoute('ticket.qr', ['ticketId' => $ticketId]);
@@ -166,8 +173,8 @@
 
         .notice-card {
             border-radius: 22px;
-            border: 1px solid #4fa6ff;
-            background-color: #0a2f63;
+            border: 1px solid {{ $cardBorderColor }};
+            background-color: {{ $cardSurfaceColor }};
             box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
         }
 
@@ -176,7 +183,7 @@
         }
 
         .notice-eyebrow {
-            color: #bfe0ff;
+            color: {{ $cardHeadingColor }};
             font-size: 10px;
             line-height: 14px;
             font-weight: 800;
@@ -186,7 +193,7 @@
         }
 
         .notice-title {
-            color: #ffffff;
+            color: {{ $cardTitleColor }};
             font-size: 24px;
             line-height: 30px;
             font-weight: 800;
@@ -194,7 +201,7 @@
         }
 
         .notice-copy {
-            color: #e3efff;
+            color: {{ $cardCopyColor }};
             font-size: 14px;
             line-height: 22px;
             font-weight: 700;
@@ -210,8 +217,8 @@
         }
 
         .identity-card {
-            background-color: #0a274e;
-            border: 1px solid #4fa6ff;
+            background-color: {{ $cardSurfaceColor }};
+            border: 1px solid {{ $cardBorderColor }};
             border-radius: 20px;
             box-shadow: 0 10px 24px rgba(2, 12, 27, 0.24);
         }
@@ -221,7 +228,7 @@
         }
 
         .identity-name {
-            color: #ffffff;
+            color: {{ $cardTitleColor }};
             font-size: 17px;
             line-height: 24px;
             font-weight: 800;
@@ -231,7 +238,7 @@
         }
 
         .identity-number {
-            color: #d9e9ff;
+            color: {{ $cardCopyColor }};
             font-size: 14px;
             line-height: 20px;
             font-weight: 600;
@@ -347,8 +354,8 @@
             display: inline-block;
             padding: 14px 28px;
             border-radius: 999px;
-            background-color: #0a2f63;
-            color: #ffffff;
+            background-color: {{ $buttonSurfaceColor }};
+            color: {{ $buttonTextColor }};
             font-size: 15px;
             line-height: 20px;
             font-weight: 800;
@@ -473,26 +480,26 @@
                                                 border="0" style="width:100%; max-width:460px; margin:24px auto 0;">
                                                 <tr>
                                                     <td class="notice-card"
-                                                        style="border-radius:22px; border:1px solid #4fa6ff; background-color:#0a2f63; box-shadow:0 14px 30px rgba(15,23,42,0.18);">
+                                                        style="border-radius:22px; border:1px solid {{ $cardBorderColor }}; background-color:{{ $cardSurfaceColor }}; box-shadow:0 14px 30px rgba(15,23,42,0.18);">
                                                         <table role="presentation" width="100%" cellpadding="0"
                                                             cellspacing="0" border="0">
                                                             <tr>
                                                                 <td align="center" style="padding:18px 22px;">
                                                                     @if($noticeEyebrow !== '')
                                                                         <p class="notice-eyebrow"
-                                                                            style="color:#bfe0ff; font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
+                                                                            style="color:{{ $cardHeadingColor }}; font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
                                                                             {{ $noticeEyebrow }}
                                                                         </p>
                                                                     @endif
                                                                     @if($noticeTitle !== '')
                                                                         <p class="notice-title"
-                                                                            style="color:#ffffff; font-size:24px; line-height:30px; font-weight:800; margin:0 0 10px;">
+                                                                            style="color:{{ $cardTitleColor }}; font-size:24px; line-height:30px; font-weight:800; margin:0 0 10px;">
                                                                             {{ $noticeTitle }}
                                                                         </p>
                                                                     @endif
                                                                     @if($noticeCopy !== '')
                                                                         <p class="notice-copy"
-                                                                            style="color:#e3efff; font-size:14px; line-height:22px; font-weight:700; margin:0;">
+                                                                            style="color:{{ $cardCopyColor }}; font-size:14px; line-height:22px; font-weight:700; margin:0;">
                                                                             {{ $noticeCopy }}
                                                                         </p>
                                                                     @endif
@@ -549,10 +556,10 @@
                                                     <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
                                                         xmlns:w="urn:schemas-microsoft-com:office:word"
                                                         href="{{ $ticketUrl }}" style="height:48px; v-text-anchor:middle; width:170px;"
-                                                        arcsize="50%" stroke="f" fillcolor="#0A2F63">
+                                                        arcsize="50%" stroke="f" fillcolor="{{ $buttonSurfaceColor }}">
                                                         <w:anchorlock/>
                                                         <center
-                                                            style="color:#FFFFFF; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
+                                                            style="color:{{ $buttonTextColor }}; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
                                                             {{ $ticketButtonLabel }}
                                                         </center>
                                                     </v:roundrect>
@@ -561,11 +568,11 @@
                                                         <table role="presentation" cellpadding="0" cellspacing="0"
                                                             border="0" class="button-table" style="margin:0 auto;">
                                                         <tr>
-                                                            <td align="center" bgcolor="#0A2F63"
-                                                                style="border-radius:999px; background-color:#0A2F63; box-shadow:0 12px 24px rgba(2,12,27,0.2);">
+                                                            <td align="center" bgcolor="{{ $buttonSurfaceColor }}"
+                                                                style="border-radius:999px; background-color:{{ $buttonSurfaceColor }}; box-shadow:0 12px 24px rgba(2,12,27,0.2);">
                                                                 <a href="{{ $ticketUrl }}" target="_blank"
                                                                     rel="noopener noreferrer" class="button-link"
-                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background-color:#0A2F63; color:#FFFFFF; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
+                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background-color:{{ $buttonSurfaceColor }}; color:{{ $buttonTextColor }}; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
                                                                     {{ $ticketButtonLabel }}
                                                                 </a>
                                                             </td>
@@ -580,17 +587,17 @@
                                             width="85%" style="width:85%; max-width:320px; margin:28px auto 0;">
                                             <tr>
                                                 <td class="identity-card"
-                                                    style="background-color:#0a274e; border:1px solid #4fa6ff; border-radius:20px; box-shadow:0 10px 24px rgba(2,12,27,0.24);">
+                                                    style="background-color:{{ $cardSurfaceColor }}; border:1px solid {{ $cardBorderColor }}; border-radius:20px; box-shadow:0 10px 24px rgba(2,12,27,0.24);">
                                                     <table role="presentation" width="100%" cellpadding="0"
                                                         cellspacing="0" border="0">
                                                         <tr>
                                                             <td align="center" style="padding:30px 35px 28px;">
                                                                 <p class="identity-name"
-                                                                    style="color:#FFFFFF; font-size:17px; line-height:24px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; margin:0 0 4px;">
+                                                                    style="color:{{ $cardTitleColor }}; font-size:17px; line-height:24px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; margin:0 0 4px;">
                                                                     {{ mb_strtoupper($fullName) }}
                                                                 </p>
                                                                 <p class="identity-number"
-                                                                    style="color:#D9E9FF; font-size:14px; line-height:20px; font-weight:600; margin:0;">
+                                                                    style="color:{{ $cardCopyColor }}; font-size:14px; line-height:20px; font-weight:600; margin:0;">
                                                                     {{ $identityDisplay }}
                                                                 </p>
                                                             </td>
