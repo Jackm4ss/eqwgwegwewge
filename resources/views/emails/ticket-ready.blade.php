@@ -173,8 +173,7 @@
 
         .notice-card {
             border-radius: 22px;
-            border: 1px solid #C8DDF2;
-            background-color: #F8FCFF;
+            background-color: #00C0FD;
             box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
         }
 
@@ -183,7 +182,7 @@
         }
 
         .notice-eyebrow {
-            color: #0A2F63;
+            color: #052F4A;
             font-size: 10px;
             line-height: 14px;
             font-weight: 800;
@@ -193,7 +192,7 @@
         }
 
         .notice-title {
-            color: #0A2F63;
+            color: #052F4A;
             font-size: 24px;
             line-height: 30px;
             font-weight: 800;
@@ -201,7 +200,7 @@
         }
 
         .notice-copy {
-            color: #294A72;
+            color: #052F4A;
             font-size: 14px;
             line-height: 22px;
             font-weight: 700;
@@ -472,27 +471,27 @@
                                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                                                 border="0" style="width:100%; max-width:460px; margin:24px auto 0;">
                                                 <tr>
-                                                    <td class="notice-card"
-                                                        style="border-radius:22px; border:1px solid #C8DDF2; background-color:#F8FCFF; box-shadow:0 14px 30px rgba(15,23,42,0.18);">
+                                                    <td class="notice-card" bgcolor="#00C0FD"
+                                                        style="border-radius:22px; border:1px solid #00C0FD; background-color:#00C0FD; box-shadow:0 14px 30px rgba(15,23,42,0.18);">
                                                         <table role="presentation" width="100%" cellpadding="0"
                                                             cellspacing="0" border="0">
                                                             <tr>
                                                                 <td align="center" style="padding:18px 22px;">
                                                                     @if($noticeEyebrow !== '')
                                                                         <p class="notice-eyebrow"
-                                                                            style="color:#0A2F63; font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
+                                                                            style="color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:10px; line-height:14px; font-weight:800; letter-spacing:0.16em; text-transform:uppercase; margin:0 0 8px;">
                                                                             {{ $noticeEyebrow }}
                                                                         </p>
                                                                     @endif
                                                                     @if($noticeTitle !== '')
                                                                         <p class="notice-title"
-                                                                            style="color:#0A2F63; font-size:24px; line-height:30px; font-weight:800; margin:0 0 10px;">
+                                                                            style="color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:24px; line-height:30px; font-weight:800; margin:0 0 10px;">
                                                                             {{ $noticeTitle }}
                                                                         </p>
                                                                     @endif
                                                                     @if($noticeCopy !== '')
                                                                         <p class="notice-copy"
-                                                                            style="color:#294A72; font-size:14px; line-height:22px; font-weight:700; margin:0;">
+                                                                            style="color:#052F4A; -webkit-text-fill-color:#052F4A; font-size:14px; line-height:22px; font-weight:700; margin:0;">
                                                                             {{ $noticeCopy }}
                                                                         </p>
                                                                     @endif
