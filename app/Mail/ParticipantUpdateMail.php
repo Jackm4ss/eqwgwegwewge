@@ -19,6 +19,7 @@ class ParticipantUpdateMail extends Mailable
         public readonly array $changes = [],
         public readonly ?string $ticketUrl = null,
         public readonly ?string $qrPngBinary = null,
+        public readonly ?string $ticketQrUrl = null,
     ) {
         $assetDirectory = rtrim(
             (string) env('SONGKRAN_MAILER_TEMPLATE_PATH', public_path('images')),

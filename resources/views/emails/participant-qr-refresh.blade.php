@@ -9,6 +9,7 @@
     $messageTitle = 'Your latest festival QR pass is ready.';
     $messageCopy = 'Please discard any older QR image and keep only this latest version for event entry.<br>This update was made by the <strong>Songkran Festival 2026</strong> admin team. Please keep this email for your latest participant and ticket reference.';
     $supportNote = 'If you did not expect this update, please contact the Songkran Festival support team.';
+    $emailPreviewText = 'Your Songkran Festival QR pass was refreshed. Please use the latest QR code for event entry.';
     $qrAltText = 'Updated Songkran Festival ticket QR code';
     $qrImageFilename = 'updated-ticket-qrcode.png';
 @endphp

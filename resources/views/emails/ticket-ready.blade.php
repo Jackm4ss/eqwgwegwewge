@@ -1,7 +1,5 @@
 @php
-    $embedAsset = static function (?string $path) use ($message): ?string {
-        return ($path && is_file($path)) ? $message->embed($path) : null;
-    };
+    $mailMessage = isset($message) && is_object($message) ? $message : null;
     $publicImageUrl = static function (string $filename): string {
         $baseUrl = rtrim((string) config('app.url'), '/');
         $resolvedBaseUrl = $baseUrl !== '' ? $baseUrl : rtrim(url('/'), '/');
@@ -9,38 +7,22 @@
         return $resolvedBaseUrl . '/images/' . rawurlencode($filename);
     };
 
-    $backgroundCid = $embedAsset($templateAssets['background'] ?? null);
-    $backgroundSrc = $backgroundCid ?: $publicImageUrl('BACKGROUND.jpg');
-    $glassBackgroundCid = $embedAsset(public_path('images/whitebackground.jpg'));
-    $glassBackgroundSrc = $glassBackgroundCid ?: $publicImageUrl('whitebackground.jpg');
-    $logoCid = $embedAsset($templateAssets['logo'] ?? null);
-    $logoSrc = $logoCid ?: $publicImageUrl('Songkran logo.png');
-    $organiserCid = $embedAsset($templateAssets['organiser'] ?? null);
-    $organiserSrc = $organiserCid ?: $publicImageUrl('eq-solution.png');
-    $eventHeaderCid = $embedAsset($templateAssets['eventHeader'] ?? null);
-    $eventHeaderSrc = $eventHeaderCid ?: $publicImageUrl('ticket-event-header-email.png');
-    $venueSponsorCid = $embedAsset($templateAssets['venueSponsor'] ?? null);
-    $sponsorEmbassyCid = $embedAsset($templateAssets['sponsorEmbassy'] ?? null);
-    $sponsorDitpCid = $embedAsset($templateAssets['sponsorDitp'] ?? null);
-    $sponsorAmazingThailandCid = $embedAsset($templateAssets['sponsorAmazingThailand'] ?? null);
-    $sponsorSinghaCid = $embedAsset($templateAssets['sponsorSingha'] ?? null);
-    $sponsorSnakeBrandCid = $embedAsset($templateAssets['sponsorSnakeBrand'] ?? null);
-    $sponsorThaigoCid = $embedAsset($templateAssets['sponsorThaigo'] ?? null);
-    $sponsorLayer0Cid = $embedAsset($templateAssets['sponsorLayer0'] ?? null);
-    $mapToLocationCid = $embedAsset($templateAssets['mapToLocation'] ?? null);
-    $mediaWobCid = $embedAsset($templateAssets['mediaWob'] ?? null);
-    $mediaNoodouCid = $embedAsset($templateAssets['mediaNoodou'] ?? null);
-    $venueSponsorSrc = $venueSponsorCid ?: $publicImageUrl('123.png');
-    $sponsorEmbassySrc = $sponsorEmbassyCid ?: $publicImageUrl('Royal_Thai_Embassy_Seal.svg.png');
-    $sponsorDitpSrc = $sponsorDitpCid ?: $publicImageUrl('ditp-new.png');
-    $sponsorAmazingThailandSrc = $sponsorAmazingThailandCid ?: $publicImageUrl('amazing thailand.png');
-    $sponsorSinghaSrc = $sponsorSinghaCid ?: $publicImageUrl('singha-seeklogo.png');
-    $sponsorSnakeBrandSrc = $sponsorSnakeBrandCid ?: $publicImageUrl('Snake-Brand-Logo.png');
-    $sponsorThaigoSrc = $sponsorThaigoCid ?: $publicImageUrl('thaigo.png');
-    $sponsorLayer0Src = $sponsorLayer0Cid ?: $publicImageUrl('Layer 0.png');
-    $mapToLocationSrc = $mapToLocationCid ?: $publicImageUrl('Map to Location.png');
-    $mediaWobSrc = $mediaWobCid ?: $publicImageUrl('wob.png');
-    $mediaNoodouSrc = $mediaNoodouCid ?: $publicImageUrl('noodou.png');
+    $backgroundSrc = $publicImageUrl('BACKGROUND.jpg');
+    $glassBackgroundSrc = $publicImageUrl('whitebackground.jpg');
+    $logoSrc = $publicImageUrl('Songkran logo.png');
+    $organiserSrc = $publicImageUrl('eq-solution.png');
+    $eventHeaderSrc = $publicImageUrl('ticket-event-header-email.png');
+    $venueSponsorSrc = $publicImageUrl('123.png');
+    $sponsorEmbassySrc = $publicImageUrl('Royal_Thai_Embassy_Seal.svg.png');
+    $sponsorDitpSrc = $publicImageUrl('ditp-new.png');
+    $sponsorAmazingThailandSrc = $publicImageUrl('amazing thailand.png');
+    $sponsorSinghaSrc = $publicImageUrl('singha-seeklogo.png');
+    $sponsorSnakeBrandSrc = $publicImageUrl('Snake-Brand-Logo.png');
+    $sponsorThaigoSrc = $publicImageUrl('thaigo.png');
+    $sponsorLayer0Src = $publicImageUrl('Layer 0.png');
+    $mapToLocationSrc = $publicImageUrl('Map to Location.png');
+    $mediaWobSrc = $publicImageUrl('wob.png');
+    $mediaNoodouSrc = $publicImageUrl('noodou.png');
 
     $identityNumber = trim((string) ($user['identity_number'] ?? ''));
     $identityDisplay = $identityNumber !== '' ? $identityNumber : '-';
@@ -58,8 +40,19 @@
     $messageCopy = (string) ($messageCopy ?? 'Please present your QR code and registered valid ID / passport at the gate.<br>QR only required to scan once per day');
     $supportNote = trim((string) ($supportNote ?? ''));
     $showMapsLink = (bool) ($showMapsLink ?? true);
+    $emailPreviewText = trim((string) ($emailPreviewText ?? 'Your Songkran Festival 2026 ticket is ready. Open your ticket and present your QR code at the gate.'));
     $qrAltText = trim((string) ($qrAltText ?? 'Songkran Festival ticket QR code'));
     $qrImageFilename = trim((string) ($qrImageFilename ?? 'ticket-qrcode.png'));
+    $ticketId = trim((string) ($ticket['ticket_id'] ?? ''));
+    $ticketQrSrc = trim((string) ($ticketQrUrl ?? ''));
+
+    if ($ticketQrSrc === '' && $ticketId !== '') {
+        $ticketQrSrc = \Illuminate\Support\Facades\URL::signedRoute('ticket.qr', ['ticketId' => $ticketId]);
+    }
+
+    if ($ticketQrSrc === '' && $mailMessage && isset($qrPngBinary) && $qrPngBinary !== '') {
+        $ticketQrSrc = $mailMessage->embedData($qrPngBinary, $qrImageFilename, 'image/png');
+    }
 @endphp
 
 <!DOCTYPE html>
@@ -70,15 +63,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="only light">
     <title>{{ $emailDocumentTitle }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap"
-        rel="stylesheet">
     <style>
         body,
         table,
         td,
         p,
         a {
-            font-family: 'Outfit', Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
+            mso-line-height-rule: exactly;
         }
 
         body {
@@ -181,20 +173,13 @@
 
         .notice-card {
             border-radius: 22px;
-            border: 1px solid rgba(255, 255, 255, 0.42);
-            background-color: rgba(246, 251, 253, 0.82);
-            background-image:
-                linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.58)),
-                url('{{ $glassBackgroundSrc }}');
+            border: 1px solid #d5e7ee;
+            background-color: #f6fbfd;
+            background-image: url('{{ $glassBackgroundSrc }}');
             background-repeat: no-repeat;
             background-position: center center;
             background-size: cover;
-            background-blend-mode: screen;
-            -webkit-backdrop-filter: blur(18px);
-            backdrop-filter: blur(18px);
-            box-shadow:
-                0 14px 30px rgba(15, 23, 42, 0.12),
-                inset 0 1px 0 rgba(255, 255, 255, 0.72);
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
         }
 
         .notice-card td {
@@ -236,33 +221,23 @@
         }
 
         .identity-card {
-            background-color: rgba(246, 251, 253, 0.74);
-            background-image:
-                linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.48)),
-                url('{{ $glassBackgroundSrc }}');
+            background-color: #f6fbfd;
+            background-image: url('{{ $glassBackgroundSrc }}');
             background-repeat: no-repeat;
             background-position: center center;
             background-size: cover;
-            background-blend-mode: screen;
-            -webkit-backdrop-filter: blur(18px);
-            backdrop-filter: blur(18px);
-            border: 1px solid rgba(255, 255, 255, 0.32);
+            border: 1px solid #d8e8ef;
             border-radius: 20px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
         }
 
         .footer-card {
-            background-color: rgba(230, 243, 248, 0.84);
-            background-image:
-                linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(229, 241, 247, 0.64) 100%),
-                url('{{ $glassBackgroundSrc }}');
+            background-color: #eef7fa;
+            background-image: url('{{ $glassBackgroundSrc }}');
             background-repeat: no-repeat;
             background-position: center center;
             background-size: cover;
-            background-blend-mode: screen;
-            -webkit-backdrop-filter: blur(20px);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            border: 1px solid #d8e8ef;
             border-radius: 16px;
             box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
         }
@@ -338,11 +313,9 @@
 
         .entry-code-card {
             border-radius: 22px;
-            border: 1px solid rgba(255, 255, 255, 0.52);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.48));
-            box-shadow:
-                0 10px 28px rgba(15, 23, 42, 0.08),
-                inset 0 1px 0 rgba(255, 255, 255, 0.72);
+            border: 1px solid #d8e8ef;
+            background-color: #f7fbfd;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
         }
 
         .entry-code-card td {
@@ -414,7 +387,7 @@
             text-transform: uppercase;
             letter-spacing: 0.14em;
             margin: 0 0 8px;
-            font-family: 'Tilt Warp', 'Outfit', Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
         }
 
         .footer-text {
@@ -501,6 +474,10 @@
 </head>
 
 <body>
+    <div
+        style="display:none; font-size:1px; color:#e5f5f9; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">
+        {{ $emailPreviewText }}
+    </div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
         style="width:100%; background-color:#e5f5f9;">
         <tr>
@@ -510,6 +487,12 @@
                     <tr>
                         <td class="ticket-surface" background="{{ $backgroundSrc }}" bgcolor="#038cb2"
                             style="background-color:#038cb2; background-image:url('{{ $backgroundSrc }}'); background-repeat:no-repeat; background-position:center bottom; background-size:cover;">
+                            <!--[if gte mso 9]>
+                            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false"
+                                style="width:600px;">
+                                <v:fill type="frame" src="{{ $backgroundSrc }}" color="#038cb2" />
+                                <v:textbox inset="0,0,0,0">
+                            <![endif]-->
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
                                     <td align="center" class="top-pad" style="padding:22px 20px 0;">
@@ -561,7 +544,7 @@
                                                 <tr>
                                                     <td class="notice-card"
                                                         background="{{ $glassBackgroundSrc }}"
-                                                        style="border-radius:22px; border:1px solid rgba(255,255,255,0.42); background-color:rgba(246,251,253,0.82); background-image:linear-gradient(135deg, rgba(255,255,255,0.82), rgba(255,255,255,0.58)), url('{{ $glassBackgroundSrc }}'); background-repeat:no-repeat; background-position:center center; background-size:cover; background-blend-mode:screen; -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); box-shadow:0 14px 30px rgba(15,23,42,0.12), inset 0 1px 0 rgba(255,255,255,0.72);">
+                                                        style="border-radius:22px; border:1px solid #d5e7ee; background-color:#f6fbfd; background-image:url('{{ $glassBackgroundSrc }}'); background-repeat:no-repeat; background-position:center center; background-size:cover; box-shadow:0 14px 30px rgba(15,23,42,0.12);">
                                                         <table role="presentation" width="100%" cellpadding="0"
                                                             cellspacing="0" border="0">
                                                             <tr>
@@ -611,9 +594,16 @@
                                                         <tr>
                                                             <td align="center"
                                                                 style="padding:13px;">
-                                                                <img src="{{ $message->embedData($qrPngBinary, $qrImageFilename, 'image/png') }}"
-                                                                    alt="{{ $qrAltText }}" width="160"
-                                                                    style="width:160px; height:160px; display:block;">
+                                                                @if($ticketQrSrc !== '')
+                                                                    <img src="{{ $ticketQrSrc }}"
+                                                                        alt="{{ $qrAltText }}" width="160" height="160"
+                                                                        style="width:160px; height:160px; display:block;">
+                                                                @else
+                                                                    <p
+                                                                        style="margin:0; color:#ffffff; font-size:13px; line-height:20px; font-weight:700; text-align:center;">
+                                                                        QR code available from the Open Ticket button.
+                                                                    </p>
+                                                                @endif
                                                             </td>
                                                         </tr>
                                                         {{-- Temporary: hide Entry Code block. --}}
@@ -626,19 +616,33 @@
                                             border="0">
                                             <tr>
                                                 <td align="center" style="padding:20px 0 8px;">
+                                                    <!--[if mso]>
+                                                    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
+                                                        xmlns:w="urn:schemas-microsoft-com:office:word"
+                                                        href="{{ $ticketUrl }}" style="height:48px; v-text-anchor:middle; width:170px;"
+                                                        arcsize="50%" stroke="f" fillcolor="#FFFFFF">
+                                                        <w:anchorlock/>
+                                                        <center
+                                                            style="color:#0956c8; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
+                                                            {{ $ticketButtonLabel }}
+                                                        </center>
+                                                    </v:roundrect>
+                                                    <![endif]-->
+                                                    <!--[if !mso]><!-- -->
                                                     <table role="presentation" cellpadding="0" cellspacing="0"
                                                         border="0" class="button-table" style="margin:0 auto;">
                                                         <tr>
                                                             <td align="center" bgcolor="#FFFFFF"
-                                                                style="border-radius:999px; background:rgba(255,255,255,0.95); box-shadow:0 12px 24px rgba(2,132,199,0.24);">
+                                                                style="border-radius:999px; background-color:#FFFFFF; box-shadow:0 12px 24px rgba(2,132,199,0.24);">
                                                                 <a href="{{ $ticketUrl }}" target="_blank"
                                                                     rel="noopener noreferrer" class="button-link"
-                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background:rgba(255,255,255,0.95); color:#0956c8; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
+                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background-color:#FFFFFF; color:#0956c8; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
                                                                     {{ $ticketButtonLabel }}
                                                                 </a>
                                                             </td>
                                                         </tr>
                                                     </table>
+                                                    <!--<![endif]-->
                                                 </td>
                                             </tr>
                                         </table>
@@ -648,7 +652,7 @@
                                             <tr>
                                                 <td class="identity-card"
                                                     background="{{ $glassBackgroundSrc }}"
-                                                    style="background-color:rgba(246,251,253,0.74); background-image:linear-gradient(135deg, rgba(255,255,255,0.76), rgba(255,255,255,0.48)), url('{{ $glassBackgroundSrc }}'); background-repeat:no-repeat; background-position:center center; background-size:cover; background-blend-mode:screen; -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); border:1px solid rgba(255,255,255,0.32); border-radius:20px; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
+                                                    style="background-color:#f6fbfd; background-image:url('{{ $glassBackgroundSrc }}'); background-repeat:no-repeat; background-position:center center; background-size:cover; border:1px solid #d8e8ef; border-radius:20px; box-shadow:0 4px 15px rgba(0,0,0,0.08);">
                                                     <table role="presentation" width="100%" cellpadding="0"
                                                         cellspacing="0" border="0">
                                                         <tr>
@@ -733,7 +737,7 @@
                                                                     cellpadding="0" cellspacing="0" border="0"
                                                                     class="footer-card"
                                                                     background="{{ $glassBackgroundSrc }}"
-                                                                    style="width:100%; background-color:rgba(230,243,248,0.84); background-image:linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(229,241,247,0.64) 100%), url('{{ $glassBackgroundSrc }}'); background-repeat:no-repeat; background-position:center center; background-size:cover; background-blend-mode:screen; -webkit-backdrop-filter:blur(20px); backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.18); border-radius:16px; box-shadow:0 12px 24px rgba(0,0,0,0.1);">
+                                                                    style="width:100%; background-color:#eef7fa; background-image:url('{{ $glassBackgroundSrc }}'); background-repeat:no-repeat; background-position:center center; background-size:cover; border:1px solid #d8e8ef; border-radius:16px; box-shadow:0 12px 24px rgba(0,0,0,0.1);">
                                                                     <tr>
                                                                         <td class="footer-card-body"
                                                                             style="padding:20px 16px;">
@@ -744,7 +748,7 @@
                                                                         <td width="50%" align="center" valign="top"
                                                                             style="width:50%; padding:0 12px 20px;">
                                                                             <p class="footer-heading"
-                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:'Tilt Warp','Outfit',Arial,sans-serif;">
+                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:Arial, Helvetica, sans-serif;">
                                                                                 ORGANISER
                                                                             </p>
                                                                             @if($organiserSrc)
@@ -757,7 +761,7 @@
                                                                         <td width="50%" align="center" valign="top"
                                                                             style="width:50%; padding:0 12px 20px;">
                                                                             <p class="footer-heading"
-                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:'Tilt Warp','Outfit',Arial,sans-serif;">
+                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:Arial, Helvetica, sans-serif;">
                                                                                 VENUE SPONSOR
                                                                             </p>
                                                                         @if($venueSponsorSrc)
@@ -772,7 +776,7 @@
                                                                         <td width="50%" align="center" valign="top"
                                                                             style="width:50%; padding:0 12px;">
                                                                             <p class="footer-heading"
-                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:'Tilt Warp','Outfit',Arial,sans-serif;">
+                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:Arial, Helvetica, sans-serif;">
                                                                                 SPONSORS
                                                                             </p>
                                                                             <table role="presentation" width="100%"
@@ -862,7 +866,7 @@
                                                                         <td width="50%" align="center" valign="top"
                                                                             style="width:50%; padding:0 12px;">
                                                                             <p class="footer-heading"
-                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:'Tilt Warp','Outfit',Arial,sans-serif;">
+                                                                                style="color:rgba(0,0,0,0.68); font-size:9px; line-height:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; margin:0 0 8px; font-family:Arial, Helvetica, sans-serif;">
                                                                                 MEDIA PARTNER
                                                                             </p>
                                                                             <table role="presentation"
@@ -904,6 +908,10 @@
                                     </td>
                                 </tr>
                             </table>
+                            <!--[if gte mso 9]>
+                                </v:textbox>
+                            </v:rect>
+                            <![endif]-->
                         </td>
                     </tr>
                 </table>

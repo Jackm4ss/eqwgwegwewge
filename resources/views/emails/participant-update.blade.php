@@ -1,6 +1,7 @@
 {{-- QR refresh emails temporarily render through emails.participant-qr-refresh.
     This legacy shared layout stays here as the fallback while the refreshed design awaits final approval. --}}
 @php
+    $mailMessage = isset($message) && is_object($message) ? $message : null;
     $isQrRefresh = $updateType === 'qr_regenerated';
     $isDeletion = $updateType === 'participant_deleted';
     $preheader = $isDeletion
@@ -21,13 +22,23 @@
             : 'The Songkran Festival team updated information on your participant profile. Please review the latest details below.');
     $ctaLabel = $isQrRefresh ? 'Open My Latest Ticket' : 'Review My Ticket';
     $participantName = $user['full_name'] ?? 'Participant';
+    $ticketId = trim((string) ($ticket['ticket_id'] ?? ''));
     $ticketCode = trim((string) ($ticket['ticket_code'] ?? ''));
+    $ticketQrSrc = trim((string) ($ticketQrUrl ?? ''));
     $bodyLead = $isDeletion
         ? 'This notice confirms that your registration is no longer active in the <strong>Songkran Festival 2026</strong> system.'
         : 'This update was made by the <strong>Songkran Festival 2026</strong> admin team. Please keep this email for your latest participant and ticket reference.';
     $footerCopy = $isDeletion
         ? 'If this removal was unexpected, please contact the Songkran Festival support team before creating a new registration.'
         : 'If you did not expect this update, please contact the Songkran Festival support team.';
+
+    if ($ticketQrSrc === '' && $ticketId !== '') {
+        $ticketQrSrc = \Illuminate\Support\Facades\URL::signedRoute('ticket.qr', ['ticketId' => $ticketId]);
+    }
+
+    if ($ticketQrSrc === '' && $mailMessage && $qrPngBinary) {
+        $ticketQrSrc = $mailMessage->embedData($qrPngBinary, 'updated-ticket-qrcode.png', 'image/png');
+    }
 @endphp
 
 <div style="margin:0; padding:0; background-color:#e0f2fe;">
@@ -103,7 +114,7 @@
                                 </table>
                             @endif
 
-                            @if ($qrPngBinary)
+                            @if ($qrPngBinary || $ticketQrSrc !== '')
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px; border:1px solid #dbeafe; border-radius:28px; background-color:#f8fcff;">
                                     <tr>
                                         <td align="center" style="padding:24px 18px;">
@@ -118,13 +129,19 @@
                                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:252px; margin:0 auto;">
                                                 <tr>
                                                     <td align="center" style="padding:16px; border-radius:24px; background:linear-gradient(180deg, #ffffff 0%, #eff8ff 100%); background-color:#ffffff; box-shadow:0 16px 32px rgba(14, 165, 233, 0.12);">
-                                                        <img
-                                                            src="{{ $message->embedData($qrPngBinary, 'updated-ticket-qrcode.png', 'image/png') }}"
-                                                            alt="Updated Songkran Festival ticket QR code"
-                                                            width="200"
-                                                            height="200"
-                                                            style="display:block; width:100%; max-width:200px; height:auto; margin:0 auto; border:0; outline:none; text-decoration:none;"
-                                                        >
+                                                        @if ($ticketQrSrc !== '')
+                                                            <img
+                                                                src="{{ $ticketQrSrc }}"
+                                                                alt="Updated Songkran Festival ticket QR code"
+                                                                width="200"
+                                                                height="200"
+                                                                style="display:block; width:100%; max-width:200px; height:auto; margin:0 auto; border:0; outline:none; text-decoration:none;"
+                                                            >
+                                                        @else
+                                                            <p style="margin:0; font-family:'Segoe UI', Arial, sans-serif; font-size:14px; line-height:1.8; color:#475569;">
+                                                                QR code available from the ticket link below.
+                                                            </p>
+                                                        @endif
                                                     </td>
                                                 </tr>
                                             </table>
@@ -141,12 +158,26 @@
                                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px;">
                                     <tr>
                                         <td align="center">
+                                            <!--[if mso]>
+                                            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
+                                                xmlns:w="urn:schemas-microsoft-com:office:word"
+                                                href="{{ $ticketUrl }}" style="height:50px; v-text-anchor:middle; width:220px;"
+                                                arcsize="50%" stroke="f" fillcolor="#0ea5e9">
+                                                <w:anchorlock/>
+                                                <center
+                                                    style="color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
+                                                    {{ $ctaLabel }}
+                                                </center>
+                                            </v:roundrect>
+                                            <![endif]-->
+                                            <!--[if !mso]><!-- -->
                                             <a
                                                 href="{{ $ticketUrl }}"
-                                                style="display:inline-block; padding:15px 28px; border-radius:999px; background:linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%); background-color:#0ea5e9; color:#ffffff; text-decoration:none; font-family:'Segoe UI', Arial, sans-serif; font-size:15px; font-weight:800; letter-spacing:0.02em; box-shadow:0 10px 24px rgba(14, 165, 233, 0.28);"
+                                                style="display:inline-block; padding:15px 28px; border-radius:999px; background-color:#0ea5e9; color:#ffffff; text-decoration:none; font-family:'Segoe UI', Arial, sans-serif; font-size:15px; font-weight:800; letter-spacing:0.02em; box-shadow:0 10px 24px rgba(14, 165, 233, 0.28);"
                                             >
                                                 {{ $ctaLabel }}
                                             </a>
+                                            <!--<![endif]-->
                                         </td>
                                     </tr>
                                 </table>

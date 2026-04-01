@@ -75,6 +75,7 @@ class AdminParticipantNotificationService
                 $this->ticketQrCodeService->payloadForTicket($ticket),
                 240,
             ),
+            ticketQrUrl: $this->ticketQrCodeService->signedTicketQrUrl($ticketId),
         ));
     }
 
