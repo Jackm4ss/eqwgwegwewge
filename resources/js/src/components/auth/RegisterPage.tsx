@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/Select';
+import { SponsorShowcaseCard } from '../ui/SponsorShowcaseCard';
 import {
   captureTrafficAttribution,
   type TrafficAttributionPayload,
@@ -416,16 +417,6 @@ const OTHER_SORTED_COUNTRIES = SORTED_COUNTRIES.filter(
 
 const TICKET_BACKGROUND_URL = '/images/BACKGROUND.jpg';
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
-const VENUE_SPONSOR_URL = '/images/123.png';
-const SPONSOR_EMBASSY_URL = '/images/Royal_Thai_Embassy_Seal.svg.png';
-const SPONSOR_DITP_URL = '/images/ditp-new.png';
-const SPONSOR_AMAZING_THAILAND_URL = '/images/amazing%20thailand.png';
-const SPONSOR_SINGHA_URL = '/images/singha-seeklogo.png';
-const SPONSOR_SNAKE_BRAND_URL = '/images/Snake-Brand-Logo.png';
-const SPONSOR_THAIGO_URL = '/images/thaigo.png';
-const SPONSOR_LAYER_0_URL = '/images/Layer%200.png';
-const MEDIA_WOB_URL = '/images/wob.png';
-const MEDIA_NOODOU_URL = '/images/noodou.png';
 const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw';
 const ENABLE_LEGACY_SUCCESS_SCREEN = true;
 const TICKET_HEADER_FONT_FAMILY = '"Tilt Warp", sans-serif';
@@ -469,8 +460,6 @@ function TicketPreviewCard({
   const identityDisplay = identityNumber.trim() || '-';
   const hasTicketLink = ticketUrl.trim() !== '';
   const hasQrUrl = qrUrl.trim() !== '';
-  const normalizedEntryCodeDisplay = entryCodeDisplay.trim();
-  const hasEntryCode = normalizedEntryCodeDisplay !== '';
 
   return (
     <div
@@ -501,7 +490,7 @@ function TicketPreviewCard({
           <p className="mt-[5px] text-[0.9rem] font-bold uppercase">MALAYSIA'S PREMIER SONGKRAN FESTIVAL</p>
         </div>
 
-        <div className="mx-auto mt-[25px] flex w-full max-w-[280px] flex-col items-center justify-center gap-[14px] overflow-hidden rounded-[12px] bg-white px-[14px] pb-[18px] pt-[14px] shadow-[0_4px_15px_rgba(0,0,0,0.2)]">
+        <div className="mx-auto mt-[25px] flex w-full max-w-[280px] flex-col items-center justify-center gap-[14px] overflow-hidden rounded-[12px] px-[14px] pb-[18px] pt-[14px]">
           <div className="flex h-[160px] w-[160px] items-center justify-center">
             {hasQrUrl ? (
               <img
@@ -516,19 +505,7 @@ function TicketPreviewCard({
             )}
           </div>
 
-          {hasEntryCode ? (
-            <div className="m-0 flex w-full min-w-0 flex-col items-center gap-2 rounded-[22px] border border-white/52 bg-[linear-gradient(135deg,rgba(255,255,255,0.7),rgba(255,255,255,0.48))] px-[22px] py-[18px] text-black shadow-[0_10px_28px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.72)] backdrop-blur-[14px]">
-              <div className="text-[0.65rem] font-extrabold uppercase tracking-[0.16em] text-slate-700/70">
-                Entry Code
-              </div>
-              <div className="text-[1.08rem] font-extrabold tracking-[0.12em] text-slate-900">
-                {normalizedEntryCodeDisplay}
-              </div>
-              <div className="max-w-[220px] text-center text-[0.75rem] font-bold leading-[1.45] text-slate-700/75">
-                Use this code for manual lookup if your QR cannot be scanned at the gate.
-              </div>
-            </div>
-          ) : null}
+          {/* Temporary: hide Entry Code block in ticket preview. */}
         </div>
 
         <div className="my-5 mb-6 text-white">
@@ -577,37 +554,8 @@ function TicketPreviewCard({
           </a>
         </div>
 
-        <div className="mx-auto flex w-full max-w-[95%] flex-wrap items-start justify-evenly gap-2.5 rounded-[18px] border border-white/25 bg-white/40 px-[10px] py-[15px] text-black shadow-[0_4px_15px_rgba(0,0,0,0.05)] backdrop-blur-[8px]">
-          <div className="flex min-w-[70px] flex-1 flex-col items-center justify-center">
-            <div className="mb-[5px] text-[0.55rem] font-extrabold uppercase">Organiser</div>
-            <div className="pt-[5px] text-[0.95rem] font-medium tracking-[-0.5px]">eq solutions</div>
-          </div>
-
-          <div className="flex min-w-[70px] flex-1 flex-col items-center justify-center">
-            <div className="mb-[5px] text-[0.55rem] font-extrabold uppercase">Venue Sponsor</div>
-            <img src={VENUE_SPONSOR_URL} alt="1 Utama" className="h-6 w-auto object-contain" decoding="async" />
-          </div>
-
-          <div className="flex min-w-[180px] flex-[3] flex-col items-center justify-center">
-            <div className="mb-[5px] text-[0.55rem] font-extrabold uppercase">Sponsors</div>
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              <img src={SPONSOR_EMBASSY_URL} alt="Royal Thai Embassy" className="h-6 w-auto object-contain" decoding="async" />
-              <img src={SPONSOR_DITP_URL} alt="DITP" className="h-[18px] w-auto rounded-[2px] p-[2px] object-contain" decoding="async" />
-              <img src={SPONSOR_AMAZING_THAILAND_URL} alt="Amazing Thailand" className="h-[22px] w-auto object-contain" decoding="async" />
-              <img src={SPONSOR_SINGHA_URL} alt="Singha" className="h-6 w-auto object-contain" decoding="async" />
-              <img src={SPONSOR_SNAKE_BRAND_URL} alt="Snake Brand" className="h-6 w-auto object-contain" decoding="async" />
-              <img src={SPONSOR_THAIGO_URL} alt="Thaigo" className="h-6 w-auto object-contain" decoding="async" />
-              <img src={SPONSOR_LAYER_0_URL} alt="Layer 0" className="h-6 w-auto object-contain" decoding="async" />
-            </div>
-          </div>
-
-          <div className="flex min-w-[90px] flex-[1.5] flex-col items-center justify-center">
-            <div className="mb-[5px] text-[0.55rem] font-extrabold uppercase">Media Partners</div>
-            <div className="flex items-center justify-center gap-2">
-              <img src={MEDIA_WOB_URL} alt="WOB" className="h-[30px] w-[30px] rounded-full object-cover" decoding="async" />
-              <img src={MEDIA_NOODOU_URL} alt="NOODOU" className="h-[30px] w-[30px] rounded-full object-cover" decoding="async" />
-            </div>
-          </div>
+        <div className="px-[18px]">
+          <SponsorShowcaseCard variant="ticket" className="w-full" />
         </div>
       </div>
     </div>
@@ -1718,7 +1666,7 @@ export function RegisterPage() {
 
           {/* Form card */}
           <AuthCardFrame className="relative w-full max-w-[520px]">
-  
+
             {/* Back Button */}
             <Link
               to="/"

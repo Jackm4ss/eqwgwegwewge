@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from 'react-router';
+import "flag-icons/css/flag-icons.min.css";
 import App from "./App";
 import { registerServiceWorker } from "./lib/pwa";
 import "./styles/index.css";
