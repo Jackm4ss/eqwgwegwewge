@@ -50,6 +50,7 @@ const PROHIBITED_ITEMS = [
     label: "Entering Restricted Area",
     fileName: "Entering Restricted Area.png",
   },
+  { label: "Revealing Clothing", fileName: "Revealing Clothing.png" },
   { label: "Sexual Harassment", fileName: "Sexual Harrassment.png" },
 ] as const;
 
