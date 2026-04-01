@@ -106,6 +106,7 @@ final class AppRouting
                 ],
             },
             'urls' => [
+                'publicHome' => route('landing.home'),
                 'registerForm' => route('register.form'),
                 'registerApi' => url('/api/register'),
                 'forgotQrLookupApi' => url('/api/forgot-qr/lookup'),

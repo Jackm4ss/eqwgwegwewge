@@ -173,7 +173,7 @@
 
         .notice-card {
             border-radius: 22px;
-            background-color: #00C0FD;
+            background-color: #0894D7;
             box-shadow: 0 14px 30px rgba(15, 23, 42, 0.18);
         }
 
@@ -216,7 +216,7 @@
         }
 
         .identity-card {
-            background-color: #00C0FD;
+            background-color: #0894D7;
             border: 0;
             border-radius: 20px;
             box-shadow: 0 10px 24px rgba(2, 12, 27, 0.24);
@@ -346,7 +346,7 @@
             display: inline-block;
             padding: 14px 28px;
             border-radius: 999px;
-            background-color: #00C0FD;
+            background-color: #0894D7;
             color: #ffffff;
             font-size: 15px;
             line-height: 20px;
@@ -471,8 +471,8 @@
                                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                                                 border="0" style="width:100%; max-width:460px; margin:24px auto 0;">
                                                 <tr>
-                                                    <td class="notice-card" bgcolor="#00C0FD"
-                                                        style="border-radius:22px; border:0; background-color:#00C0FD; box-shadow:0 14px 30px rgba(15,23,42,0.18);">
+                                                    <td class="notice-card" bgcolor="#0894D7"
+                                                        style="border-radius:22px; border:0; background-color:#0894D7; box-shadow:0 14px 30px rgba(15,23,42,0.18);">
                                                         <table role="presentation" width="100%" cellpadding="0"
                                                             cellspacing="0" border="0">
                                                             <tr>
@@ -548,7 +548,7 @@
                                                     <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml"
                                                         xmlns:w="urn:schemas-microsoft-com:office:word"
                                                         href="{{ $ticketUrl }}" style="height:48px; v-text-anchor:middle; width:170px;"
-                                                        arcsize="50%" stroke="f" fillcolor="#00C0FD">
+                                                        arcsize="50%" stroke="f" fillcolor="#0894D7">
                                                         <w:anchorlock/>
                                                         <center
                                                             style="color:#ffffff; font-family:Arial, Helvetica, sans-serif; font-size:15px; font-weight:800;">
@@ -560,11 +560,11 @@
                                                         <table role="presentation" cellpadding="0" cellspacing="0"
                                                             border="0" class="button-table" style="margin:0 auto;">
                                                         <tr>
-                                                            <td align="center" bgcolor="#00C0FD"
-                                                                style="border-radius:999px; background-color:#00C0FD; box-shadow:0 12px 24px rgba(2,12,27,0.2);">
+                                                            <td align="center" bgcolor="#0894D7"
+                                                                style="border-radius:999px; background-color:#0894D7; box-shadow:0 12px 24px rgba(2,12,27,0.2);">
                                                                 <a href="{{ $ticketUrl }}" target="_blank"
                                                                     rel="noopener noreferrer" class="button-link"
-                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background-color:#00C0FD; color:#ffffff; -webkit-text-fill-color:#ffffff; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
+                                                                    style="display:inline-block; padding:14px 28px; border-radius:999px; background-color:#0894D7; color:#ffffff; -webkit-text-fill-color:#ffffff; font-size:15px; line-height:20px; font-weight:800; text-decoration:none;">
                                                                     {{ $ticketButtonLabel }}
                                                                 </a>
                                                             </td>
@@ -578,8 +578,8 @@
                                         <table role="presentation" cellpadding="0" cellspacing="0" border="0"
                                             width="85%" style="width:85%; max-width:320px; margin:28px auto 0;">
                                             <tr>
-                                                <td class="identity-card" bgcolor="#00C0FD"
-                                                    style="background-color:#00C0FD; border:0; border-radius:20px; box-shadow:0 10px 24px rgba(2,12,27,0.24);">
+                                                <td class="identity-card" bgcolor="#0894D7"
+                                                    style="background-color:#0894D7; border:0; border-radius:20px; box-shadow:0 10px 24px rgba(2,12,27,0.24);">
                                                     <table role="presentation" width="100%" cellpadding="0"
                                                         cellspacing="0" border="0">
                                                         <tr>

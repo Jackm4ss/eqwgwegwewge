@@ -9,6 +9,7 @@ export type SpaPathKey =
   | 'staffHome';
 
 export type SpaUrlKey =
+  | 'publicHome'
   | 'registerForm'
   | 'registerApi'
   | 'forgotQrLookupApi'
@@ -54,6 +55,7 @@ const FALLBACK_CONFIG: SpaConfig = {
     staffHome: ['/staff'],
   },
   urls: {
+    publicHome: '/',
     registerForm: '/register',
     registerApi: '/api/register',
     forgotQrLookupApi: '/api/forgot-qr/lookup',

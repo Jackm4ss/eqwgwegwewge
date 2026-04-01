@@ -8,7 +8,6 @@ import {
   AlertCircle, Loader2,
   Droplets, Star, Waves, Sparkles, X, Lock
 } from 'lucide-react';
-import { Link } from 'react-router';
 import {
   AuthCardFrame,
   AuthCardHeader,
@@ -40,6 +39,7 @@ import {
   captureTrafficAttribution,
   type TrafficAttributionPayload,
 } from '@/lib/trafficAttribution';
+import { getSpaUrl } from '@/lib/spaRouting';
 
 interface FormData {
   full_name: string;
@@ -420,6 +420,8 @@ const SPONSORS_FOOTER_URL = '/images/email-sponsors-footer.png';
 const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw';
 const ENABLE_LEGACY_SUCCESS_SCREEN = true;
 const TICKET_HEADER_FONT_FAMILY = '"Tilt Warp", sans-serif';
+const PUBLIC_HOME_URL = getSpaUrl('publicHome', '/');
+
 function MapsPinIcon() {
   return (
     <svg
@@ -1675,12 +1677,12 @@ export function RegisterPage() {
           <AuthCardFrame className="relative w-full max-w-[520px]">
 
             {/* Back Button */}
-            <Link
-              to="/"
+            <a
+              href={PUBLIC_HOME_URL}
               className="absolute top-4 right-4 z-10 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-sky-700 shadow-md backdrop-blur hover:bg-white hover:text-sky-900 transition-all"
             >
               ← Home
-            </Link>
+            </a>
             <AuthCardHeader
               eyebrow="Free Registration"
               title="Register Now"
