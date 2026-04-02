@@ -75,6 +75,7 @@ type SubmittedState = {
 };
 
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
+const PUBLIC_HOME_URL = getSpaUrl('publicHome', '/');
 
 const REPORT_OPTIONS: Array<{
   value: ReportType;
@@ -509,6 +510,12 @@ export function ReportPage() {
       >
         <div className="w-full">
           <AuthCardFrame className="relative mx-auto w-full max-w-[520px]">
+            <a
+              href={PUBLIC_HOME_URL}
+              className="absolute top-4 right-4 z-10 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-sky-700 shadow-md backdrop-blur hover:bg-white hover:text-sky-900 transition-all"
+            >
+              ← Home
+            </a>
             <AuthCardHeader
               className="text-center"
               eyebrow="Help Desk"

@@ -293,6 +293,46 @@ function normalizePhoneNationalNumber(value: string) {
   return value.replace(/\D/g, '').replace(/^0+/, '');
 }
 
+function normalizeIdentityNumber(value: string, identityType: FormData['identity_type']) {
+  if (identityType === 'national_id') {
+    return value.replace(/\D/g, '').slice(0, 12);
+  }
+
+  return value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
+}
+
+function validateIdentityNumber(value: string, identityType: FormData['identity_type']) {
+  if (value === '') {
+    return 'Document number is required.';
+  }
+
+  if (identityType === 'national_id') {
+    if (!/^\d+$/.test(value)) {
+      return 'Malaysia IC must contain digits only.';
+    }
+
+    if (value.length > 12) {
+      return 'Malaysia IC must be at most 12 digits.';
+    }
+
+    return true;
+  }
+
+  if (identityType === 'passport') {
+    if (!/^[a-zA-Z0-9]+$/.test(value)) {
+      return 'Passport number must be alphanumeric only.';
+    }
+
+    if (value.length > 10) {
+      return 'Passport number must be at most 10 characters.';
+    }
+
+    return true;
+  }
+
+  return 'Document type is required.';
+}
+
 function buildPhoneNumber(phoneCountryCode: string, phoneNationalNumber: string) {
   return `${normalizePhoneCountryCode(phoneCountryCode)}${normalizePhoneNationalNumber(phoneNationalNumber)}`;
 }
@@ -791,7 +831,7 @@ export function RegisterPage() {
       email: '',
       phone_country_code: PHONE_DIAL_CODES.MY,
       phone_national_number: '',
-      country: 'MY',
+      country: '',
       identity_type: '',
       identity_number: '',
       recaptcha_token: '',
@@ -1173,13 +1213,13 @@ export function RegisterPage() {
         : 'Enter your official ID number'
       : 'Example: A1234567';
   const identityHelperText = isForeignRegistrant
-    ? 'For registrants outside Malaysia, use Passport Only as the primary document.'
+    ? 'For registrants outside Malaysia, use Passport Only as the primary document. Maximum 10 alphanumeric characters.'
     : identityTypeVal === 'national_id'
       ? isMalaysianRegistrant
-        ? 'For Malaysian citizens or permanent residents, use your IC / MyKad number.'
+        ? 'For Malaysian citizens or permanent residents, use your IC / MyKad number with digits only, maximum 12.'
         : 'Use an official and valid national ID or resident ID number.'
       : identityTypeVal === 'passport'
-        ? 'Use a valid passport number that matches your travel document.'
+        ? 'Use a valid passport number that matches your travel document. Maximum 10 alphanumeric characters.'
         : isMalaysianRegistrant
           ? 'For Malaysia, you may choose Malaysia IC (MyKad) or Passport.'
           : 'Select the document you will use for registration.';
@@ -1204,6 +1244,14 @@ export function RegisterPage() {
       }
 
       return true;
+    },
+  });
+  const identityNumberField = register('identity_number', {
+    required: 'Document number is required.',
+    setValueAs: (value: string) => normalizeIdentityNumber(value, identityTypeVal),
+    validate: (value: string) => validateIdentityNumber(value, identityTypeVal),
+    onChange: (event) => {
+      event.target.value = normalizeIdentityNumber(event.target.value, identityTypeVal);
     },
   });
 
@@ -1554,7 +1602,7 @@ export function RegisterPage() {
 
                     <div>
                       <label htmlFor="country" className="block text-slate-700 text-sm font-semibold mb-1.5">
-                        Nationality <span className="text-red-500" aria-hidden="true">*</span>
+                        Default Nationality <span className="text-red-500" aria-hidden="true">*</span>
                       </label>
                       <Controller
                         control={control}
@@ -1656,10 +1704,10 @@ export function RegisterPage() {
                           type="text"
                           placeholder={identityNumberPlaceholder}
                           className={inputClass('identity_number')}
-                          {...register('identity_number', {
-                            required: 'Document number is required.',
-                            minLength: { value: 6, message: 'Must be at least 6 characters.' },
-                          })}
+                          inputMode={identityTypeVal === 'national_id' ? 'numeric' : 'text'}
+                          maxLength={identityTypeVal === 'national_id' ? 12 : 10}
+                          spellCheck={false}
+                          {...identityNumberField}
                         />
                       </div>
                       <AnimatePresence>

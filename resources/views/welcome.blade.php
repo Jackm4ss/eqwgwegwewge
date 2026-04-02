@@ -2,8 +2,51 @@
 <html lang="en" style="color-scheme: only light;">
 @php
     $shareImagePath = implode('/', array_map('rawurlencode', explode('/', 'images/Songkran logo.png')));
-    $metaTitle = 'Songkran Festival 2026';
-    $metaDescription = "Malaysia's Premier Songkran Festival.";
+    $siteTitle = 'Songkran Festival 2026';
+    $currentHost = strtolower((string) request()->getHost());
+    $currentRouteName = request()->route()?->getName();
+    $registerHost = \App\Support\AppRouting::hostFor('register');
+    $helpHost = \App\Support\AppRouting::hostFor('help');
+    $adminHost = \App\Support\AppRouting::hostFor('admin');
+    $staffHost = \App\Support\AppRouting::hostFor('staff');
+
+    $metaArea = match (true) {
+        $currentHost !== '' && $currentHost === $registerHost => 'register',
+        $currentHost !== '' && $currentHost === $helpHost => 'help',
+        $currentHost !== '' && $currentHost === $adminHost => 'admin',
+        $currentHost !== '' && $currentHost === $staffHost => 'staff',
+        $currentRouteName === 'register.form' || request()->is('register') => 'register',
+        $currentRouteName === 'report.form' || request()->is('report') => 'help',
+        ($spaContext ?? null) === 'admin' => 'admin',
+        ($spaContext ?? null) === 'staff' => 'staff',
+        default => 'public',
+    };
+
+    $metaDefaults = match ($metaArea) {
+        'register' => [
+            'title' => 'Register Songkran Festival 2026',
+            'description' => 'Free Registration Now!',
+        ],
+        'help' => [
+            'title' => 'Helpdesk Songkran Festival 2026',
+            'description' => 'Submit lost item, incident, medical, and help desk reports directly to the official team.',
+        ],
+        'admin' => [
+            'title' => 'Admin Portal Songkran Festival 2026',
+            'description' => 'Secure dashboard for registrations, attendance, reports, and event operations management.',
+        ],
+        'staff' => [
+            'title' => 'Scanner Songkran Festival 2026',
+            'description' => 'Fast QR check-in and live attendance scanning for Songkran Festival gate staff.',
+        ],
+        default => [
+            'title' => $siteTitle,
+            'description' => "Malaysia's Premier Songkran Festival.",
+        ],
+    };
+
+    $metaTitle = $metaTitle ?? $metaDefaults['title'];
+    $metaDescription = $metaDescription ?? $metaDefaults['description'];
     $metaImage = asset($shareImagePath);
     $metaUrl = url()->current();
     $backgroundImage = asset('images/BACKGROUND.jpg');
@@ -43,7 +86,7 @@
     <meta property="og:image" content="{{ $metaImage }}">
     <meta property="og:image:alt" content="Songkran Festival 2026 logo">
     <meta property="og:url" content="{{ $metaUrl }}">
-    <meta property="og:site_name" content="{{ $metaTitle }}">
+    <meta property="og:site_name" content="{{ $siteTitle }}">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ $metaTitle }}">
     <meta name="twitter:description" content="{{ $metaDescription }}">
