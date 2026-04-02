@@ -11,6 +11,7 @@ export interface TrafficAttributionPayload {
 const TRAFFIC_ATTRIBUTION_STORAGE_KEY = 'songkran-registration-first-touch-v1';
 const TRAFFIC_ATTRIBUTION_COOKIE_KEY = 'songkran_registration_first_touch';
 const TRAFFIC_ATTRIBUTION_COOKIE_MAX_AGE = 60 * 60 * 24 * 90;
+const TRACKING_QUERY_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as const;
 
 function readMetaContent(name: string) {
   if (typeof document === 'undefined') {
@@ -417,18 +418,22 @@ function buildCurrentTrafficAttribution() {
 }
 
 export function resolveTrafficAttribution() {
-  const current = buildCurrentTrafficAttribution();
-
-  if (current) {
-    persistTrafficAttribution(current);
-
-    return current;
-  }
-
   const stored = pickStoredTrafficAttribution([
     readTrafficAttributionLocalStorage(),
     readTrafficAttributionCookie(),
   ]);
+
+  const current = buildCurrentTrafficAttribution();
+
+  if (current) {
+    const resolved = hasMeaningfulTrafficAttribution(current) || !hasMeaningfulTrafficAttribution(stored)
+      ? current
+      : stored;
+
+    persistTrafficAttribution(resolved);
+
+    return resolved;
+  }
 
   if (stored) {
     persistTrafficAttribution(stored);
@@ -457,12 +462,49 @@ function resolveRegisterUrl(currentUrl: URL) {
   return new URL('/register', currentUrl.origin);
 }
 
+function applyTrackingQueryParams(targetUrl: URL, sourceParams: URLSearchParams) {
+  TRACKING_QUERY_KEYS.forEach((key) => {
+    const value = sourceParams.get(key)?.trim() ?? '';
+
+    if (value !== '') {
+      targetUrl.searchParams.set(key, value);
+    }
+  });
+}
+
+function applyStoredTrackingQueryParams(targetUrl: URL, payload: TrafficAttributionPayload | null) {
+  if (!payload) {
+    return;
+  }
+
+  const normalizedSource = payload.traffic_source.trim();
+  const normalizedMedium = payload.traffic_medium.trim();
+  const normalizedCampaign = payload.traffic_campaign.trim();
+
+  if (normalizedSource !== '' && normalizedSource !== 'direct' && !targetUrl.searchParams.has('utm_source')) {
+    targetUrl.searchParams.set('utm_source', normalizedSource);
+  }
+
+  if (normalizedMedium !== '' && normalizedMedium !== 'direct' && !targetUrl.searchParams.has('utm_medium')) {
+    targetUrl.searchParams.set('utm_medium', normalizedMedium);
+  }
+
+  if (normalizedCampaign !== '' && !targetUrl.searchParams.has('utm_campaign')) {
+    targetUrl.searchParams.set('utm_campaign', normalizedCampaign);
+  }
+}
+
 export function buildRegisterUrl() {
   if (typeof window === 'undefined') {
     return readMetaContent('register-url') || '/register';
   }
 
   const currentUrl = new URL(window.location.href);
+  const registerUrl = resolveRegisterUrl(currentUrl);
+  const resolvedAttribution = resolveTrafficAttribution();
 
-  return resolveRegisterUrl(currentUrl).toString();
+  applyTrackingQueryParams(registerUrl, currentUrl.searchParams);
+  applyStoredTrackingQueryParams(registerUrl, resolvedAttribution);
+
+  return registerUrl.toString();
 }

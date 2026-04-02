@@ -1,7 +1,8 @@
-import { lazy, Suspense, type ReactElement } from 'react';
+import { lazy, Suspense, type ReactElement, useEffect } from 'react';
 import { Routes, Route } from 'react-router';
 import { LandingPage } from './components/pages/LandingPage';
-import { getSpaPaths } from './lib/spaRouting';
+import { getSpaConfig, getSpaPaths } from './lib/spaRouting';
+import { captureTrafficAttribution } from './lib/trafficAttribution';
 import { Toaster } from 'sonner';
 
 const LoginPage = lazy(() =>
@@ -36,6 +37,14 @@ function withRouteSuspense(element: ReactElement) {
 }
 
 export default function App() {
+  useEffect(() => {
+    if (getSpaConfig().context !== 'public') {
+      return;
+    }
+
+    captureTrafficAttribution();
+  }, []);
+
   return (
     <>
       <Toaster position="top-center" richColors />
