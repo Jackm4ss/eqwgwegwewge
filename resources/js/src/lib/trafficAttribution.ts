@@ -11,6 +11,7 @@ export interface TrafficAttributionPayload {
 const TRAFFIC_ATTRIBUTION_STORAGE_KEY = 'songkran-registration-first-touch-v1';
 const TRAFFIC_ATTRIBUTION_COOKIE_KEY = 'songkran_registration_first_touch';
 const TRAFFIC_ATTRIBUTION_COOKIE_MAX_AGE = 60 * 60 * 24 * 90;
+const TRAFFIC_VISIT_SESSION_KEY = 'songkran_traffic_visit_tracked_v1';
 const TRACKING_QUERY_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as const;
 
 function readMetaContent(name: string) {
@@ -450,6 +451,90 @@ export function captureTrafficAttribution() {
   }
 
   return payload;
+}
+
+function hasTrackedTrafficVisit(landingPath: string) {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    const trackedVisits = JSON.parse(
+      window.sessionStorage.getItem(TRAFFIC_VISIT_SESSION_KEY) ?? '{}',
+    ) as Record<string, boolean>;
+
+    return trackedVisits[landingPath] === true;
+  } catch {
+    return false;
+  }
+}
+
+function markTrafficVisitTracked(landingPath: string) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    const trackedVisits = JSON.parse(
+      window.sessionStorage.getItem(TRAFFIC_VISIT_SESSION_KEY) ?? '{}',
+    ) as Record<string, boolean>;
+
+    trackedVisits[landingPath] = true;
+
+    window.sessionStorage.setItem(TRAFFIC_VISIT_SESSION_KEY, JSON.stringify(trackedVisits));
+  } catch {
+    // Ignore storage failures and continue the tracking flow.
+  }
+}
+
+function postTrafficVisit(payload: TrafficAttributionPayload) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const endpoint = new URL('/api/traffic/visit', window.location.origin).toString();
+  const body = JSON.stringify(payload);
+
+  if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+    const sent = navigator.sendBeacon(
+      endpoint,
+      new Blob([body], { type: 'application/json' }),
+    );
+
+    if (sent) {
+      return;
+    }
+  }
+
+  void fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body,
+    credentials: 'same-origin',
+    keepalive: true,
+  }).catch(() => {
+    // Ignore tracking failures and keep public pages responsive.
+  });
+}
+
+export function trackPublicVisit(payload?: TrafficAttributionPayload | null) {
+  const resolvedPayload = payload ?? captureTrafficAttribution();
+
+  if (!resolvedPayload) {
+    return;
+  }
+
+  const landingPath = resolvedPayload.traffic_landing_path || '/';
+
+  if (hasTrackedTrafficVisit(landingPath)) {
+    return;
+  }
+
+  markTrafficVisitTracked(landingPath);
+  postTrafficVisit(resolvedPayload);
 }
 
 function resolveRegisterUrl(currentUrl: URL) {

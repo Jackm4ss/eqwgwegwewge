@@ -105,12 +105,7 @@
       <form method="GET" action="{{ route('admin.admin-users.index') }}" class="row g-4 align-items-end">
         <div class="col-md-3">
           <label class="form-label" for="q">Search admin</label>
-          <input
-            type="text"
-            class="form-control"
-            id="q"
-            name="q"
-            value="{{ $filters['q'] ?? '' }}"
+          <input type="text" class="form-control" id="q" name="q" value="{{ $filters['q'] ?? '' }}"
             placeholder="Search by admin name or email" />
         </div>
         <div class="col-md-2">
@@ -157,7 +152,7 @@
       </div>
       <div class="d-flex flex-wrap gap-2">
         <a href="{{ route('admin.admin-users.create') }}" class="btn btn-primary">
-          Tambah Admin
+          Create Admin
         </a>
       </div>
     </div>
@@ -203,11 +198,8 @@
                 <span class="badge bg-label-primary">{{ ucfirst((string) $admin->role) }}</span>
               </td>
               <td>
-                <span
-                  class="badge {{ $isOnline ? 'bg-label-success' : 'bg-label-secondary' }}"
-                  data-admin-presence-badge
-                  data-admin-id="{{ $admin->getKey() }}"
-                  data-online-class="bg-label-success"
+                <span class="badge {{ $isOnline ? 'bg-label-success' : 'bg-label-secondary' }}" data-admin-presence-badge
+                  data-admin-id="{{ $admin->getKey() }}" data-online-class="bg-label-success"
                   data-offline-class="bg-label-secondary">
                   {{ $isOnline ? 'Online' : 'Offline' }}
                 </span>
@@ -224,16 +216,11 @@
                       Current account
                     </button>
                   @else
-                    <form
-                      method="POST"
-                      action="{{ route('admin.admin-users.destroy', $admin) }}"
+                    <form method="POST" action="{{ route('admin.admin-users.destroy', $admin) }}"
                       class="js-delete-admin-form d-inline">
                       @csrf
                       @method('DELETE')
-                      <button
-                        type="submit"
-                        class="btn btn-sm btn-label-danger"
-                        data-admin-name="{{ $admin->name }}"
+                      <button type="submit" class="btn btn-sm btn-label-danger" data-admin-name="{{ $admin->name }}"
                         data-admin-email="{{ $admin->email }}">
                         Delete
                       </button>
@@ -252,8 +239,8 @@
     </div>
     <div class="card-body border-top">
       <div class="small text-muted mb-3">
-        Presence updates automatically every {{ (int) ($presence['heartbeat_seconds'] ?? 45) }} seconds for the admin accounts shown on this page,
-        using cache heartbeat so the online indicator stays lightweight and does not write to the SQL admin table.
+        Presence updates automatically every {{ (int) ($presence['heartbeat_seconds'] ?? 45) }} seconds for the admin
+        accounts shown on this page,
       </div>
       {{ $admins->withQueryString()->links('pagination::bootstrap-5') }}
     </div>
@@ -296,9 +283,9 @@
             const result = await window.Swal.fire({
               title: 'Delete this admin account?',
               html: `
-                <p class="mb-2 text-start">You are about to remove <strong>${safeDetailLine}</strong> from the admin directory.</p>
-                <p class="mb-0 text-start text-muted">This account will immediately lose access to the admin dashboard.</p>
-              `,
+                      <p class="mb-2 text-start">You are about to remove <strong>${safeDetailLine}</strong> from the admin directory.</p>
+                      <p class="mb-0 text-start text-muted">This account will immediately lose access to the admin dashboard.</p>
+                    `,
               icon: 'warning',
               showCancelButton: true,
               confirmButtonText: 'Yes, delete admin',

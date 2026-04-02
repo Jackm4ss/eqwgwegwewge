@@ -2,7 +2,7 @@ import { lazy, Suspense, type ReactElement, useEffect } from 'react';
 import { Routes, Route } from 'react-router';
 import { LandingPage } from './components/pages/LandingPage';
 import { getSpaConfig, getSpaPaths } from './lib/spaRouting';
-import { captureTrafficAttribution } from './lib/trafficAttribution';
+import { captureTrafficAttribution, trackPublicVisit } from './lib/trafficAttribution';
 import { Toaster } from 'sonner';
 
 const LoginPage = lazy(() =>
@@ -42,7 +42,9 @@ export default function App() {
       return;
     }
 
-    captureTrafficAttribution();
+    const attribution = captureTrafficAttribution();
+
+    trackPublicVisit(attribution);
   }, []);
 
   return (

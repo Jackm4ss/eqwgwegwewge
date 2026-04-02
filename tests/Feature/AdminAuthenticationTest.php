@@ -185,6 +185,8 @@ class AdminAuthenticationTest extends TestCase
             ->get('/admin/dashboard?from=2026-03-24&to=2026-03-25');
 
         $response->assertOk()
+            ->assertSee('Analytics Dashboard')
+            ->assertSee('Unique IP visitors')
             ->assertSee('Dashboard Filters')
             ->assertSee('From date')
             ->assertSee('To date')

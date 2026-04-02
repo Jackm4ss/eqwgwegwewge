@@ -47,7 +47,7 @@ type ReportType = 'incident_security' | 'lost_item' | 'lost_locker_card' | 'medi
 type IdentityType = 'national_id' | 'passport' | '';
 
 type FormData = {
-  report_type: ReportType;
+  report_type: ReportType | '';
   name: string;
   phone_country_code: string;
   phone_national_number: string;
@@ -262,7 +262,7 @@ export function ReportPage() {
   } = useForm<FormData>({
     mode: 'onTouched',
     defaultValues: {
-      report_type: 'incident_security',
+      report_type: '',
       name: '',
       phone_country_code: PHONE_DIAL_CODES.MY,
       phone_national_number: '',
@@ -548,10 +548,18 @@ export function ReportPage() {
                         value={selectedReportType}
                         {...register('report_type', { required: 'Please choose a report type.' })}
                         onChange={(event) => {
-                          setValue('report_type', event.target.value as ReportType, { shouldValidate: true });
-                          clearErrors('report_type');
+                          const nextReportType = event.target.value as FormData['report_type'];
+
+                          setValue('report_type', nextReportType, { shouldValidate: true });
+
+                          if (nextReportType !== '') {
+                            clearErrors('report_type');
+                          }
                         }}
                       >
+                        <option value="" disabled>
+                          Select type of report
+                        </option>
                         {REPORT_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.title}

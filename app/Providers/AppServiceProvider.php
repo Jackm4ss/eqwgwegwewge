@@ -116,5 +116,18 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(2)->by($request->ip().'|'.$identifier),
             ];
         });
+
+        RateLimiter::for('traffic-visit', function (Request $request) {
+            $landingPath = trim((string) $request->input('traffic_landing_path', ''));
+
+            if ($landingPath === '') {
+                $landingPath = '/';
+            }
+
+            return [
+                Limit::perMinute(20)->by($request->ip()),
+                Limit::perMinute(6)->by($request->ip().'|'.$landingPath),
+            ];
+        });
     }
 }

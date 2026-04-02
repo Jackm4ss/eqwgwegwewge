@@ -22,7 +22,58 @@
     $isFilteredRange = (bool) data_get($dashboard, 'date_range.is_filtered', false);
     $campaignLinkSummary = $campaignLinkSummary ?? ['storage_ready' => false, 'total' => 0, 'active' => 0, 'homepage' => 0, 'register' => 0];
     $publicReportSummary = $publicReportSummary ?? [];
+    $trafficVisitSummary = $trafficVisitSummary ?? ['storage_ready' => false, 'total_unique_ips' => 0, 'google_search_unique_ips' => 0, 'direct_unique_ips' => 0, 'social_media_unique_ips' => 0];
   @endphp
+
+  <div class="card mb-6">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start gap-4">
+        <div>
+          <span class="badge bg-label-info mb-2">Analytics Dashboard</span>
+          <h5 class="mb-1">Visitor Statistics</h5>
+          <p class="text-muted mb-0">
+            Unique IP summary for public visitors, grouped by Google Search, Direct, and Social Media based on captured traffic attribution.
+          </p>
+        </div>
+      </div>
+
+      @unless (data_get($trafficVisitSummary, 'storage_ready', false))
+        <div class="alert alert-warning d-flex align-items-start mt-4 mb-0" role="alert">
+          <span class="alert-icon me-2"><i class="icon-base ti tabler-alert-circle"></i></span>
+          <div class="lh-sm">
+            Visitor analytics storage is not ready yet. Run the latest migration so the dashboard can start counting unique IP traffic.
+          </div>
+        </div>
+      @endunless
+
+      <div class="row g-3 mt-1">
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Unique IP visitors</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($trafficVisitSummary, 'total_unique_ips', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Google Search</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($trafficVisitSummary, 'google_search_unique_ips', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Direct</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($trafficVisitSummary, 'direct_unique_ips', 0)) }}</h4>
+          </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 p-3 h-100">
+            <small class="text-muted d-block mb-1">Social Media</small>
+            <h4 class="mb-0">{{ number_format((int) data_get($trafficVisitSummary, 'social_media_unique_ips', 0)) }}</h4>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="card mb-6">
     <div class="card-body">
