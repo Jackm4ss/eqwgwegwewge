@@ -2,11 +2,14 @@
 
 use App\Helpers\EmailMasker;
 use App\Http\Controllers\Admin\AdminActivityLogController;
+use App\Http\Controllers\Admin\AdminPresenceController;
+use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\Auth\AuthenticatedAdminSessionController;
 use App\Http\Controllers\Admin\CampaignLinkController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExportController;
+use App\Http\Controllers\Admin\PublicReportController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ScannerGateController;
 use App\Http\Controllers\Admin\UserManagementController;
@@ -361,8 +364,31 @@ if ($isSubdomainMode) {
                 Route::get('/logs', AdminActivityLogController::class)
                     ->name('logs.index');
 
+                Route::get('/admin-users', [AdminUserController::class, 'index'])
+                    ->name('admin-users.index');
+                Route::get('/admin-users/create', [AdminUserController::class, 'create'])
+                    ->name('admin-users.create');
+                Route::post('/admin-users', [AdminUserController::class, 'store'])
+                    ->name('admin-users.store');
+                Route::get('/admin-users/{adminUser}/edit', [AdminUserController::class, 'edit'])
+                    ->name('admin-users.edit');
+                Route::put('/admin-users/{adminUser}', [AdminUserController::class, 'update'])
+                    ->name('admin-users.update');
+                Route::delete('/admin-users/{adminUser}', [AdminUserController::class, 'destroy'])
+                    ->name('admin-users.destroy');
+                Route::post('/presence/heartbeat', [AdminPresenceController::class, 'heartbeat'])
+                    ->name('presence.heartbeat');
+                Route::get('/presence/statuses', [AdminPresenceController::class, 'statuses'])
+                    ->name('presence.statuses');
+
                 Route::get('/reports', ReportController::class)
                     ->name('reports.index');
+                Route::get('/public-reports', [PublicReportController::class, 'index'])
+                    ->name('public-reports.index');
+                Route::put('/public-reports/{publicReport}', [PublicReportController::class, 'update'])
+                    ->name('public-reports.update');
+                Route::delete('/public-reports/{publicReport}', [PublicReportController::class, 'destroy'])
+                    ->name('public-reports.destroy');
 
                 Route::get('/exports/{type}/{format}', ExportController::class)
                     ->whereIn('type', ['users', 'attendance', 'admin-logs', 'daily-report', 'overall-report', 'public-reports'])
@@ -434,8 +460,31 @@ if ($isSubdomainMode) {
                 Route::get('/logs', AdminActivityLogController::class)
                     ->name('logs.index');
 
+                Route::get('/admin-users', [AdminUserController::class, 'index'])
+                    ->name('admin-users.index');
+                Route::get('/admin-users/create', [AdminUserController::class, 'create'])
+                    ->name('admin-users.create');
+                Route::post('/admin-users', [AdminUserController::class, 'store'])
+                    ->name('admin-users.store');
+                Route::get('/admin-users/{adminUser}/edit', [AdminUserController::class, 'edit'])
+                    ->name('admin-users.edit');
+                Route::put('/admin-users/{adminUser}', [AdminUserController::class, 'update'])
+                    ->name('admin-users.update');
+                Route::delete('/admin-users/{adminUser}', [AdminUserController::class, 'destroy'])
+                    ->name('admin-users.destroy');
+                Route::post('/presence/heartbeat', [AdminPresenceController::class, 'heartbeat'])
+                    ->name('presence.heartbeat');
+                Route::get('/presence/statuses', [AdminPresenceController::class, 'statuses'])
+                    ->name('presence.statuses');
+
                 Route::get('/reports', ReportController::class)
                     ->name('reports.index');
+                Route::get('/public-reports', [PublicReportController::class, 'index'])
+                    ->name('public-reports.index');
+                Route::put('/public-reports/{publicReport}', [PublicReportController::class, 'update'])
+                    ->name('public-reports.update');
+                Route::delete('/public-reports/{publicReport}', [PublicReportController::class, 'destroy'])
+                    ->name('public-reports.destroy');
 
                 Route::get('/exports/{type}/{format}', ExportController::class)
                     ->whereIn('type', ['users', 'attendance', 'admin-logs', 'daily-report', 'overall-report', 'public-reports'])

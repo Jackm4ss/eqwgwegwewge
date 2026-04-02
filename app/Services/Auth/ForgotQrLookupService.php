@@ -3,36 +3,11 @@
 namespace App\Services\Auth;
 
 use App\Contracts\UserRepositoryInterface;
+use App\Support\CountryCatalog;
 use App\Services\Tickets\TicketQrCodeService;
 
 class ForgotQrLookupService
 {
-    private const PHONE_DIAL_CODES = [
-        'AU' => '+61',
-        'BN' => '+673',
-        'KH' => '+855',
-        'CN' => '+86',
-        'FR' => '+33',
-        'DE' => '+49',
-        'HK' => '+852',
-        'IN' => '+91',
-        'ID' => '+62',
-        'JP' => '+81',
-        'LA' => '+856',
-        'MY' => '+60',
-        'MM' => '+95',
-        'NL' => '+31',
-        'NZ' => '+64',
-        'PH' => '+63',
-        'SG' => '+65',
-        'KR' => '+82',
-        'TH' => '+66',
-        'AE' => '+971',
-        'GB' => '+44',
-        'US' => '+1',
-        'VN' => '+84',
-    ];
-
     public function __construct(
         private readonly UserRepositoryInterface $users,
         private readonly TicketQrCodeService $ticketQrCodeService,
@@ -106,7 +81,7 @@ class ForgotQrLookupService
         }
 
         if ($phoneCountryCode === '' && $country !== '') {
-            $dialCode = self::PHONE_DIAL_CODES[$country] ?? '';
+            $dialCode = CountryCatalog::dialCodeFor($country);
 
             if ($dialCode !== '' && str_starts_with($phoneNumber, $dialCode)) {
                 $phoneCountryCode = $dialCode;

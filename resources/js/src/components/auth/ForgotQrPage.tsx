@@ -35,6 +35,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/Select';
+import {
+  OTHER_PHONE_OPTIONS,
+  OTHER_SORTED_COUNTRIES,
+  PHONE_DIAL_CODES,
+  PHONE_OPTIONS,
+  PRIORITY_PHONE_OPTIONS,
+  PRIORITY_SORTED_COUNTRIES,
+  SORTED_COUNTRIES,
+  humanizeCountry,
+} from '@/lib/countryCatalog';
 
 type SearchType = 'email' | 'phone' | 'passport' | 'ic';
 type IdentityType = 'passport' | 'national_id';
@@ -86,7 +96,6 @@ declare global {
 }
 
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
-const PRIORITY_COUNTRIES = ['MY', 'TH', 'SG', 'ID', 'BN', 'MM', 'VN'] as const;
 const FORM_FIELDS: Array<keyof FormData> = [
   'search_type',
   'email',
@@ -98,76 +107,12 @@ const FORM_FIELDS: Array<keyof FormData> = [
   'recaptcha_token',
 ];
 
-const COUNTRIES = [
-  { code: 'AU', name: 'Australia' },
-  { code: 'BN', name: 'Brunei' },
-  { code: 'KH', name: 'Cambodia' },
-  { code: 'CN', name: 'China' },
-  { code: 'FR', name: 'France' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'HK', name: 'Hong Kong' },
-  { code: 'IN', name: 'India' },
-  { code: 'ID', name: 'Indonesia' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'LA', name: 'Laos' },
-  { code: 'MY', name: 'Malaysia' },
-  { code: 'MM', name: 'Myanmar' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'NZ', name: 'New Zealand' },
-  { code: 'PH', name: 'Philippines' },
-  { code: 'SG', name: 'Singapore' },
-  { code: 'KR', name: 'South Korea' },
-  { code: 'TH', name: 'Thailand' },
-  { code: 'AE', name: 'UAE' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'US', name: 'United States' },
-  { code: 'VN', name: 'Vietnam' },
-];
-
-const PHONE_DIAL_CODES: Record<string, string> = {
-  AU: '+61',
-  BN: '+673',
-  KH: '+855',
-  CN: '+86',
-  FR: '+33',
-  DE: '+49',
-  HK: '+852',
-  IN: '+91',
-  ID: '+62',
-  JP: '+81',
-  LA: '+856',
-  MY: '+60',
-  MM: '+95',
-  NL: '+31',
-  NZ: '+64',
-  PH: '+63',
-  SG: '+65',
-  KR: '+82',
-  TH: '+66',
-  AE: '+971',
-  GB: '+44',
-  US: '+1',
-  VN: '+84',
-};
-
 const SEARCH_OPTIONS: Array<{ value: SearchType; title: string; desc: string; icon: typeof Mail }> = [
   { value: 'email', title: 'Email', desc: 'Use the exact email used during registration.', icon: Mail },
   { value: 'phone', title: 'Phone Number', desc: 'Use country code and the exact mobile number.', icon: Phone },
   { value: 'passport', title: 'Passport', desc: 'Match country and passport number exactly.', icon: QrCode },
   { value: 'ic', title: 'IC / MyKad', desc: 'Lookup with the registered Malaysia IC number.', icon: IdCard },
 ];
-
-const SORTED_COUNTRIES = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name));
-const PHONE_OPTIONS = SORTED_COUNTRIES.map((country) => ({
-  country: country.code,
-  countryName: country.name,
-  dialCode: PHONE_DIAL_CODES[country.code],
-  flagClassName: `fi fi-${country.code.toLowerCase()}`,
-}));
-const PRIORITY_PHONE_OPTIONS = PRIORITY_COUNTRIES.map((code) => PHONE_OPTIONS.find((item) => item.country === code)).filter(Boolean) as typeof PHONE_OPTIONS;
-const OTHER_PHONE_OPTIONS = PHONE_OPTIONS.filter((item) => !PRIORITY_COUNTRIES.includes(item.country as (typeof PRIORITY_COUNTRIES)[number]));
-const PRIORITY_SORTED_COUNTRIES = PRIORITY_COUNTRIES.map((code) => SORTED_COUNTRIES.find((item) => item.code === code)).filter(Boolean) as typeof SORTED_COUNTRIES;
-const OTHER_SORTED_COUNTRIES = SORTED_COUNTRIES.filter((item) => !PRIORITY_COUNTRIES.includes(item.code as (typeof PRIORITY_COUNTRIES)[number]));
 
 let recaptchaLoader: Promise<Grecaptcha | null> | null = null;
 
@@ -190,11 +135,6 @@ function buildPhoneNumber(phoneCountryCode: string, phoneNationalNumber: string)
 
 function isFormField(value: string): value is keyof FormData {
   return FORM_FIELDS.includes(value as keyof FormData);
-}
-
-function humanizeCountry(code: string) {
-  const country = COUNTRIES.find((item) => item.code === code);
-  return country ? `${country.name} (${country.code})` : code || '-';
 }
 
 function humanizeIdentityType(type: string) {

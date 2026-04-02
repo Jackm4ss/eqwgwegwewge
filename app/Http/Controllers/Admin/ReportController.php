@@ -12,7 +12,7 @@ class ReportController extends Controller
 {
     public function __invoke(Request $request, AdminPanelService $adminPanel, PublicReportService $publicReportService): View
     {
-        $filters = $request->only(['q', 'from', 'to', 'report_type', 'per_page']);
+        $filters = $request->only(['q', 'from', 'to', 'report_type', 'action_status', 'per_page']);
 
         return view('admin.reports.index', [
             'reports' => $adminPanel->reports($filters),
@@ -22,6 +22,8 @@ class ReportController extends Controller
             'publicReportSummary' => $publicReportService->summary($filters),
             'publicReportTypeOptions' => $publicReportService->reportTypeOptions(),
             'publicReportTypeLabel' => fn (string $value): string => $publicReportService->reportTypeLabel($value),
+            'publicReportStatusOptions' => $publicReportService->actionStatusOptions(),
+            'publicReportStatusLabel' => fn (string $value): string => $publicReportService->actionStatusLabel($value),
         ]);
     }
 }

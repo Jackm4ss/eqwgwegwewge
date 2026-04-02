@@ -55,6 +55,11 @@
 
         <div class="menu-inner-shadow"></div>
 
+        @php
+          $adminManagementOpen = request()->routeIs('admin.logs.*') || request()->routeIs('admin.admin-users.*');
+          $reportManagementOpen = request()->routeIs('admin.reports.*') || request()->routeIs('admin.public-reports.*');
+        @endphp
+
         <ul class="menu-inner py-1">
           <li class="menu-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
             <a href="{{ route('admin.dashboard') }}" class="menu-link">
@@ -86,17 +91,41 @@
               <div>Campaign Links</div>
             </a>
           </li>
-          <li class="menu-item {{ request()->routeIs('admin.logs.*') ? 'active' : '' }}">
-            <a href="{{ route('admin.logs.index') }}" class="menu-link">
-              <i class="menu-icon icon-base ti tabler-history"></i>
-              <div>Admin Activity Log</div>
+          <li class="menu-item {{ $adminManagementOpen ? 'active open' : '' }}">
+            <a href="javascript:void(0);" class="menu-link menu-toggle">
+              <i class="menu-icon icon-base ti tabler-lock"></i>
+              <div>Admin Management</div>
             </a>
+            <ul class="menu-sub">
+              <li class="menu-item {{ request()->routeIs('admin.logs.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.logs.index') }}" class="menu-link">
+                  <div>Admin Activity Log</div>
+                </a>
+              </li>
+              <li class="menu-item {{ request()->routeIs('admin.admin-users.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.admin-users.index') }}" class="menu-link">
+                  <div>List User Admin</div>
+                </a>
+              </li>
+            </ul>
           </li>
-          <li class="menu-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
-            <a href="{{ route('admin.reports.index') }}" class="menu-link">
+          <li class="menu-item {{ $reportManagementOpen ? 'active open' : '' }}">
+            <a href="javascript:void(0);" class="menu-link menu-toggle">
               <i class="menu-icon icon-base ti tabler-report-analytics"></i>
-              <div>Reporting & Export</div>
+              <div>Report Management</div>
             </a>
+            <ul class="menu-sub">
+              <li class="menu-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.reports.index') }}" class="menu-link">
+                  <div>Reporting & Export</div>
+                </a>
+              </li>
+              <li class="menu-item {{ request()->routeIs('admin.public-reports.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.public-reports.index') }}" class="menu-link">
+                  <div>Public Report</div>
+                </a>
+              </li>
+            </ul>
           </li>
         </ul>
       </aside>
@@ -218,6 +247,46 @@
   <script src="{{ asset('assets-vuexy/js/main.js') }}"></script>
   @stack('vendor-scripts')
   @stack('page-scripts')
+  @if (auth('admin')->check() && optional(auth('admin')->user())->role === 'admin')
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const heartbeatUrl = @json(route('admin.presence.heartbeat'));
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const heartbeatIntervalMs = {{ max(15000, ((int) config('admin.presence.heartbeat_seconds', 45)) * 1000) }};
+        let heartbeatRequest = null;
+
+        const sendHeartbeat = () => {
+          if (!heartbeatUrl || !csrfToken || heartbeatRequest !== null) {
+            return;
+          }
+
+          heartbeatRequest = fetch(heartbeatUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': csrfToken,
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ heartbeat: true }),
+            keepalive: true
+          }).catch(() => null).finally(() => {
+            heartbeatRequest = null;
+          });
+        };
+
+        sendHeartbeat();
+        window.setInterval(sendHeartbeat, heartbeatIntervalMs);
+
+        document.addEventListener('visibilitychange', function () {
+          if (document.visibilityState === 'visible') {
+            sendHeartbeat();
+          }
+        });
+      });
+    </script>
+  @endif
 </body>
 
 </html>

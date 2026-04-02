@@ -22,8 +22,9 @@ class PublicReportRequest extends FormRequest
             'report_type' => ['required', 'in:incident_security,lost_item,lost_locker_card,medical_attention,others'],
             'name' => ['required', 'string', 'max:120'],
             'phone' => ['required', 'string', 'max:30'],
-            'identity_number' => ['nullable', 'string', 'max:80'],
-            'email' => ['nullable', 'email:rfc', 'max:120'],
+            'identity_type' => ['required', 'in:national_id,passport'],
+            'identity_number' => ['required', 'string', 'max:80'],
+            'email' => ['required', 'email:rfc', 'max:120'],
             'incident_date' => ['required', 'date'],
             'incident_time' => ['required', 'date_format:H:i'],
             'chronology' => ['required', 'string', 'min:10', 'max:4000'],
@@ -39,7 +40,13 @@ class PublicReportRequest extends FormRequest
     {
         return [
             'report_type' => 'report type',
-            'identity_number' => 'IC / Passport No.',
+            'identity_type' => 'document type',
+            'identity_number' => match ((string) $this->input('identity_type')) {
+                'national_id' => 'Malaysia IC (MyKad) Number',
+                'passport' => 'Passport Number',
+                default => 'document number',
+            },
+            'email' => 'E-mail',
             'incident_date' => 'incident date',
             'incident_time' => 'incident time',
             'staff_name' => 'staff name',
@@ -49,7 +56,9 @@ class PublicReportRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            if (! config('services.recaptcha.enabled')) {
+            $recaptcha = app(RecaptchaService::class);
+
+            if (! $recaptcha->shouldVerify()) {
                 return;
             }
 
@@ -61,7 +70,7 @@ class PublicReportRequest extends FormRequest
                 return;
             }
 
-            $isVerified = app(RecaptchaService::class)->verify($recaptchaToken, $this->ip());
+            $isVerified = $recaptcha->verify($recaptchaToken, $this->ip());
 
             if (! $isVerified) {
                 $validator->errors()->add('recaptcha_token', 'reCAPTCHA verification failed. Please try again.');
@@ -75,7 +84,8 @@ class PublicReportRequest extends FormRequest
             'report_type' => strtolower(trim((string) $this->input('report_type'))),
             'name' => trim((string) $this->input('name')),
             'phone' => trim((string) $this->input('phone')),
-            'identity_number' => trim((string) $this->input('identity_number')),
+            'identity_type' => strtolower(trim((string) $this->input('identity_type'))),
+            'identity_number' => strtoupper(trim((string) $this->input('identity_number'))),
             'email' => strtolower(trim((string) $this->input('email'))),
             'incident_date' => trim((string) $this->input('incident_date')),
             'incident_time' => trim((string) $this->input('incident_time')),

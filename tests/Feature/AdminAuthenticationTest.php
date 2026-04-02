@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Admin;
 use App\Services\Admin\AdminPanelService;
+use App\Services\Admin\AdminPresenceService;
 use Database\Seeders\AdminSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -203,6 +204,187 @@ class AdminAuthenticationTest extends TestCase
         $response->assertOk()
             ->assertSee('User Management')
             ->assertSee('Filters');
+    }
+
+    public function test_admin_management_menu_and_admin_account_list_render_for_authenticated_admin(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get('/admin/admin-users');
+
+        $response->assertOk()
+            ->assertSee('Admin Management')
+            ->assertSee('Admin Activity Log')
+            ->assertSee('List User Admin')
+            ->assertSee('Admin Account Directory')
+            ->assertSee('All presence')
+            ->assertSee('admin01@songkran.local')
+            ->assertSee('Action')
+            ->assertSee('Tambah Admin')
+            ->assertSee('sweetalert2.css')
+            ->assertSee('sweetalert2.js')
+            ->assertSee('Delete this admin account?')
+            ->assertSee(route('admin.admin-users.create'), false)
+            ->assertSee(route('admin.admin-users.edit', $admin), false);
+    }
+
+    public function test_admin_can_filter_admin_directory_by_online_presence(): void
+    {
+        config(['cache.default' => 'array']);
+
+        $admin = Admin::query()->where('email', 'admin01@songkran.local')->firstOrFail();
+        $offlineAdmin = Admin::query()->where('email', 'admin02@songkran.local')->firstOrFail();
+
+        app(AdminPresenceService::class)->markOnline($admin);
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.admin-users.index', [
+                'presence' => 'online',
+            ]));
+
+        $response->assertOk()
+            ->assertSee($admin->email)
+            ->assertDontSee($offlineAdmin->email);
+    }
+
+    public function test_admin_can_filter_admin_directory_by_offline_presence(): void
+    {
+        config(['cache.default' => 'array']);
+
+        $admin = Admin::query()->where('email', 'admin01@songkran.local')->firstOrFail();
+        $onlineAdmin = Admin::query()->where('email', 'admin02@songkran.local')->firstOrFail();
+        $offlineAdmin = Admin::query()->where('email', 'admin03@songkran.local')->firstOrFail();
+
+        app(AdminPresenceService::class)->markOnline($onlineAdmin);
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.admin-users.index', [
+                'presence' => 'offline',
+            ]));
+
+        $response->assertOk()
+            ->assertSee($offlineAdmin->email)
+            ->assertDontSee($onlineAdmin->email);
+    }
+
+    public function test_admin_can_view_create_admin_page(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.admin-users.create'));
+
+        $response->assertOk()
+            ->assertSee('Create Admin')
+            ->assertSee('Full Name')
+            ->assertSee('Email Address')
+            ->assertSee('Initial Password')
+            ->assertSee('Create Admin');
+    }
+
+    public function test_admin_can_create_admin_from_create_page(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        $response = $this->actingAs($admin, 'admin')
+            ->post(route('admin.admin-users.store'), [
+                'name' => 'New Admin Account',
+                'email' => 'new-admin-account@songkran.local',
+                'is_active' => '1',
+                'password' => 'NewAdminPass123!',
+                'password_confirmation' => 'NewAdminPass123!',
+            ]);
+
+        $response->assertRedirect(route('admin.admin-users.index'))
+            ->assertSessionHas('status', 'Admin account was created successfully.');
+
+        $this->assertDatabaseHas('admins', [
+            'name' => 'New Admin Account',
+            'email' => 'new-admin-account@songkran.local',
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_admin_can_view_edit_admin_page(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.admin-users.edit', $admin));
+
+        $response->assertOk()
+            ->assertSee('Edit Admin')
+            ->assertSee('Full Name')
+            ->assertSee('Email Address')
+            ->assertSee('Account Status')
+            ->assertSee('New Password')
+            ->assertSee('Save Changes');
+    }
+
+    public function test_admin_can_update_admin_from_edit_page(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+        $targetAdmin = Admin::query()
+            ->whereKeyNot($admin->getKey())
+            ->firstOrFail();
+
+        $response = $this->actingAs($admin, 'admin')
+            ->from(route('admin.admin-users.edit', $targetAdmin))
+            ->put(route('admin.admin-users.update', $targetAdmin), [
+                'name' => 'Festival Admin Updated',
+                'email' => 'festival-admin-updated@songkran.local',
+                'is_active' => '1',
+                'password' => 'NewAdminPass123!',
+                'password_confirmation' => 'NewAdminPass123!',
+            ]);
+
+        $response->assertRedirect(route('admin.admin-users.index'))
+            ->assertSessionHas('status', 'Admin account was updated successfully.');
+
+        $this->assertDatabaseHas('admins', [
+            'id' => $targetAdmin->getKey(),
+            'name' => 'Festival Admin Updated',
+            'email' => 'festival-admin-updated@songkran.local',
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_admin_can_delete_another_admin_from_directory(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+        $targetAdmin = Admin::query()
+            ->whereKeyNot($admin->getKey())
+            ->firstOrFail();
+
+        $response = $this->actingAs($admin, 'admin')
+            ->delete(route('admin.admin-users.destroy', $targetAdmin));
+
+        $response->assertRedirect(route('admin.admin-users.index'))
+            ->assertSessionHas('status', 'Admin account was deleted successfully.');
+
+        $this->assertDatabaseMissing('admins', [
+            'id' => $targetAdmin->getKey(),
+        ]);
+    }
+
+    public function test_admin_cannot_delete_own_account_from_directory(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        $response = $this->actingAs($admin, 'admin')
+            ->from(route('admin.admin-users.index'))
+            ->delete(route('admin.admin-users.destroy', $admin));
+
+        $response->assertRedirect(route('admin.admin-users.index'))
+            ->assertSessionHasErrors([
+                'error' => 'You cannot delete the account currently signed in.',
+            ]);
+
+        $this->assertDatabaseHas('admins', [
+            'id' => $admin->getKey(),
+        ]);
     }
 
     public function test_admin_can_delete_user_from_listing(): void

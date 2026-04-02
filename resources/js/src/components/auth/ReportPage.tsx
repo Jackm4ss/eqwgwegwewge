@@ -1,6 +1,10 @@
+import dayjs, { type Dayjs } from 'dayjs';
+import { LocalizationProvider, TimePicker } from '@mui/x-date-pickers';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { renderTimeViewClock } from '@mui/x-date-pickers/timeViewRenderers';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle2, ChevronDown, Loader2, Lock, Mail, Phone, UserRound } from 'lucide-react';
+import { CheckCircle2, ChevronDown, IdCard, Loader2, Lock, Mail, Phone, UserRound } from 'lucide-react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
@@ -22,16 +26,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/Select';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/Dialog';
+import { Button } from '../ui/Button';
+import {
+  OTHER_PHONE_OPTIONS,
+  PHONE_DIAL_CODES,
+  PHONE_OPTIONS,
+  PRIORITY_PHONE_OPTIONS,
+} from '@/lib/countryCatalog';
 
 type ReportType = 'incident_security' | 'lost_item' | 'lost_locker_card' | 'medical_attention' | 'others';
+type IdentityType = 'national_id' | 'passport' | '';
 
 type FormData = {
   report_type: ReportType;
   name: string;
   phone_country_code: string;
   phone_national_number: string;
+  identity_type: IdentityType;
   identity_number: string;
   email: string;
+  incident_day: string;
+  incident_month: string;
+  incident_year: string;
   incident_date: string;
   incident_time: string;
   chronology: string;
@@ -42,7 +67,11 @@ type FormData = {
 type SubmitResponse = {
   message?: string;
   reference?: string;
-  recipient?: string;
+};
+
+type SubmittedState = {
+  reference: string;
+  message: string;
 };
 
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
@@ -58,69 +87,37 @@ const REPORT_OPTIONS: Array<{
   { value: 'others', title: 'Others' },
 ];
 
-const PRIORITY_COUNTRIES = ['MY', 'TH', 'SG', 'ID', 'BN', 'MM', 'VN'] as const;
-
-const COUNTRIES = [
-  { code: 'AU', name: 'Australia' },
-  { code: 'BN', name: 'Brunei' },
-  { code: 'KH', name: 'Cambodia' },
-  { code: 'CN', name: 'China' },
-  { code: 'FR', name: 'France' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'HK', name: 'Hong Kong' },
-  { code: 'IN', name: 'India' },
-  { code: 'ID', name: 'Indonesia' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'LA', name: 'Laos' },
-  { code: 'MY', name: 'Malaysia' },
-  { code: 'MM', name: 'Myanmar' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'NZ', name: 'New Zealand' },
-  { code: 'PH', name: 'Philippines' },
-  { code: 'SG', name: 'Singapore' },
-  { code: 'KR', name: 'South Korea' },
-  { code: 'TH', name: 'Thailand' },
-  { code: 'AE', name: 'UAE' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'US', name: 'United States' },
-  { code: 'VN', name: 'Vietnam' },
+const IDENTITY_TYPES: Array<{
+  value: Exclude<IdentityType, ''>;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'national_id',
+    label: 'Malaysia IC (MyKad)',
+    description: 'Use your Malaysia IC / MyKad exactly as it appears on your card.',
+  },
+  {
+    value: 'passport',
+    label: 'Passport',
+    description: 'Use a valid passport number that matches your travel document.',
+  },
 ];
 
-const PHONE_DIAL_CODES: Record<string, string> = {
-  AU: '+61',
-  BN: '+673',
-  KH: '+855',
-  CN: '+86',
-  FR: '+33',
-  DE: '+49',
-  HK: '+852',
-  IN: '+91',
-  ID: '+62',
-  JP: '+81',
-  LA: '+856',
-  MY: '+60',
-  MM: '+95',
-  NL: '+31',
-  NZ: '+64',
-  PH: '+63',
-  SG: '+65',
-  KR: '+82',
-  TH: '+66',
-  AE: '+971',
-  GB: '+44',
-  US: '+1',
-  VN: '+84',
-};
+const INCIDENT_MONTH_OPTIONS = [
+  { value: '04', label: 'April' },
+] as const;
 
-const SORTED_COUNTRIES = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name));
-const PHONE_OPTIONS = SORTED_COUNTRIES.map((country) => ({
-  country: country.code,
-  countryName: country.name,
-  dialCode: PHONE_DIAL_CODES[country.code],
-  flagClassName: `fi fi-${country.code.toLowerCase()}`,
-}));
-const PRIORITY_PHONE_OPTIONS = PRIORITY_COUNTRIES.map((code) => PHONE_OPTIONS.find((item) => item.country === code)).filter(Boolean) as typeof PHONE_OPTIONS;
-const OTHER_PHONE_OPTIONS = PHONE_OPTIONS.filter((item) => !PRIORITY_COUNTRIES.includes(item.country as (typeof PRIORITY_COUNTRIES)[number]));
+const INCIDENT_DAY_OPTIONS = Array.from({ length: 31 }, (_, index) => {
+  const value = String(index + 1).padStart(2, '0');
+
+  return {
+    value,
+    label: value,
+  };
+});
+
+const INCIDENT_YEAR_OPTIONS = ['2026'] as const;
 
 type Grecaptcha = {
   ready: (callback: () => void) => void;
@@ -206,14 +203,51 @@ function normalizePhoneNationalNumber(value: string) {
   return value.replace(/\D/g, '').replace(/^0+/, '');
 }
 
+function buildIncidentDate(day: string, month: string, year: string) {
+  if (day === '' || month === '' || year === '') {
+    return null;
+  }
+
+  const dayNumber = Number(day);
+  const monthNumber = Number(month);
+  const yearNumber = Number(year);
+
+  if (!Number.isInteger(dayNumber) || !Number.isInteger(monthNumber) || !Number.isInteger(yearNumber)) {
+    return null;
+  }
+
+  const parsedDate = new Date(yearNumber, monthNumber - 1, dayNumber);
+
+  if (
+    parsedDate.getFullYear() !== yearNumber
+    || parsedDate.getMonth() !== monthNumber - 1
+    || parsedDate.getDate() !== dayNumber
+  ) {
+    return null;
+  }
+
+  return `${year}-${month}-${day}`;
+}
+
+function parseIncidentTimeValue(value: string): Dayjs | null {
+  if (!/^\d{2}:\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const parsed = dayjs(`2026-04-01T${value}`);
+
+  return parsed.isValid() ? parsed : null;
+}
+
 export function ReportPage() {
   const recaptchaEnabled = getMetaContent('recaptcha-enabled') === '1';
   const recaptchaSiteKey = getMetaContent('recaptcha-site-key');
   const requestIp = getMetaContent('request-ip');
   const addRippleRef = useRef<((x: number, y: number) => void) | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState<{ reference: string } | null>(null);
+  const [submitted, setSubmitted] = useState<SubmittedState | null>(null);
   const [isRecaptchaReady, setIsRecaptchaReady] = useState(!recaptchaEnabled);
+  const [isIncidentTimePickerOpen, setIsIncidentTimePickerOpen] = useState(false);
 
   const {
     control,
@@ -231,8 +265,12 @@ export function ReportPage() {
       name: '',
       phone_country_code: PHONE_DIAL_CODES.MY,
       phone_national_number: '',
+      identity_type: '',
       identity_number: '',
       email: '',
+      incident_day: '',
+      incident_month: '04',
+      incident_year: '2026',
       incident_date: '',
       incident_time: '',
       chronology: '',
@@ -242,10 +280,30 @@ export function ReportPage() {
   });
 
   const selectedReportType = watch('report_type');
+  const selectedIdentityType = watch('identity_type');
   const selectedPhoneCountryCode = watch('phone_country_code');
+  const selectedIncidentDay = watch('incident_day');
+  const selectedIncidentMonth = watch('incident_month');
+  const selectedIncidentYear = watch('incident_year');
   const selectedPhoneOption = PHONE_OPTIONS.find((item) => item.dialCode === selectedPhoneCountryCode);
   const inputClass = (field: keyof FormData, withIcon = true) => authInputClass(Boolean(errors[field]), { withIcon });
-  const selectClass = (field: keyof FormData) => authSelectClass(Boolean(errors[field]));
+  const selectClass = (field: keyof FormData, extraClassName?: string) => authSelectClass(Boolean(errors[field]), extraClassName);
+  const incidentDateSelectClass = authSelectClass(Boolean(errors.incident_date), 'px-3');
+  const identityNumberLabel = selectedIdentityType === 'national_id'
+    ? 'Malaysia IC (MyKad) Number'
+    : selectedIdentityType === 'passport'
+      ? 'Passport Number'
+      : 'Document Number';
+  const identityNumberPlaceholder = selectedIdentityType === 'national_id'
+    ? 'Example: 901231101234'
+    : selectedIdentityType === 'passport'
+      ? 'Example: A1234567'
+      : 'Select document type first';
+  const identityNumberHelperText = selectedIdentityType === 'national_id'
+    ? 'For Malaysian citizens or permanent residents, use your IC / MyKad number.'
+    : selectedIdentityType === 'passport'
+      ? 'Use a valid passport number that matches your travel document.'
+      : 'Choose whether this report uses Malaysia IC (MyKad) or Passport first.';
 
   useEffect(() => {
     if (!recaptchaEnabled) {
@@ -272,43 +330,103 @@ export function ReportPage() {
     };
   }, [recaptchaEnabled, recaptchaSiteKey]);
 
+  useEffect(() => {
+    const normalizedIncidentDate = buildIncidentDate(
+      selectedIncidentDay,
+      selectedIncidentMonth,
+      selectedIncidentYear,
+    );
+
+    setValue('incident_date', normalizedIncidentDate ?? '', {
+      shouldDirty: normalizedIncidentDate !== null,
+      shouldValidate: false,
+    });
+
+    if (normalizedIncidentDate) {
+      clearErrors('incident_date');
+    }
+  }, [clearErrors, selectedIncidentDay, selectedIncidentMonth, selectedIncidentYear, setValue]);
+
+  const executeRecaptchaToken = async () => {
+    if (!recaptchaEnabled) {
+      setValue('recaptcha_token', '', { shouldValidate: false });
+      return '';
+    }
+
+    if (!recaptchaSiteKey) {
+      toast.error('reCAPTCHA is not configured. Please contact the administrator.');
+      setError('recaptcha_token', {
+        type: 'manual',
+        message: 'reCAPTCHA is not configured. Please contact the administrator.',
+      });
+      return null;
+    }
+
+    clearErrors('recaptcha_token');
+
+    const grecaptcha = await ensureRecaptcha(recaptchaSiteKey);
+    if (!grecaptcha) {
+      setIsRecaptchaReady(false);
+      toast.error('Failed to load reCAPTCHA. Please try again.');
+      setError('recaptcha_token', {
+        type: 'manual',
+        message: 'Failed to load reCAPTCHA. Please try again.',
+      });
+      return null;
+    }
+
+    setIsRecaptchaReady(true);
+
+    try {
+      const token = (await grecaptcha.execute(recaptchaSiteKey, { action: 'public_report_submit' })).trim();
+
+      if (token === '') {
+        toast.error('Failed to verify reCAPTCHA. Please try again.');
+        setError('recaptcha_token', {
+          type: 'manual',
+          message: 'Failed to verify reCAPTCHA. Please try again.',
+        });
+        return null;
+      }
+
+      setValue('recaptcha_token', token, { shouldValidate: false });
+      clearErrors('recaptcha_token');
+
+      return token;
+    } catch {
+      toast.error('Failed to verify reCAPTCHA. Please try again.');
+      setError('recaptcha_token', {
+        type: 'manual',
+        message: 'Failed to verify reCAPTCHA. Please try again.',
+      });
+      return null;
+    }
+  };
+
   const onSubmit = async (data: FormData) => {
     clearErrors();
     setIsSubmitting(true);
     setSubmitted(null);
 
     try {
-      let recaptchaToken = '';
+      const normalizedIncidentDate = buildIncidentDate(
+        data.incident_day,
+        data.incident_month,
+        data.incident_year,
+      );
 
-      if (recaptchaEnabled) {
-        if (!recaptchaSiteKey) {
-          setError('recaptcha_token', {
-            type: 'manual',
-            message: 'reCAPTCHA is not configured. Please contact the administrator.',
-          });
-          return;
-        }
+      if (!normalizedIncidentDate) {
+        setError('incident_date', {
+          type: 'manual',
+          message: 'Please select date, month, and year.',
+        });
+        return;
+      }
 
-        const grecaptcha = await ensureRecaptcha(recaptchaSiteKey);
-        if (!grecaptcha) {
-          setIsRecaptchaReady(false);
-          setError('recaptcha_token', {
-            type: 'manual',
-            message: 'Failed to load reCAPTCHA. Please try again.',
-          });
-          return;
-        }
+      const recaptchaToken = await executeRecaptchaToken();
 
-        setIsRecaptchaReady(true);
-        recaptchaToken = (await grecaptcha.execute(recaptchaSiteKey, { action: 'public_report_submit' })).trim();
-
-        if (!recaptchaToken) {
-          setError('recaptcha_token', {
-            type: 'manual',
-            message: 'Failed to verify reCAPTCHA. Please try again.',
-          });
-          return;
-        }
+      if (recaptchaEnabled && (!recaptchaToken || !recaptchaToken.trim())) {
+        return;
       }
 
       const csrf = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ?? '';
@@ -323,9 +441,10 @@ export function ReportPage() {
           ...data,
           name: data.name.trim(),
           phone: `${normalizePhoneCountryCode(data.phone_country_code)}${normalizePhoneNationalNumber(data.phone_national_number)}`,
-          identity_number: data.identity_number.trim(),
+          identity_type: data.identity_type,
+          identity_number: data.identity_number.trim().toUpperCase(),
           email: data.email.trim().toLowerCase(),
-          incident_date: data.incident_date,
+          incident_date: normalizedIncidentDate,
           incident_time: data.incident_time,
           chronology: data.chronology.trim(),
           staff_name: data.staff_name.trim(),
@@ -340,7 +459,13 @@ export function ReportPage() {
           Object.entries(json.errors).forEach(([field, messages]) => {
             setError(field as keyof FormData, { type: 'server', message: messages[0] ?? 'Invalid input.' });
           });
-          toast.error('Please review the highlighted fields.');
+
+          const primaryError = json.errors.recaptcha_token?.[0]
+            ?? json.errors.incident_date?.[0]
+            ?? Object.values(json.errors)[0]?.[0]
+            ?? 'Please review the highlighted fields.';
+
+          toast.error(primaryError);
           return;
         }
 
@@ -348,11 +473,19 @@ export function ReportPage() {
       }
 
       const reference = json.reference?.trim() ?? '';
-      setSubmitted({ reference });
-      toast.success('Report submitted successfully.');
+      const successMessage = json.message?.trim() || 'Your report has been submitted successfully.';
+
+      setSubmitted({
+        reference,
+        message: successMessage,
+      });
+      toast.success(successMessage, {
+        description: reference ? `Reference number: ${reference}` : undefined,
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to submit your report right now.');
     } finally {
+      setValue('recaptcha_token', '', { shouldValidate: false });
       setIsSubmitting(false);
     }
   };
@@ -372,20 +505,20 @@ export function ReportPage() {
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="relative flex min-h-screen items-center justify-center px-4 py-10 lg:px-8"
+        className="relative flex min-h-screen items-center justify-center px-4 py-10"
       >
-        <div className="w-full max-w-[760px]">
-          <AuthCardFrame>
+        <div className="w-full">
+          <AuthCardFrame className="relative mx-auto w-full max-w-[520px]">
             <AuthCardHeader
               className="text-center"
               eyebrow="Help Desk"
               title="Public Report"
               description="Submit incident, lost item, medical, or other assistance requests directly from this page."
-              note="Every new report will trigger an email notification to the response team."
+              note="Every submitted report is stored in the help desk dashboard for review."
               topSlot={(
                 <div className="flex items-center justify-center gap-4">
                   <div className="rounded-[1.35rem] border border-white/15 bg-white/10 px-4 py-3 shadow-[0_14px_45px_rgba(12,74,110,0.22)] backdrop-blur-sm">
-                    <img src={SONGKRAN_LOGO_URL} alt="Songkran Festival 2026 logo" className="h-12 w-auto sm:h-14" />
+                    <img src={SONGKRAN_LOGO_URL} alt="Songkran Festival 2026 logo" className="h-12 w-auto" />
                   </div>
                 </div>
               )}
@@ -393,7 +526,7 @@ export function ReportPage() {
 
             <div className="bg-white">
               <form onSubmit={handleSubmit(onSubmit)} noValidate>
-                <div className="space-y-6 px-7 py-6">
+                <div className="space-y-5 px-7 py-6">
                   <div>
                     <label htmlFor="report_type" className="mb-1.5 block text-sm font-semibold text-slate-700">
                       Type of Report <span className="text-red-500">*</span>
@@ -423,10 +556,10 @@ export function ReportPage() {
                     <AnimatePresence><AuthInlineError message={errors.report_type?.message} /></AnimatePresence>
                   </div>
 
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid gap-5">
                     <div>
                       <label htmlFor="name" className="mb-1.5 block text-sm font-semibold text-slate-700">
-                        Name <span className="text-red-500">*</span>
+                        Full Name <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <UserRound className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-sky-400" aria-hidden="true" />
@@ -434,10 +567,10 @@ export function ReportPage() {
                           id="name"
                           type="text"
                           autoComplete="name"
-                          placeholder="Your full name"
+                          placeholder="Enter your full name"
                           className={inputClass('name')}
                           {...register('name', {
-                            required: 'Name is required.',
+                            required: 'Full name is required.',
                             maxLength: { value: 120, message: 'Name is too long.' },
                           })}
                         />
@@ -446,10 +579,33 @@ export function ReportPage() {
                     </div>
 
                     <div>
-                      <label htmlFor="phone_country_code" className="mb-1.5 block text-sm font-semibold text-slate-700">
-                        Phone <span className="text-red-500">*</span>
+                      <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                        Email <span className="text-red-500">*</span>
                       </label>
-                      <div className="grid grid-cols-[116px_minmax(0,1fr)] gap-2 sm:grid-cols-[122px_minmax(0,1fr)]">
+                      <div className="relative">
+                        <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-sky-400" aria-hidden="true" />
+                        <input
+                          id="email"
+                          type="email"
+                          autoComplete="email"
+                          placeholder="Your email"
+                          className={inputClass('email')}
+                          {...register('email', {
+                            required: 'Email is required.',
+                            setValueAs: (value: string) => value.trim().toLowerCase(),
+                            pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email address.' },
+                            maxLength: { value: 120, message: 'Email is too long.' },
+                          })}
+                        />
+                      </div>
+                      <AnimatePresence><AuthInlineError message={errors.email?.message} /></AnimatePresence>
+                    </div>
+
+                    <div>
+                      <label htmlFor="phone_country_code" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                        Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      <div className="grid grid-cols-[116px_minmax(0,1fr)] gap-2">
                         <Controller
                           control={control}
                           name="phone_country_code"
@@ -500,10 +656,10 @@ export function ReportPage() {
                             type="text"
                             autoComplete="tel-national"
                             inputMode="tel"
-                            placeholder="Phone number"
+                            placeholder="123456789"
                             className={inputClass('phone_national_number', true)}
                             {...register('phone_national_number', {
-                              required: 'Phone is required.',
+                              required: 'Phone number is required.',
                               maxLength: { value: 20, message: 'Phone is too long.' },
                               setValueAs: (value: string) => normalizePhoneNationalNumber(value),
                               onChange: (event) => { event.target.value = normalizePhoneNationalNumber(event.target.value); },
@@ -516,59 +672,147 @@ export function ReportPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="identity_number" className="mb-1.5 block text-sm font-semibold text-slate-700">
-                        IC / Passport No.
-                      </label>
+                  <div>
+                    <label htmlFor="identity_type" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                      Document Type <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <IdCard className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-sky-400" aria-hidden="true" />
+                      <select
+                        id="identity_type"
+                        className={authInputClass(Boolean(errors.identity_type), {
+                          withIcon: true,
+                          extraClassName: 'appearance-none cursor-pointer pr-12',
+                        })}
+                        value={selectedIdentityType}
+                        {...register('identity_type', { required: 'Document type is required.' })}
+                        onChange={(event) => {
+                          const nextValue = event.target.value as IdentityType;
+                          setValue('identity_type', nextValue, { shouldValidate: true });
+                          setValue('identity_number', '', { shouldValidate: false });
+                          clearErrors(['identity_type', 'identity_number']);
+                        }}
+                      >
+                        <option value="">Select a document type</option>
+                        {IDENTITY_TYPES.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-sky-500" aria-hidden="true" />
+                    </div>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                      {IDENTITY_TYPES.find((option) => option.value === selectedIdentityType)?.description
+                        ?? 'Choose whether this report uses Malaysia IC (MyKad) or Passport.'}
+                    </p>
+                    <AnimatePresence><AuthInlineError message={errors.identity_type?.message} /></AnimatePresence>
+                  </div>
+
+                  <div>
+                    <label htmlFor="identity_number" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                      {identityNumberLabel} <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <IdCard className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-sky-400" aria-hidden="true" />
                       <input
                         id="identity_number"
                         type="text"
                         autoComplete="off"
-                        placeholder="Optional"
-                        className={inputClass('identity_number', false)}
+                        placeholder={identityNumberPlaceholder}
+                        disabled={selectedIdentityType === ''}
+                        className={inputClass('identity_number')}
                         {...register('identity_number', {
-                          maxLength: { value: 80, message: 'IC / Passport No. is too long.' },
+                          required: selectedIdentityType === 'passport'
+                            ? 'Passport Number is required.'
+                            : selectedIdentityType === 'national_id'
+                              ? 'Malaysia IC (MyKad) Number is required.'
+                              : 'Document number is required.',
+                          setValueAs: (value: string) => value.trim().toUpperCase(),
+                          maxLength: { value: 80, message: `${identityNumberLabel} is too long.` },
                         })}
                       />
-                      <AnimatePresence><AuthInlineError message={errors.identity_number?.message} /></AnimatePresence>
                     </div>
-
-                    <div>
-                      <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-slate-700">
-                        E-mail
-                      </label>
-                      <div className="relative">
-                        <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-sky-400" aria-hidden="true" />
-                        <input
-                          id="email"
-                          type="email"
-                          autoComplete="email"
-                          placeholder="Optional"
-                          className={inputClass('email')}
-                          {...register('email', {
-                            pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email address.' },
-                            maxLength: { value: 120, message: 'Email is too long.' },
-                          })}
-                        />
-                      </div>
-                      <AnimatePresence><AuthInlineError message={errors.email?.message} /></AnimatePresence>
-                    </div>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                      {identityNumberHelperText}
+                    </p>
+                    <AnimatePresence><AuthInlineError message={errors.identity_number?.message} /></AnimatePresence>
                   </div>
 
-                  <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="grid gap-5">
                     <div>
-                      <label htmlFor="incident_date" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                         Incident Date <span className="text-red-500">*</span>
                       </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Controller
+                          control={control}
+                          name="incident_day"
+                          render={({ field }) => (
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <SelectTrigger id="incident_day" className={incidentDateSelectClass}>
+                                <SelectValue placeholder="Date" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl border-sky-100">
+                                {INCIDENT_DAY_OPTIONS.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        <Controller
+                          control={control}
+                          name="incident_month"
+                          render={({ field }) => (
+                            <Select value={field.value} onValueChange={field.onChange} disabled>
+                              <SelectTrigger id="incident_month" className={incidentDateSelectClass}>
+                                <SelectValue placeholder="Month" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl border-sky-100">
+                                {INCIDENT_MONTH_OPTIONS.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        <Controller
+                          control={control}
+                          name="incident_year"
+                          render={({ field }) => (
+                            <Select value={field.value} onValueChange={field.onChange} disabled>
+                              <SelectTrigger id="incident_year" className={incidentDateSelectClass}>
+                                <SelectValue placeholder="Year" />
+                              </SelectTrigger>
+                              <SelectContent className="rounded-xl border-sky-100">
+                                {INCIDENT_YEAR_OPTIONS.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
                       <input
-                        id="incident_date"
-                        type="date"
-                        className={inputClass('incident_date', false)}
+                        type="hidden"
                         {...register('incident_date', {
-                          required: 'Incident date is required.',
+                          validate: () => buildIncidentDate(
+                            selectedIncidentDay,
+                            selectedIncidentMonth,
+                            selectedIncidentYear,
+                          ) !== null || 'Please select date, month, and year.',
                         })}
                       />
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                        Select the date. Month is fixed to April and year is fixed to 2026.
+                      </p>
                       <AnimatePresence><AuthInlineError message={errors.incident_date?.message} /></AnimatePresence>
                     </div>
 
@@ -576,14 +820,115 @@ export function ReportPage() {
                       <label htmlFor="incident_time" className="mb-1.5 block text-sm font-semibold text-slate-700">
                         Incident Time <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        id="incident_time"
-                        type="time"
-                        className={inputClass('incident_time', false)}
-                        {...register('incident_time', {
+                      <Controller
+                        control={control}
+                        name="incident_time"
+                        rules={{
                           required: 'Incident time is required.',
-                        })}
+                        }}
+                        render={({ field }) => (
+                          <LocalizationProvider dateAdapter={AdapterDayjs}>
+                            <TimePicker
+                              open={isIncidentTimePickerOpen}
+                              value={parseIncidentTimeValue(field.value)}
+                              onOpen={() => setIsIncidentTimePickerOpen(true)}
+                              onChange={(nextValue) => {
+                                if (nextValue && nextValue.isValid()) {
+                                  field.onChange(nextValue.format('HH:mm'));
+                                  clearErrors('incident_time');
+                                  return;
+                                }
+
+                                field.onChange('');
+                              }}
+                              onClose={() => {
+                                setIsIncidentTimePickerOpen(false);
+                                field.onBlur();
+                              }}
+                              views={['hours', 'minutes']}
+                              openTo="hours"
+                              ampm
+                              ampmInClock
+                              minutesStep={1}
+                              format="hh:mm A"
+                              viewRenderers={{
+                                hours: renderTimeViewClock,
+                                minutes: renderTimeViewClock,
+                              }}
+                              slotProps={{
+                                textField: {
+                                  id: 'incident_time',
+                                  fullWidth: true,
+                                  placeholder: 'Select incident time',
+                                  onBlur: () => field.onBlur(),
+                                  onClick: () => setIsIncidentTimePickerOpen(true),
+                                  onKeyDown: (event) => {
+                                    if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+                                      event.preventDefault();
+                                      setIsIncidentTimePickerOpen(true);
+                                    }
+                                  },
+                                  error: Boolean(errors.incident_time),
+                                  sx: {
+                                    '& .MuiOutlinedInput-root': {
+                                      minHeight: 50,
+                                      borderRadius: '0.75rem',
+                                      backgroundColor: '#ffffff',
+                                      fontSize: '1rem',
+                                      paddingRight: '0.2rem',
+                                      '& fieldset': {
+                                        borderWidth: 2,
+                                        borderColor: errors.incident_time ? '#f87171' : '#bae6fd',
+                                      },
+                                      '&:hover fieldset': {
+                                        borderColor: errors.incident_time ? '#ef4444' : '#7dd3fc',
+                                      },
+                                      '&.Mui-focused fieldset': {
+                                        borderColor: errors.incident_time ? '#ef4444' : '#0ea5e9',
+                                      },
+                                    },
+                                    '& .MuiInputBase-input': {
+                                      padding: '13px 16px',
+                                      color: '#1e293b',
+                                    },
+                                    '& .MuiInputAdornment-root .MuiIconButton-root': {
+                                      color: '#0ea5e9',
+                                    },
+                                  },
+                                },
+                                actionBar: {
+                                  actions: ['clear', 'cancel', 'accept'],
+                                },
+                                desktopPaper: {
+                                  sx: {
+                                    borderRadius: '1.25rem',
+                                    border: '1px solid #e0f2fe',
+                                    boxShadow: '0 18px 50px rgba(2, 132, 199, 0.16)',
+                                  },
+                                },
+                                mobilePaper: {
+                                  sx: {
+                                    borderRadius: '1.5rem',
+                                  },
+                                },
+                                layout: {
+                                  sx: {
+                                    '& .MuiPickersToolbar-root': {
+                                      backgroundColor: '#f0f9ff',
+                                    },
+                                    '& .MuiTimeClock-root': {
+                                      backgroundColor: '#ffffff',
+                                    },
+                                  },
+                                },
+                              }}
+                            />
+                          </LocalizationProvider>
+                        )}
                       />
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                        Use the clock picker to select the incident hour and minute.
+                      </p>
                       <AnimatePresence><AuthInlineError message={errors.incident_time?.message} /></AnimatePresence>
                     </div>
                   </div>
@@ -630,8 +975,6 @@ export function ReportPage() {
                   </div>
 
                   <div className="rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-4 text-sm text-slate-700 shadow-sm">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">Your IP</p>
-                    <p className="mb-3 text-sm font-semibold text-slate-900">{requestIp || '-'}</p>
                     <p className="font-semibold text-slate-900">Disclaimer</p>
                     <p className="mt-1 leading-relaxed">
                       We are not obligated to respond to or act upon every report submitted. Our response and any subsequent action are subject to the urgency and nature of the matter.
@@ -667,7 +1010,13 @@ export function ReportPage() {
                   )}
                 </div>
 
-                <div className="flex justify-end border-t border-slate-100 bg-slate-50 px-7 py-4">
+                <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50 px-7 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="inline-flex w-fit items-center gap-3 rounded-full border border-sky-200 bg-white px-3 py-2 shadow-[0_10px_25px_rgba(14,165,233,0.08)]">
+                    <span className="rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-sky-700">
+                      Your IP
+                    </span>
+                    <span className="text-sm font-semibold text-slate-800">{requestIp || '-'}</span>
+                  </div>
                   <motion.button
                     type="submit"
                     disabled={isSubmitting}
@@ -689,49 +1038,61 @@ export function ReportPage() {
             </div>
           </AuthCardFrame>
 
-          <AnimatePresence>
+          <Dialog open={submitted !== null} onOpenChange={(open) => !open && setSubmitted(null)}>
             {submitted ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
-              >
-                <motion.div
-                  initial={{ opacity: 0, y: 18, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 12, scale: 0.97 }}
-                  transition={{ duration: 0.2 }}
-                  className="w-full max-w-[420px] rounded-[1.8rem] border border-white/20 bg-white p-6 shadow-[0_30px_80px_rgba(0,0,0,0.28)]"
-                >
-                  <p className="text-lg font-semibold leading-snug text-slate-900">
-                    Thank you we have received your report.
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                    Our officer may contact you via whatsapp or e-mail in case we need more information regarding your report.
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                    Kindly take note, We are not obligated to respond to or act upon every report submitted. Our response and any subsequent action are subject to the urgency and nature of the matter.
-                  </p>
-                  <div className="mt-5 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Case ID</p>
-                    <p className="mt-2 text-2xl font-black tracking-tight text-sky-700">
-                      {submitted.reference}
+              <DialogContent showCloseButton={false} className="max-w-xl gap-0 overflow-hidden rounded-[1.75rem] border-sky-100 p-0 shadow-2xl">
+                <div className="bg-gradient-to-r from-sky-700 to-cyan-500 px-6 py-5 text-white">
+                  <DialogHeader className="text-left">
+                    <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-[1rem] border border-white/25 bg-white/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+                      <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
+                    </div>
+                    <DialogTitle id="report-success-title" className="text-xl font-bold tracking-tight" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                      Report Received
+                    </DialogTitle>
+                    <DialogDescription id="report-success-description" className="text-sm text-sky-50/90">
+                      {submitted.message}
+                    </DialogDescription>
+                  </DialogHeader>
+                </div>
+
+                <div className="space-y-4 px-6 py-5">
+                  <div className="rounded-[1.35rem] border border-sky-100 bg-sky-50/80 px-4 py-4 shadow-[0_10px_24px_rgba(14,116,144,0.08)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Reference Number
+                        </p>
+                        <p className="mt-2 text-2xl font-black tracking-[-0.03em] text-sky-800">
+                          {submitted.reference || 'Pending'}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-sky-700 shadow-sm">
+                        Keep this for tracking
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[1.2rem] border border-slate-100 bg-white px-4 py-4 text-sm leading-7 text-slate-600">
+                    <p className="font-semibold text-slate-900">What happens next</p>
+                    <p className="mt-1">
+                      We have safely recorded your report. Please keep the reference number above because it will be used for tracking your report.
+                    </p>
+                    <p className="mt-2">
+                      Our help desk team will review your report from the admin dashboard. Any follow-up or action will depend on the urgency and nature of the case.
                     </p>
                   </div>
-                  <div className="mt-6 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setSubmitted(null)}
-                      className={authPrimaryButtonClass('rounded-xl px-5 py-2.5 text-sm font-semibold normal-case tracking-normal shadow-[0_4px_14px_rgba(2,132,199,0.35)] focus:ring-offset-1')}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </motion.div>
-              </motion.div>
+                </div>
+
+                <DialogFooter className="border-t border-slate-100 px-6 py-4">
+                  <DialogClose asChild>
+                    <Button type="button" className="bg-sky-600 text-white hover:bg-sky-700">
+                      Done
+                    </Button>
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
             ) : null}
-          </AnimatePresence>
+          </Dialog>
         </div>
       </motion.main>
     </AuthPageShell>

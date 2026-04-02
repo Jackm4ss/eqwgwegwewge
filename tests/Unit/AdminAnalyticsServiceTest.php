@@ -342,6 +342,16 @@ class AdminAnalyticsServiceTest extends TestCase
         $this->assertSame('Indonesia', collect($rows)->firstWhere('user_id', 'user-1')['country_label']);
     }
 
+    public function test_country_labels_follow_shared_registration_catalog(): void
+    {
+        $service = new AdminAnalyticsService;
+
+        $this->assertSame('Myanmar', $service->countryLabel('MM'));
+        $this->assertSame('UAE', $service->countryLabel('AE'));
+        $this->assertContains('AL', $service->supportedCountryCodes());
+        $this->assertContains('MM', $service->supportedCountryCodes());
+    }
+
     public function test_attendance_progress_counts_unique_success_days_per_user_within_event_window(): void
     {
         config()->set('admin.event.start_date', '2026-04-09');

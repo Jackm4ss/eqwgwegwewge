@@ -78,7 +78,7 @@
             View incoming help desk reports from the public form, including case IDs, incident time, chronology, and IP address.
           </p>
         </div>
-        <a href="{{ route('admin.reports.index') }}" class="btn btn-primary">
+        <a href="{{ route('admin.public-reports.index') }}" class="btn btn-primary">
           Open Public Reports
         </a>
       </div>

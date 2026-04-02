@@ -50,7 +50,9 @@ class RegisterRequest extends FormRequest
                 );
             }
 
-            if (! config('services.recaptcha.enabled')) {
+            $recaptcha = app(RecaptchaService::class);
+
+            if (! $recaptcha->shouldVerify()) {
                 return;
             }
 
@@ -65,7 +67,7 @@ class RegisterRequest extends FormRequest
                 return;
             }
 
-            $isVerified = app(RecaptchaService::class)->verify($recaptchaToken, $this->ip());
+            $isVerified = $recaptcha->verify($recaptchaToken, $this->ip());
 
             if (! $isVerified) {
                 $validator->errors()->add(

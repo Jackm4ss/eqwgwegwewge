@@ -3,13 +3,19 @@
 namespace App\Services\Security;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class RecaptchaService
 {
+    public function shouldVerify(): bool
+    {
+        return (bool) config('services.recaptcha.enabled');
+    }
+
     public function verify(string $token, ?string $ip = null): bool
     {
-        if (! config('services.recaptcha.enabled')) {
+        if (! $this->shouldVerify()) {
             return true;
         }
 
@@ -28,16 +34,32 @@ class RecaptchaService
                 ->post((string) config('services.recaptcha.verify_url'), [
                     'secret' => $secretKey,
                     'response' => $token,
-                    'remoteip' => $ip,
                 ]);
         } catch (Throwable) {
             return false;
         }
 
         if (! $response->successful()) {
+            Log::warning('reCAPTCHA verify request was not successful.', [
+                'status' => $response->status(),
+                'ip' => $ip,
+            ]);
             return false;
         }
 
-        return (bool) data_get($response->json(), 'success', false);
+        $payload = $response->json();
+        $success = (bool) data_get($payload, 'success', false);
+
+        if (! $success) {
+            Log::warning('reCAPTCHA verification failed.', [
+                'error_codes' => data_get($payload, 'error-codes', []),
+                'hostname' => data_get($payload, 'hostname'),
+                'action' => data_get($payload, 'action'),
+                'score' => data_get($payload, 'score'),
+                'ip' => $ip,
+            ]);
+        }
+
+        return $success;
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Services\Admin;
 
+use App\Support\CountryCatalog;
 use Carbon\CarbonImmutable;
 
 class AdminAnalyticsService
@@ -406,6 +407,12 @@ class AdminAnalyticsService
             return '-';
         }
 
+        $catalogLabel = CountryCatalog::nameFor($countryCode);
+
+        if (is_string($catalogLabel) && trim($catalogLabel) !== '') {
+            return $catalogLabel;
+        }
+
         if (class_exists(\Locale::class)) {
             $label = \Locale::getDisplayRegion('und_'.$countryCode, 'en');
 
@@ -461,7 +468,11 @@ class AdminAnalyticsService
 
     public function supportedCountryCodes(): array
     {
-        return array_keys(self::COUNTRY_LABEL_FALLBACKS);
+        $catalogCodes = CountryCatalog::codes();
+
+        return $catalogCodes !== []
+            ? $catalogCodes
+            : array_keys(self::COUNTRY_LABEL_FALLBACKS);
     }
 
     public function buildAttendanceOverview(array $scanLogs, array $filters = []): array

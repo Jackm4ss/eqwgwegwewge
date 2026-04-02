@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\PublicReport;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -34,16 +34,54 @@ class PublicReportService
                 'name' => (string) $payload['name'],
                 'email' => $this->nullableString($payload['email'] ?? null),
                 'phone' => (string) $payload['phone'],
+                'identity_type' => $this->nullableString($payload['identity_type'] ?? null),
                 'identity_number' => $this->nullableString($payload['identity_number'] ?? null),
                 'incident_date' => (string) $payload['incident_date'],
                 'incident_time' => (string) $payload['incident_time'],
                 'chronology' => (string) $payload['chronology'],
+                'action_status' => PublicReport::ACTION_STATUS_PENDING,
+                'admin_note' => null,
                 'staff_name' => $this->nullableString($payload['staff_name'] ?? null),
                 'ip_address' => $this->nullableString($ipAddress),
                 'user_agent' => $this->nullableString($userAgent),
                 'reported_at' => now(),
             ]);
         });
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    public function updateAdminReview(PublicReport $report, array $payload): PublicReport
+    {
+        $report->fill([
+            'action_status' => (string) ($payload['action_status'] ?? PublicReport::ACTION_STATUS_PENDING),
+            'admin_note' => $this->nullableString($payload['admin_note'] ?? null),
+        ]);
+
+        $report->save();
+
+        return $report->refresh();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function deleteForAdmin(PublicReport $report): array
+    {
+        $snapshot = [
+            'id' => (string) $report->getKey(),
+            'case_id' => (string) $report->case_id,
+            'report_type' => (string) $report->report_type,
+            'action_status' => (string) ($report->action_status ?? PublicReport::ACTION_STATUS_PENDING),
+            'name' => (string) $report->name,
+            'email' => (string) ($report->email ?? ''),
+            'phone' => (string) $report->phone,
+        ];
+
+        $report->delete();
+
+        return $snapshot;
     }
 
     /**
@@ -93,16 +131,19 @@ class PublicReportService
             ->map(fn (PublicReport $report): array => [
                 'case_id' => (string) $report->case_id,
                 'report_type' => $this->reportTypeLabel((string) $report->report_type),
+                'action_status' => $this->actionStatusLabel((string) $report->action_status),
                 'name' => (string) $report->name,
                 'email' => (string) ($report->email ?? ''),
                 'phone' => (string) $report->phone,
-                'ic_or_id' => (string) ($report->identity_number ?? ''),
+                'document_type' => $this->identityTypeLabel((string) ($report->identity_type ?? '')),
+                'document_number' => (string) ($report->identity_number ?? ''),
                 'incident_date' => (string) optional($report->incident_date)->format('Y-m-d'),
                 'incident_time' => (string) $report->incident_time,
                 'reported_date' => (string) optional($report->reported_at)->format('Y-m-d'),
                 'reported_time' => (string) optional($report->reported_at)->format('H:i:s'),
                 'staff_name' => (string) ($report->staff_name ?? ''),
                 'ip_address' => (string) ($report->ip_address ?? ''),
+                'admin_note' => (string) ($report->admin_note ?? ''),
                 'chronology' => (string) $report->chronology,
             ])
             ->values()
@@ -117,6 +158,24 @@ class PublicReportService
             'lost_locker_card' => 'Lost Locker Card',
             'medical_attention' => 'Medical Attention',
             default => 'Others',
+        };
+    }
+
+    public function identityTypeLabel(string $value): string
+    {
+        return match ($value) {
+            'national_id' => 'Malaysia IC (MyKad)',
+            'passport' => 'Passport',
+            default => '-',
+        };
+    }
+
+    public function actionStatusLabel(string $value): string
+    {
+        return match ($value) {
+            PublicReport::ACTION_STATUS_IN_PROGRESS => 'In Progress',
+            PublicReport::ACTION_STATUS_RESOLVED => 'Resolved',
+            default => 'No Action Yet',
         };
     }
 
@@ -135,28 +194,98 @@ class PublicReportService
     }
 
     /**
+     * @return array<int, array{value: string, label: string}>
+     */
+    public function actionStatusOptions(): array
+    {
+        return [
+            ['value' => PublicReport::ACTION_STATUS_PENDING, 'label' => 'No Action Yet'],
+            ['value' => PublicReport::ACTION_STATUS_IN_PROGRESS, 'label' => 'In Progress'],
+            ['value' => PublicReport::ACTION_STATUS_RESOLVED, 'label' => 'Resolved'],
+        ];
+    }
+
+    /**
+     * Mirrors the public report form in resources/js/src/components/auth/ReportPage.tsx.
+     *
+     * @return array<string, mixed>
+     */
+    public function formReference(): array
+    {
+        return [
+            'title' => 'Public Report',
+            'description' => 'Submit incident, lost item, medical, or other assistance requests directly from this page.',
+            'note' => 'Every submitted report is stored in the admin dashboard for review.',
+            'required_fields' => [
+                'Type of Report',
+                'Name',
+                'Phone',
+                'Document Type',
+                'Document Number',
+                'E-mail',
+                'Incident Date',
+                'Incident Time',
+                'Report / Chronology',
+            ],
+            'optional_fields' => [
+                'Staff Name',
+            ],
+            'security' => 'Background Google reCAPTCHA verification before submission.',
+            'disclaimer' => 'We are not obligated to respond to or act upon every report submitted. Our response and any subsequent action are subject to the urgency and nature of the matter.',
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $filters
      */
     private function baseQuery(array $filters): Builder
     {
         $query = PublicReport::query()->search((string) ($filters['q'] ?? ''));
         $reportType = trim((string) ($filters['report_type'] ?? ''));
-        $from = trim((string) ($filters['from'] ?? ''));
-        $to = trim((string) ($filters['to'] ?? ''));
+        $actionStatus = trim((string) ($filters['action_status'] ?? ''));
+        $from = $this->normalizeFilterDate($filters['from'] ?? null);
+        $to = $this->normalizeFilterDate($filters['to'] ?? null);
 
         if ($reportType !== '') {
             $query->where('report_type', $reportType);
         }
 
-        if ($from !== '') {
+        if ($actionStatus !== '') {
+            $query->where('action_status', $actionStatus);
+        }
+
+        if ($from !== null) {
             $query->whereDate('reported_at', '>=', $from);
         }
 
-        if ($to !== '') {
+        if ($to !== null) {
             $query->whereDate('reported_at', '<=', $to);
         }
 
         return $query;
+    }
+
+    private function normalizeFilterDate(mixed $value): ?string
+    {
+        $date = trim((string) $value);
+
+        if ($date === '') {
+            return null;
+        }
+
+        foreach (['d/m/Y', 'Y-m-d'] as $format) {
+            try {
+                $parsed = \Carbon\CarbonImmutable::createFromFormat($format, $date);
+
+                if ($parsed !== false) {
+                    return $parsed->format('Y-m-d');
+                }
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        return null;
     }
 
     private function casePrefix(string $reportType): string
@@ -205,19 +334,43 @@ class PublicReportService
                 $table->string('name', 120);
                 $table->string('email', 120)->nullable();
                 $table->string('phone', 30);
+                $table->string('identity_type', 20)->nullable();
                 $table->string('identity_number', 80)->nullable();
                 $table->date('incident_date');
                 $table->time('incident_time');
                 $table->text('chronology');
+                $table->string('action_status', 30)->default(PublicReport::ACTION_STATUS_PENDING);
+                $table->text('admin_note')->nullable();
                 $table->string('staff_name', 120)->nullable();
                 $table->string('ip_address', 45)->nullable();
                 $table->string('user_agent', 500)->nullable();
                 $table->timestamp('reported_at');
                 $table->timestamps();
 
+                $table->index('action_status');
                 $table->index(['report_type', 'case_sequence']);
                 $table->index(['incident_date', 'incident_time']);
                 $table->index('reported_at');
+            });
+
+            return;
+        }
+
+        if (! Schema::hasColumn('public_reports', 'identity_type')) {
+            Schema::table('public_reports', function (Blueprint $table) {
+                $table->string('identity_type', 20)->nullable();
+            });
+        }
+
+        if (! Schema::hasColumn('public_reports', 'action_status')) {
+            Schema::table('public_reports', function (Blueprint $table) {
+                $table->string('action_status', 30)->default(PublicReport::ACTION_STATUS_PENDING);
+            });
+        }
+
+        if (! Schema::hasColumn('public_reports', 'admin_note')) {
+            Schema::table('public_reports', function (Blueprint $table) {
+                $table->text('admin_note')->nullable();
             });
         }
     }

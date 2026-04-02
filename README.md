@@ -136,6 +136,7 @@ Project ini mendukung 2 mode routing:
 | --- | --- |
 | Landing page | `https://songkranfestival.my/` |
 | Register form | `https://register.songkranfestival.my/` |
+| Helpdesk report | `https://help.songkranfestival.my/` |
 | Admin login | `https://portal.songkranfestival.my/login` |
 | Admin dashboard | `https://portal.songkranfestival.my/dashboard` |
 | Staff scanner login | `https://app.songkranfestival.my/login` |
@@ -147,6 +148,7 @@ Mapping domain yang dipakai klien sekarang adalah:
 | --- | --- | --- |
 | `songkranfestival.my` | `A` | `147.93.157.20` |
 | `app.songkranfestival.my` | `A` | `147.93.157.20` |
+| `help.songkranfestival.my` | `A` | `147.93.157.20` |
 | `portal.songkranfestival.my` | `A` | `147.93.157.20` |
 | `register.songkranfestival.my` | `A` | `147.93.157.20` |
 
@@ -154,8 +156,8 @@ Catatan penting:
 
 - deploy production final untuk project ini harus memakai mode subdomain
 - semua host di atas tetap mengarah ke root Laravel yang sama
-- pembedaan landing, register, admin, dan scanner dilakukan oleh aplikasi berdasarkan `Host` request
-- SSL production diasumsikan memakai Let's Encrypt untuk keempat host tersebut
+- pembedaan landing, register, helpdesk, admin, dan scanner dilakukan oleh aplikasi berdasarkan `Host` request
+- SSL production diasumsikan memakai Let's Encrypt untuk kelima host tersebut
 
 ---
 
@@ -550,6 +552,7 @@ Untuk deployment production yang sedang disiapkan sekarang, DNS dari client suda
 | --- | --- | --- |
 | `songkranfestival.my` | `A` | `147.93.157.20` |
 | `app.songkranfestival.my` | `A` | `147.93.157.20` |
+| `help.songkranfestival.my` | `A` | `147.93.157.20` |
 | `portal.songkranfestival.my` | `A` | `147.93.157.20` |
 | `register.songkranfestival.my` | `A` | `147.93.157.20` |
 
@@ -572,14 +575,15 @@ Untuk project ini, target production finalnya sudah ditetapkan seperti ini:
 
 - landing/public: `https://songkranfestival.my`
 - register: `https://register.songkranfestival.my`
+- helpdesk report: `https://help.songkranfestival.my`
 - admin dashboard: `https://portal.songkranfestival.my`
 - staff scanner: `https://app.songkranfestival.my`
 
 Artinya:
 
 - `.env` production harus memakai `APP_ROUTING_MODE=subdomain`
-- Nginx harus menerima keempat host tersebut dalam satu vhost Laravel
-- SSL Let's Encrypt harus diterbitkan untuk empat domain itu sekaligus
+- Nginx harus menerima lima host tersebut dalam satu vhost Laravel
+- SSL Let's Encrypt harus diterbitkan untuk lima domain itu sekaligus
 
 ### Step 1 - Verifikasi DNS yang Sudah Dipoint ke VPS
 
@@ -589,6 +593,7 @@ Client sudah mengarahkan DNS ini ke server production:
 | --- | --- | --- |
 | `songkranfestival.my` | `A` | `147.93.157.20` |
 | `app.songkranfestival.my` | `A` | `147.93.157.20` |
+| `help.songkranfestival.my` | `A` | `147.93.157.20` |
 | `portal.songkranfestival.my` | `A` | `147.93.157.20` |
 | `register.songkranfestival.my` | `A` | `147.93.157.20` |
 
@@ -598,6 +603,7 @@ Yang perlu dilakukan di tahap ini adalah verifikasi resolve DNS dari sisi publik
 dig +short songkranfestival.my
 dig +short portal.songkranfestival.my
 dig +short app.songkranfestival.my
+dig +short help.songkranfestival.my
 dig +short register.songkranfestival.my
 ```
 
@@ -777,6 +783,7 @@ SCANNER_POSTS=Gate A,Gate B
 FRONTEND_HOMEPAGE_URL=https://songkranfestival.my
 ADMIN_APP_URL=https://portal.songkranfestival.my
 REGISTER_APP_URL=https://register.songkranfestival.my
+HELP_APP_URL=https://help.songkranfestival.my
 STAFF_APP_URL=https://app.songkranfestival.my
 ```
 
@@ -936,6 +943,7 @@ Arsitektur production yang dipakai sekarang adalah:
 - admin: `portal.songkranfestival.my`
 - scanner: `app.songkranfestival.my`
 - register: `register.songkranfestival.my`
+- helpdesk: `help.songkranfestival.my`
 
 Semua domain itu tetap mengarah ke root Laravel yang sama.  
 Pembedaan behavior dilakukan oleh aplikasi berdasarkan host request, jadi Nginx paling aman justru memakai satu vhost untuk semua domain itu.
@@ -959,18 +967,18 @@ sudo systemctl reload nginx
 
 ### Step 21 - Pasang SSL
 
-Karena deploy production ini memang akan memakai Let's Encrypt, pastikan keempat host sudah resolve ke `147.93.157.20` sebelum menjalankan Certbot.
+Karena deploy production ini memang akan memakai Let's Encrypt, pastikan lima host sudah resolve ke `147.93.157.20` sebelum menjalankan Certbot.
 
 Setelah DNS resolve, jalankan:
 
 ```bash
-sudo certbot --nginx -d songkranfestival.my -d portal.songkranfestival.my -d app.songkranfestival.my -d register.songkranfestival.my
+sudo certbot --nginx -d songkranfestival.my -d portal.songkranfestival.my -d app.songkranfestival.my -d register.songkranfestival.my -d help.songkranfestival.my
 ```
 
 Command di atas akan:
 
 - memvalidasi domain lewat HTTP challenge
-- membuat sertifikat Let's Encrypt untuk empat host sekaligus
+- membuat sertifikat Let's Encrypt untuk lima host sekaligus
 - memasang redirect HTTPS jika konfigurasi Nginx sudah sesuai
 
 Setelah SSL berhasil dibuat, ganti bootstrap config dengan file final:
@@ -1010,15 +1018,17 @@ Cek semua ini:
 
 1. `https://songkranfestival.my/` terbuka
 2. `https://register.songkranfestival.my/` terbuka
-3. `https://portal.songkranfestival.my/login` terbuka
-4. `https://app.songkranfestival.my/login` terbuka
-5. admin bisa login di `portal.songkranfestival.my`
-6. scanner bisa login di `app.songkranfestival.my` dan pilih gate saat login
-7. setelah login scanner, gate tidak bisa diganti lagi dari halaman scanner
-8. test registrasi peserta dari `register.songkranfestival.my` berhasil
-9. short link campaign seperti `https://songkranfestival.my/fb` redirect ke tujuan yang benar
-10. email verification / reset link membuka domain public yang benar
-11. ticket page bisa dibuka
+3. `https://help.songkranfestival.my/` terbuka
+4. `https://portal.songkranfestival.my/login` terbuka
+5. `https://app.songkranfestival.my/login` terbuka
+6. admin bisa login di `portal.songkranfestival.my`
+7. scanner bisa login di `app.songkranfestival.my` dan pilih gate saat login
+8. setelah login scanner, gate tidak bisa diganti lagi dari halaman scanner
+9. test registrasi peserta dari `register.songkranfestival.my` berhasil
+10. test halaman report helpdesk dari `help.songkranfestival.my` berhasil
+11. short link campaign seperti `https://songkranfestival.my/fb` redirect ke tujuan yang benar
+12. email verification / reset link membuka domain public yang benar
+13. ticket page bisa dibuka
 
 Kalau semua lolos, deploy pertama dianggap sukses.
 

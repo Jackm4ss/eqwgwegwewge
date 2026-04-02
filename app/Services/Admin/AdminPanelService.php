@@ -10,7 +10,7 @@ use RuntimeException;
 
 class AdminPanelService
 {
-    public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v2';
+    public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v3';
     private const ACTIVITY_LOG_MAX_PER_PAGE = 100;
 
     public function __construct(
@@ -374,22 +374,26 @@ class AdminPanelService
         $checkedInUsers = $this->repository->countTickets([
             'attendance_status' => 'checked_in',
         ]);
+        $countryCounts = [];
 
-        $countryOptions = [];
+        foreach ($this->repository->allUsers() as $user) {
+            $countryCode = strtoupper(trim((string) ($user['country'] ?? '')));
 
-        foreach ($this->analytics->supportedCountryCodes() as $countryCode) {
-            $count = $this->repository->countUsers(['country' => $countryCode]);
-
-            if ($count <= 0) {
+            if ($countryCode === '') {
                 continue;
             }
 
-            $countryOptions[] = [
+            $countryCounts[$countryCode] = ($countryCounts[$countryCode] ?? 0) + 1;
+        }
+
+        $countryOptions = array_map(
+            fn (string $countryCode): array => [
                 'value' => $countryCode,
                 'label' => $this->analytics->countryLabel($countryCode),
-                'count' => $count,
-            ];
-        }
+                'count' => $countryCounts[$countryCode],
+            ],
+            array_keys($countryCounts),
+        );
 
         usort($countryOptions, fn (array $left, array $right): int => strcmp($left['label'], $right['label']));
 

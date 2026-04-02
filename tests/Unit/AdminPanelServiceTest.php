@@ -16,7 +16,7 @@ class AdminPanelServiceTest extends TestCase
 {
     public function test_optimized_user_management_meta_counts_only_explicit_checked_in_tickets(): void
     {
-        Cache::forget('admin:user-management:meta:v2');
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
 
         $repository = Mockery::mock(AdminFirestoreRepository::class);
         $repository->shouldReceive('paginateUsers')
@@ -33,6 +33,9 @@ class AdminPanelServiceTest extends TestCase
         $repository->shouldReceive('findScanLogsByUserIds')
             ->once()
             ->with([])
+            ->andReturn([]);
+        $repository->shouldReceive('allUsers')
+            ->once()
             ->andReturn([]);
         $repository->shouldReceive('countUsers')
             ->andReturnUsing(function (array $filters = []): int {
@@ -69,6 +72,64 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(0, $page['overview']['checked_in_users']);
         $this->assertSame(0, $page['filter_options']['attendance_statuses'][0]['count']);
         $this->assertSame(5, $page['filter_options']['attendance_statuses'][1]['count']);
+    }
+
+    public function test_optimized_user_management_meta_builds_country_filters_from_actual_users(): void
+    {
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('paginateUsers')
+            ->once()
+            ->with([], 1, 10)
+            ->andReturn([
+                'items' => [],
+                'total' => 0,
+            ]);
+        $repository->shouldReceive('findTicketsByIds')
+            ->once()
+            ->with([])
+            ->andReturn([]);
+        $repository->shouldReceive('findScanLogsByUserIds')
+            ->once()
+            ->with([])
+            ->andReturn([]);
+        $repository->shouldReceive('allUsers')
+            ->once()
+            ->andReturn([
+                ['user_id' => 'user-al', 'country' => 'AL'],
+                ['user_id' => 'user-mm-1', 'country' => 'MM'],
+                ['user_id' => 'user-mm-2', 'country' => 'MM'],
+                ['user_id' => 'user-my', 'country' => 'MY'],
+            ]);
+        $repository->shouldReceive('countUsers')
+            ->andReturnUsing(function (array $filters = []): int {
+                return match ($filters) {
+                    [] => 4,
+                    ['verification_status' => 'verified'] => 0,
+                    ['verification_status' => 'verified', 'account_status' => 'active'] => 0,
+                    default => 0,
+                };
+            });
+        $repository->shouldReceive('countTickets')
+            ->once()
+            ->with(['attendance_status' => 'checked_in'])
+            ->andReturn(0);
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+
+        $page = $service->userManagementPage([]);
+        $countries = collect($page['filter_options']['countries'])->keyBy('value');
+
+        $this->assertSame('Albania', $countries['AL']['label'] ?? null);
+        $this->assertSame(1, $countries['AL']['count'] ?? null);
+        $this->assertSame('Myanmar', $countries['MM']['label'] ?? null);
+        $this->assertSame(2, $countries['MM']['count'] ?? null);
+        $this->assertSame('Malaysia', $countries['MY']['label'] ?? null);
+        $this->assertSame(3, $page['overview']['countries_count']);
     }
 
     public function test_activity_logs_uses_optimized_firestore_pagination_when_text_search_is_empty(): void

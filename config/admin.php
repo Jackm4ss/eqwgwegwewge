@@ -8,6 +8,10 @@ return [
     'dashboard_days' => (int) env('ADMIN_DASHBOARD_DAYS', 7),
     'per_page' => (int) env('ADMIN_PER_PAGE', 10),
     'report_default_days' => (int) env('ADMIN_REPORT_DEFAULT_DAYS', 7),
+    'presence' => [
+        'heartbeat_seconds' => max(15, (int) env('ADMIN_PRESENCE_HEARTBEAT_SECONDS', 45)),
+        'ttl_seconds' => max(30, (int) env('ADMIN_PRESENCE_TTL_SECONDS', 120)),
+    ],
     'event' => [
         'timezone' => env('ADMIN_EVENT_TIMEZONE', env('EVENT_TIMEZONE', env('APP_TIMEZONE', 'Asia/Kuala_Lumpur'))),
         'start_date' => env('ADMIN_EVENT_START_DATE', env('EVENT_START_DATE', '2026-04-09')),
