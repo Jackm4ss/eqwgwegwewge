@@ -45,7 +45,7 @@ class AdminPanelService
         if ($this->shouldUseOptimizedUserManagementQuery($filters)) {
             try {
                 return $this->optimizedUserManagementPage($filters);
-            } catch (RuntimeException) {
+            } catch (\Throwable) {
                 // Fall back to the legacy in-memory implementation if the
                 // Firestore query path is not available yet (for example,
                 // missing composite indexes in a new project).
