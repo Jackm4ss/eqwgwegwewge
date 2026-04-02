@@ -1,10 +1,11 @@
 # Final Nginx config for the Songkran Festival Laravel app.
-# This single vhost serves all four domains and lets Laravel decide behavior
+# This single vhost serves all five domains and lets Laravel decide behavior
 # based on the incoming Host header:
 # - songkranfestival.my
 # - portal.songkranfestival.my
 # - app.songkranfestival.my
 # - register.songkranfestival.my
+# - help.songkranfestival.my
 #
 # Adjust these values before enabling:
 # - root /var/www/event-system/public;
@@ -14,7 +15,7 @@
 server {
     listen 80;
     listen [::]:80;
-    server_name songkranfestival.my portal.songkranfestival.my app.songkranfestival.my register.songkranfestival.my;
+    server_name songkranfestival.my portal.songkranfestival.my app.songkranfestival.my register.songkranfestival.my help.songkranfestival.my;
 
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/event-system/public;
@@ -30,7 +31,7 @@ server {
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name songkranfestival.my portal.songkranfestival.my app.songkranfestival.my register.songkranfestival.my;
+    server_name songkranfestival.my portal.songkranfestival.my app.songkranfestival.my register.songkranfestival.my help.songkranfestival.my;
 
     root /var/www/event-system/public;
     index index.php index.html;

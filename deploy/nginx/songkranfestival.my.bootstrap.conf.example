@@ -9,7 +9,7 @@
 server {
     listen 80;
     listen [::]:80;
-    server_name songkranfestival.my portal.songkranfestival.my app.songkranfestival.my register.songkranfestival.my;
+    server_name songkranfestival.my portal.songkranfestival.my app.songkranfestival.my register.songkranfestival.my help.songkranfestival.my;
 
     root /var/www/event-system/public;
     index index.php index.html;
