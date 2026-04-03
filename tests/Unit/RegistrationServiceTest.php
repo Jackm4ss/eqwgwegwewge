@@ -6,6 +6,7 @@ use App\Contracts\UserRepositoryInterface;
 use App\Mail\TicketReadyMail;
 use App\Services\Auth\RegistrationService;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 use Tests\Fakes\InMemoryUserRepository;
 use Tests\TestCase;
 
@@ -71,5 +72,23 @@ class RegistrationServiceTest extends TestCase
             return ($mail->ticket['ticket_code'] ?? null) === $ticket['ticket_code']
                 && ($mail->ticket['entry_code_display'] ?? null) === $ticket['entry_code_display'];
         });
+    }
+
+    public function test_register_rejects_passport_for_malaysian_registrants(): void
+    {
+        Mail::fake();
+
+        $this->expectException(ValidationException::class);
+
+        app(RegistrationService::class)->register([
+            'full_name' => 'Malaysia Passport User',
+            'email' => 'malaysia-passport@example.com',
+            'phone_country_code' => '+60',
+            'phone_national_number' => '123456789',
+            'phone_number' => '+60123456789',
+            'country' => 'MY',
+            'identity_type' => 'passport',
+            'identity_number' => 'A1234567',
+        ], '127.0.0.1');
     }
 }

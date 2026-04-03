@@ -180,7 +180,7 @@
                     <option value="national_id" @selected(old('identity_type') === 'national_id')>IC Malaysia / National ID</option>
                     <option value="passport" @selected(old('identity_type') === 'passport')>Passport</option>
                   </select>
-                  <small class="text-muted d-block mt-1">Untuk pendaftar luar Malaysia, gunakan Passport sebagai identitas utama.</small>
+                  <small class="text-muted d-block mt-1">Untuk Malaysia gunakan Malaysia IC (MyKad). Untuk luar Malaysia gunakan Passport.</small>
                 </div>
 
                 <div class="col-md-6 form-control-validation">
@@ -250,22 +250,33 @@
         const countryInput = document.getElementById('country');
         const identityTypeSelect = document.getElementById('identity_type');
         const nationalIdOption = identityTypeSelect?.querySelector('option[value="national_id"]');
+        const passportOption = identityTypeSelect?.querySelector('option[value="passport"]');
+        const identityNumberInput = document.getElementById('identity_number');
         let previousCountry = countryInput?.value.trim().toUpperCase() ?? '';
 
-        if (!countryInput || !identityTypeSelect || !nationalIdOption) {
+        if (!countryInput || !identityTypeSelect || !nationalIdOption || !passportOption) {
           return;
         }
 
         const syncIdentityType = () => {
           const country = countryInput.value.trim().toUpperCase();
+          const malaysiaOnly = country === 'MY';
           const passportOnly = country !== '' && country !== 'MY';
+          const shouldResetIdentityNumber = previousCountry !== '' && previousCountry !== country;
 
           nationalIdOption.hidden = passportOnly;
+          passportOption.hidden = malaysiaOnly;
 
-          if (passportOnly) {
+          if (malaysiaOnly) {
+            identityTypeSelect.value = 'national_id';
+          } else if (passportOnly) {
             identityTypeSelect.value = 'passport';
-          } else if (previousCountry !== '' && previousCountry !== 'MY') {
+          } else {
             identityTypeSelect.value = '';
+          }
+
+          if (shouldResetIdentityNumber && identityNumberInput) {
+            identityNumberInput.value = '';
           }
 
           previousCountry = country;

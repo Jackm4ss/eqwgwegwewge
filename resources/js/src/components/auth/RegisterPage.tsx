@@ -958,6 +958,7 @@ export function RegisterPage() {
   const phoneCountryCodeVal = watch('phone_country_code');
   const phoneNationalNumberVal = watch('phone_national_number');
   const identityTypeVal = watch('identity_type');
+  const identityNumberVal = watch('identity_number');
 
   useEffect(() => {
     if (dirtyFields.phone_country_code) {
@@ -983,6 +984,28 @@ export function RegisterPage() {
       return;
     }
 
+    if (countryVal === 'MY') {
+      const shouldClearIdentityNumber = identityTypeVal !== 'national_id' || (previousCountry !== '' && previousCountry !== 'MY');
+
+      if (identityTypeVal !== 'national_id') {
+        setValue('identity_type', 'national_id', {
+          shouldDirty: true,
+          shouldTouch: true,
+          shouldValidate: true,
+        });
+      }
+
+      if (shouldClearIdentityNumber && identityNumberVal !== '') {
+        setValue('identity_number', '', {
+          shouldDirty: true,
+          shouldTouch: false,
+          shouldValidate: false,
+        });
+      }
+
+      return;
+    }
+
     if (countryVal !== 'MY') {
       if (identityTypeVal !== 'passport') {
         setValue('identity_type', 'passport', {
@@ -1002,21 +1025,7 @@ export function RegisterPage() {
 
       return;
     }
-
-    if (previousCountry !== '' && previousCountry !== 'MY') {
-      setValue('identity_type', '', {
-        shouldDirty: true,
-        shouldTouch: true,
-        shouldValidate: true,
-      });
-
-      setValue('identity_number', '', {
-        shouldDirty: true,
-        shouldTouch: false,
-        shouldValidate: false,
-      });
-    }
-  }, [countryVal, identityTypeVal, setValue]);
+  }, [countryVal, identityNumberVal, identityTypeVal, setValue]);
 
   const handleResetForm = () => {
     if (recaptchaEnabled) {
@@ -1196,7 +1205,7 @@ export function RegisterPage() {
   const isTicketEmailQueued = ticketDeliveryStatus === 'queued';
   const isTicketEmailFailed = ticketDeliveryStatus === 'failed';
   const availableIdentityTypes = isMalaysianRegistrant
-    ? IDENTITY_TYPES
+    ? IDENTITY_TYPES.filter(option => option.value === 'national_id')
     : IDENTITY_TYPES.filter(option => option.value === 'passport');
   const identityNumberLabel = isForeignRegistrant
     ? 'Passport Number'
@@ -1221,7 +1230,7 @@ export function RegisterPage() {
       : identityTypeVal === 'passport'
         ? 'Use a valid passport number that matches your travel document. Maximum 10 alphanumeric characters.'
         : isMalaysianRegistrant
-          ? 'For Malaysia, you may choose Malaysia IC (MyKad) or Passport.'
+          ? 'For Malaysia, document type is fixed to Malaysia IC (MyKad).'
           : 'Select the document you will use for registration.';
   const phoneCountryOption = PHONE_COUNTRY_CODES.find(option => option.dialCode === phoneCountryCodeVal);
   const activeLegalDialog = legalDialog ? LEGAL_DIALOG_CONTENT[legalDialog] : null;

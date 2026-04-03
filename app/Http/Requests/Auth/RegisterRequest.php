@@ -43,6 +43,13 @@ class RegisterRequest extends FormRequest
             $country = strtoupper(trim((string) $this->input('country')));
             $identityType = strtolower(trim((string) $this->input('identity_type')));
 
+            if ($country === 'MY' && $identityType !== '' && $identityType !== 'national_id') {
+                $validator->errors()->add(
+                    'identity_type',
+                    'Untuk pendaftar dari Malaysia, gunakan Malaysia IC (MyKad) sebagai identitas utama.'
+                );
+            }
+
             if ($country !== '' && $country !== 'MY' && $identityType === 'national_id') {
                 $validator->errors()->add(
                     'identity_type',

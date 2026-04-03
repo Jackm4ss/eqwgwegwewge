@@ -179,9 +179,9 @@ class RegisterApiTest extends TestCase
         ]))->assertCreated();
 
         $response = $this->postJson('/api/register', array_merge($this->validPayload(), [
-            'email' => 'malaysia@example.com',
+            'email' => 'singapore@example.com',
             'identity_type' => 'passport',
-            'country' => 'MY',
+            'country' => 'SG',
             'identity_number' => 'A1234567',
             'phone_national_number' => '8123456793',
         ]));
@@ -210,6 +210,22 @@ class RegisterApiTest extends TestCase
             'country' => 'ID',
             'identity_type' => 'national_id',
             'identity_number' => '3174010101010101',
+        ]));
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['identity_type']);
+
+        $this->assertCount(0, $this->repository->users);
+    }
+
+    public function test_register_rejects_passport_for_malaysian_registrants(): void
+    {
+        Mail::fake();
+
+        $response = $this->postJson('/api/register', array_merge($this->validPayload(), [
+            'country' => 'MY',
+            'identity_type' => 'passport',
+            'identity_number' => 'A1234567',
         ]));
 
         $response->assertStatus(422)

@@ -208,6 +208,12 @@ class RegistrationService
 
     private function ensureIdentityTypeAllowedForCountry(string $identityType, string $country): void
     {
+        if ($country === 'MY' && $identityType !== 'national_id') {
+            throw ValidationException::withMessages([
+                'identity_type' => ['Untuk pendaftar dari Malaysia, gunakan Malaysia IC (MyKad) sebagai identitas utama.'],
+            ]);
+        }
+
         if ($country !== 'MY' && $identityType !== 'passport') {
             throw ValidationException::withMessages([
                 'identity_type' => ['Untuk pendaftar luar Malaysia, gunakan Passport sebagai identitas utama.'],
