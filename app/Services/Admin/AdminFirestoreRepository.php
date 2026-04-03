@@ -236,6 +236,41 @@ class AdminFirestoreRepository
             : $this->countUsersUsingGrpc($normalizedFilters);
     }
 
+    public function countUsersByRegistrationDate(array $filters = []): int
+    {
+        $normalizedFilters = $this->normalizeUserRegistrationFilters($filters);
+
+        if ($normalizedFilters === []) {
+            return $this->countUsers();
+        }
+
+        if (! $this->available()) {
+            return 0;
+        }
+
+        try {
+            return $this->usingRest()
+                ? $this->countUsersByRegistrationDateUsingRest($normalizedFilters)
+                : $this->countUsersByRegistrationDateUsingGrpc($normalizedFilters);
+        } catch (\Throwable $exception) {
+            Log::warning('Falling back to in-memory user registration counting after Firestore query failure.', [
+                'message' => $exception->getMessage(),
+                'code' => $exception->getCode(),
+                'created_at_from' => isset($normalizedFilters['created_at_from'])
+                    ? $this->formatStructuredQueryTimestamp($normalizedFilters['created_at_from'])
+                    : null,
+                'created_at_to' => isset($normalizedFilters['created_at_to'])
+                    ? $this->formatStructuredQueryTimestamp($normalizedFilters['created_at_to'])
+                    : null,
+            ]);
+
+            return count(array_filter(
+                $this->allUsers(),
+                fn (array $user): bool => $this->userMatchesRegistrationFilters($user, $normalizedFilters),
+            ));
+        }
+    }
+
     public function countTickets(array $filters = []): int
     {
         $normalizedFilters = $this->normalizeTicketListingFilters($filters);
@@ -1697,6 +1732,27 @@ class AdminFirestoreRepository
         return (int) $query->count();
     }
 
+    private function countUsersByRegistrationDateUsingRest(array $filters): int
+    {
+        $structuredQuery = $this->buildStructuredQuery(
+            $this->usersCollection(),
+            $this->buildUserRegistrationFilterClauses($filters),
+            withOrdering: false,
+        );
+
+        return $this->restApi->runCountQuery($structuredQuery, 'count');
+    }
+
+    private function countUsersByRegistrationDateUsingGrpc(array $filters): int
+    {
+        $query = $this->applyUserRegistrationFilters(
+            $this->client()->collection($this->usersCollection()),
+            $filters,
+        );
+
+        return (int) $query->count();
+    }
+
     private function countAdminActivityLogsUsingRest(array $filters): int
     {
         $structuredQuery = $this->buildStructuredQuery(
@@ -1975,6 +2031,29 @@ class AdminFirestoreRepository
         return $clauses;
     }
 
+    private function buildUserRegistrationFilterClauses(array $filters): array
+    {
+        $clauses = [];
+
+        if (isset($filters['created_at_from'])) {
+            $clauses[] = $this->buildFieldFilter(
+                'created_at',
+                'GREATER_THAN_OR_EQUAL',
+                $filters['created_at_from'],
+            );
+        }
+
+        if (isset($filters['created_at_to'])) {
+            $clauses[] = $this->buildFieldFilter(
+                'created_at',
+                'LESS_THAN_OR_EQUAL',
+                $filters['created_at_to'],
+            );
+        }
+
+        return $clauses;
+    }
+
     private function buildScanLogFilterClauses(array $filters): array
     {
         $clauses = [];
@@ -2044,6 +2123,36 @@ class AdminFirestoreRepository
 
         if (filled($filters['account_status'] ?? null)) {
             $normalized['account_status'] = strtolower(trim((string) $filters['account_status']));
+        }
+
+        return $normalized;
+    }
+
+    private function normalizeUserRegistrationFilters(array $filters): array
+    {
+        $normalized = [];
+        $timezone = $this->utcTimezone();
+
+        if (filled($filters['from'] ?? null)) {
+            try {
+                $normalized['created_at_from'] = CarbonImmutable::parse((string) $filters['from'], $timezone)
+                    ->startOfDay()
+                    ->utc();
+            } catch (\Throwable) {
+                // Ignore invalid date filters and fall back to the same
+                // behavior as the analytics-only implementation.
+            }
+        }
+
+        if (filled($filters['to'] ?? null)) {
+            try {
+                $normalized['created_at_to'] = CarbonImmutable::parse((string) $filters['to'], $timezone)
+                    ->endOfDay()
+                    ->utc();
+            } catch (\Throwable) {
+                // Ignore invalid date filters and fall back to the same
+                // behavior as the analytics-only implementation.
+            }
         }
 
         return $normalized;
@@ -2141,6 +2250,19 @@ class AdminFirestoreRepository
         return $query;
     }
 
+    private function applyUserRegistrationFilters(mixed $query, array $filters): mixed
+    {
+        if (isset($filters['created_at_from'])) {
+            $query = $query->where('created_at', '>=', $filters['created_at_from']);
+        }
+
+        if (isset($filters['created_at_to'])) {
+            $query = $query->where('created_at', '<=', $filters['created_at_to']);
+        }
+
+        return $query;
+    }
+
     private function applyScanLogFilters(mixed $query, array $filters): mixed
     {
         if (isset($filters['scanner_name'])) {
@@ -2194,6 +2316,31 @@ class AdminFirestoreRepository
         }
 
         return $rows;
+    }
+
+    private function userMatchesRegistrationFilters(array $user, array $filters): bool
+    {
+        $createdAt = trim((string) ($user['created_at'] ?? ''));
+
+        if ($createdAt === '') {
+            return false;
+        }
+
+        try {
+            $timestamp = (new DateTimeImmutable($createdAt))->setTimezone($this->utcTimezone());
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if (isset($filters['created_at_from']) && $timestamp < $filters['created_at_from']) {
+            return false;
+        }
+
+        if (isset($filters['created_at_to']) && $timestamp > $filters['created_at_to']) {
+            return false;
+        }
+
+        return true;
     }
 
     private function formatStructuredQueryTimestamp(DateTimeInterface $value): string

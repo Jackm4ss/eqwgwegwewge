@@ -10,7 +10,10 @@ use RuntimeException;
 
 class AdminPanelService
 {
+    public const DASHBOARD_CACHE_VERSION_KEY = 'admin:dashboard:version';
     public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v3';
+    private const DASHBOARD_CACHE_KEY_PREFIX = 'admin:dashboard:v2';
+    private const DASHBOARD_CACHE_TTL_SECONDS = 30;
     private const ACTIVITY_LOG_MAX_PER_PAGE = 100;
 
     public function __construct(
@@ -27,11 +30,12 @@ class AdminPanelService
 
     public function dashboardData(array $filters = []): array
     {
-        return $this->analytics->buildDashboard(
-            $this->repository->allUsers(),
-            $this->repository->allScanLogs(),
-            (int) config('admin.dashboard_days', 7),
-            filters: $filters,
+        $cacheKey = $this->dashboardCacheKey($filters);
+
+        return Cache::remember(
+            $cacheKey,
+            now()->addSeconds(self::DASHBOARD_CACHE_TTL_SECONDS),
+            fn (): array => $this->buildDashboardSnapshot($filters),
         );
     }
 
@@ -58,6 +62,14 @@ class AdminPanelService
     public function flushUserManagementCache(): void
     {
         Cache::forget(self::USER_MANAGEMENT_META_CACHE_KEY);
+    }
+
+    public function flushDashboardCache(): void
+    {
+        Cache::forever(
+            self::DASHBOARD_CACHE_VERSION_KEY,
+            $this->dashboardCacheVersion() + 1,
+        );
     }
 
     public function findUser(string $userId): ?array
@@ -93,6 +105,7 @@ class AdminPanelService
             is_array($result['ticket'] ?? null) ? $result['ticket'] : null,
         );
         $this->flushUserManagementCache();
+        $this->flushDashboardCache();
 
         return $result;
     }
@@ -291,6 +304,26 @@ class AdminPanelService
                 [$filters['scanner_post'] ?? null],
             ),
         ];
+    }
+
+    private function buildDashboardSnapshot(array $filters = []): array
+    {
+        $days = (int) config('admin.dashboard_days', 7);
+        $dashboardRange = $this->analytics->dashboardRange($days, filters: $filters);
+        $dashboardQueryFilters = [
+            'from' => $dashboardRange['from'],
+            'to' => $dashboardRange['to'],
+        ];
+        $totalRegistrations = $dashboardRange['is_filtered']
+            ? $this->repository->countUsersByRegistrationDate($dashboardQueryFilters)
+            : $this->repository->countUsers();
+
+        return $this->analytics->buildDashboardFromRegistrationCount(
+            $totalRegistrations,
+            $this->repository->queryScanLogs($dashboardQueryFilters),
+            $days,
+            filters: $filters,
+        );
     }
 
     private function legacyUserManagementPage(array $filters = []): array
@@ -513,6 +546,27 @@ class AdminPanelService
     private function sanitizeActivityLogPerPage(int $perPage): int
     {
         return min(max(1, $perPage), self::ACTIVITY_LOG_MAX_PER_PAGE);
+    }
+
+    private function dashboardCacheKey(array $filters): string
+    {
+        $dashboardRange = $this->analytics->dashboardRange(
+            (int) config('admin.dashboard_days', 7),
+            filters: $filters,
+        );
+
+        return implode(':', [
+            self::DASHBOARD_CACHE_KEY_PREFIX,
+            (string) $this->dashboardCacheVersion(),
+            $dashboardRange['from'],
+            $dashboardRange['to'],
+            $dashboardRange['is_filtered'] ? 'filtered' : 'default',
+        ]);
+    }
+
+    private function dashboardCacheVersion(): int
+    {
+        return max(1, (int) Cache::get(self::DASHBOARD_CACHE_VERSION_KEY, 1));
     }
 
     private function makePaginator(

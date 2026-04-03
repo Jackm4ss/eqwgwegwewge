@@ -14,6 +14,104 @@ use Tests\TestCase;
 
 class AdminPanelServiceTest extends TestCase
 {
+    public function test_dashboard_data_uses_targeted_queries_and_caches_default_range_snapshot(): void
+    {
+        Cache::forget(AdminPanelService::DASHBOARD_CACHE_VERSION_KEY);
+        CarbonImmutable::setTestNow('2026-04-03 12:00:00');
+        config([
+            'admin.dashboard_days' => 7,
+            'admin.event.timezone' => 'UTC',
+            'app.timezone' => 'UTC',
+        ]);
+
+        try {
+            $repository = Mockery::mock(AdminFirestoreRepository::class);
+            $repository->shouldReceive('countUsers')
+                ->once()
+                ->withNoArgs()
+                ->andReturn(3582);
+            $repository->shouldReceive('queryScanLogs')
+                ->once()
+                ->with([
+                    'from' => '2026-03-28',
+                    'to' => '2026-04-03',
+                ])
+                ->andReturn([
+                    [
+                        'user_id' => 'user-1',
+                        'ticket_code' => 'TICKET-1',
+                        'scan_date' => '2026-04-03',
+                        'scanned_at' => '2026-04-03T09:00:00Z',
+                        'result' => 'success',
+                    ],
+                ]);
+            $repository->shouldNotReceive('countUsersByRegistrationDate');
+            $repository->shouldNotReceive('allUsers');
+            $repository->shouldNotReceive('allScanLogs');
+
+            $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+            $notifications->shouldIgnoreMissing();
+
+            $service = $this->makeService($repository, $notifications);
+
+            $first = $service->dashboardData([]);
+            $second = $service->dashboardData([]);
+
+            $this->assertSame(3582, $first['total_registrations']);
+            $this->assertSame(1, $first['daily_scan_statistics']['total_scans']);
+            $this->assertSame($first, $second);
+        } finally {
+            CarbonImmutable::setTestNow();
+            Cache::forget(AdminPanelService::DASHBOARD_CACHE_VERSION_KEY);
+        }
+    }
+
+    public function test_dashboard_data_counts_registrations_by_selected_range_without_loading_all_users(): void
+    {
+        Cache::forget(AdminPanelService::DASHBOARD_CACHE_VERSION_KEY);
+        config([
+            'admin.dashboard_days' => 7,
+            'admin.event.timezone' => 'UTC',
+            'app.timezone' => 'UTC',
+        ]);
+
+        $filters = [
+            'from' => '2026-03-25',
+            'to' => '2026-03-25',
+        ];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('countUsersByRegistrationDate')
+            ->once()
+            ->with($filters)
+            ->andReturn(12);
+        $repository->shouldReceive('queryScanLogs')
+            ->once()
+            ->with($filters)
+            ->andReturn([
+                [
+                    'user_id' => 'user-2',
+                    'ticket_code' => 'TICKET-2',
+                    'scan_date' => '2026-03-25',
+                    'scanned_at' => '2026-03-25T09:00:00Z',
+                    'result' => 'success',
+                ],
+            ]);
+        $repository->shouldNotReceive('countUsers');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allScanLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications);
+        $dashboard = $service->dashboardData($filters);
+
+        $this->assertSame(12, $dashboard['total_registrations']);
+        $this->assertSame(1, $dashboard['daily_scan_statistics']['successful_scans']);
+        $this->assertTrue($dashboard['date_range']['is_filtered']);
+    }
+
     public function test_optimized_user_management_meta_counts_only_explicit_checked_in_tickets(): void
     {
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);

@@ -47,15 +47,37 @@ class AdminAnalyticsService
         ?CarbonImmutable $referenceDate = null,
         array $filters = [],
     ): array {
-        $referenceDate = ($referenceDate ?? CarbonImmutable::now($this->eventTimezone()))
-            ->setTimezone($this->eventTimezone());
-        [$startDate, $endDate, $hasDateFilter] = $this->resolveDashboardDateRange($days, $referenceDate, $filters);
-        $startDateString = $startDate->toDateString();
-        $endDateString = $endDate->toDateString();
-        $rangeDays = (int) max(1, $startDate->diffInDays($endDate) + 1);
+        $dashboardRange = $this->dashboardRange($days, $referenceDate, $filters);
+        $totalRegistrations = $dashboardRange['is_filtered']
+            ? count(array_filter($users, function (array $user) use ($dashboardRange): bool {
+                $registrationDate = $this->resolveUserRegistrationDate($user);
 
+                return $registrationDate !== null
+                    && $registrationDate >= $dashboardRange['from']
+                    && $registrationDate <= $dashboardRange['to'];
+            }))
+            : count($users);
+
+        return $this->buildDashboardFromRegistrationCount(
+            $totalRegistrations,
+            $scanLogs,
+            $days,
+            $referenceDate,
+            $filters,
+        );
+    }
+
+    public function buildDashboardFromRegistrationCount(
+        int $totalRegistrations,
+        array $scanLogs,
+        int $days = 7,
+        ?CarbonImmutable $referenceDate = null,
+        array $filters = [],
+    ): array {
+        $dashboardRange = $this->dashboardRange($days, $referenceDate, $filters);
         $chartBuckets = [];
-        for ($date = $startDate; $date->lte($endDate); $date = $date->addDay()) {
+
+        for ($date = $dashboardRange['start']; $date->lte($dashboardRange['end']); $date = $date->addDay()) {
             $dateString = $date->toDateString();
             $chartBuckets[$dateString] = [
                 'label' => $date->format('d M'),
@@ -77,7 +99,7 @@ class AdminAnalyticsService
             $result = strtolower((string) ($scanLog['result'] ?? 'unknown'));
             $uniqueKey = $this->resolveAttendanceKey($scanLog);
 
-            if ($scanDate < $startDateString || $scanDate > $endDateString) {
+            if ($scanDate < $dashboardRange['from'] || $scanDate > $dashboardRange['to']) {
                 continue;
             }
 
@@ -102,18 +124,8 @@ class AdminAnalyticsService
 
         $rangeStats['unique_visitors'] = count($rangeUniqueVisitors);
 
-        $totalRegistrations = $hasDateFilter
-            ? count(array_filter($users, function (array $user) use ($endDateString, $startDateString): bool {
-                $registrationDate = $this->resolveUserRegistrationDate($user);
-
-                return $registrationDate !== null
-                    && $registrationDate >= $startDateString
-                    && $registrationDate <= $endDateString;
-            }))
-            : count($users);
-
         return [
-            'total_registrations' => $totalRegistrations,
+            'total_registrations' => max(0, $totalRegistrations),
             'daily_scan_statistics' => $rangeStats,
             'visitor_chart' => [
                 'labels' => array_map(
@@ -126,14 +138,35 @@ class AdminAnalyticsService
                 ),
             ],
             'date_range' => [
-                'from' => $startDateString,
-                'to' => $endDateString,
-                'days' => $rangeDays,
-                'is_filtered' => $hasDateFilter,
-                'label' => $this->formatDateRangeLabel($startDate, $endDate),
-                'badge' => $hasDateFilter ? 'Selected Range' : 'Last '.$rangeDays.' Days',
-                'registration_badge' => $hasDateFilter ? 'Selected Range' : 'All Time',
+                'from' => $dashboardRange['from'],
+                'to' => $dashboardRange['to'],
+                'days' => $dashboardRange['days'],
+                'is_filtered' => $dashboardRange['is_filtered'],
+                'label' => $this->formatDateRangeLabel($dashboardRange['start'], $dashboardRange['end']),
+                'badge' => $dashboardRange['is_filtered']
+                    ? 'Selected Range'
+                    : 'Last '.$dashboardRange['days'].' Days',
+                'registration_badge' => $dashboardRange['is_filtered'] ? 'Selected Range' : 'All Time',
             ],
+        ];
+    }
+
+    public function dashboardRange(
+        int $days = 7,
+        ?CarbonImmutable $referenceDate = null,
+        array $filters = [],
+    ): array {
+        $referenceDate = ($referenceDate ?? CarbonImmutable::now($this->eventTimezone()))
+            ->setTimezone($this->eventTimezone());
+        [$startDate, $endDate, $hasDateFilter] = $this->resolveDashboardDateRange($days, $referenceDate, $filters);
+
+        return [
+            'start' => $startDate,
+            'end' => $endDate,
+            'from' => $startDate->toDateString(),
+            'to' => $endDate->toDateString(),
+            'days' => (int) max(1, $startDate->diffInDays($endDate) + 1),
+            'is_filtered' => $hasDateFilter,
         ];
     }
 
