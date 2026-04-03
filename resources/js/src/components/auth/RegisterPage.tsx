@@ -1456,7 +1456,15 @@ export function RegisterPage() {
               eyebrow="Free Registration"
               title="Register Now"
               description="Join thousands of attendees at Songkran Festival 2026."
-              note="Complete all details, accept the terms, and submit your registration."
+              note={(
+                <>
+                  <span>Complete all details, accept the terms, and submit your registration.</span>
+                  <span className="mt-2 block">
+                    PLEASE FILL IN YOUR FULL NAME AND PARTICULARS AS PER YOUR VALID ID/PASSPORT.
+                    VERIFICATION WILL BE DONE AT THE ENTRANCE
+                  </span>
+                </>
+              )}
             />
 
             {/* Form body */}
