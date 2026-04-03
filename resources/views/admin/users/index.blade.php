@@ -299,6 +299,7 @@
 
     $activeFilterCount = collect([
       $filters['country'] ?? null,
+      $filters['identity_type'] ?? null,
       $filters['verification_status'] ?? null,
       $filters['attendance_status'] ?? null,
       $filters['q'] ?? null,
@@ -392,7 +393,7 @@
       <div class="card-header d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
         <div>
           <h5 class="mb-1">Filters</h5>
-          <small class="text-muted">Filter participants by country, verification, or check-in status.</small>
+          <small class="text-muted">Filter participants by country, document type, verification, or check-in status.</small>
         </div>
         <div class="d-flex align-items-center gap-2">
           @if ($activeFilterCount > 0)
@@ -406,7 +407,7 @@
 
       <div class="card-body">
         <div class="row g-4">
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label for="country" class="form-label">Country</label>
             <select class="form-select js-submit-on-change" id="country" name="country">
               <option value="">All Countries</option>
@@ -418,7 +419,19 @@
             </select>
           </div>
 
-          <div class="col-md-4">
+          <div class="col-md-3">
+            <label for="identity_type" class="form-label">Document Type</label>
+            <select class="form-select js-submit-on-change" id="identity_type" name="identity_type">
+              <option value="">All Document Types</option>
+              @foreach ($filterOptions['identity_types'] ?? [] as $identityType)
+                <option value="{{ $identityType['value'] }}" @selected(($filters['identity_type'] ?? '') === $identityType['value'])>
+                  {{ $identityType['label'] }} ({{ number_format($identityType['count']) }})
+                </option>
+              @endforeach
+            </select>
+          </div>
+
+          <div class="col-md-3">
             <label for="verification_status" class="form-label">Verification</label>
             <select class="form-select js-submit-on-change" id="verification_status" name="verification_status">
               <option value="">All Verification Statuses</option>
@@ -430,7 +443,7 @@
             </select>
           </div>
 
-          <div class="col-md-4">
+          <div class="col-md-3">
             <label for="attendance_status" class="form-label">Check-In Status</label>
             <select class="form-select js-submit-on-change" id="attendance_status" name="attendance_status">
               <option value="">All Check-In Statuses</option>
@@ -456,7 +469,7 @@
             </div>
             <div class="d-flex flex-column">
               <span class="fw-semibold">{{ number_format($users->total()) }} participants found</span>
-              <small class="text-muted">Search includes name, email, identity number, ticket code, country, and traffic source.</small>
+              <small class="text-muted">Search includes name, email, document type, identity number, ticket code, country, and traffic source.</small>
             </div>
           </div>
 

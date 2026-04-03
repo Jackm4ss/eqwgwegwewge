@@ -288,7 +288,7 @@ class AdminAnalyticsServiceTest extends TestCase
         $this->assertSame('2026-03-30T09:00:00Z', $overview['scanner_activity'][1]['last_scanned_at']);
     }
 
-    public function test_user_rows_support_country_verification_and_attendance_filters(): void
+    public function test_user_rows_support_identity_country_verification_and_attendance_filters(): void
     {
         $service = new AdminAnalyticsService;
 
@@ -299,6 +299,7 @@ class AdminAnalyticsServiceTest extends TestCase
                     'full_name' => 'Alya Putri',
                     'email' => 'alya@example.test',
                     'country' => 'ID',
+                    'identity_type' => 'passport',
                     'verification_status' => 'verified',
                     'account_status' => 'active',
                     'created_at' => '2026-03-25T10:00:00Z',
@@ -308,6 +309,7 @@ class AdminAnalyticsServiceTest extends TestCase
                     'full_name' => 'Brian Tan',
                     'email' => 'brian@example.test',
                     'country' => 'MY',
+                    'identity_type' => 'national_id',
                     'verification_status' => 'unverified',
                     'account_status' => 'pending_verification',
                     'created_at' => '2026-03-25T11:00:00Z',
@@ -331,15 +333,18 @@ class AdminAnalyticsServiceTest extends TestCase
         );
 
         $filtered = $service->filterUserRows($rows, [
-            'country' => 'ID',
-            'verification_status' => 'verified',
-            'attendance_status' => 'checked_in',
+            'country' => 'MY',
+            'identity_type' => 'national_id',
+            'verification_status' => 'unverified',
+            'attendance_status' => 'not_checked_in',
         ]);
 
         $this->assertCount(1, $filtered);
-        $this->assertSame('user-1', $filtered[0]['user_id']);
-        $this->assertSame('checked_in', $filtered[0]['attendance_status']);
-        $this->assertSame('Indonesia', collect($rows)->firstWhere('user_id', 'user-1')['country_label']);
+        $this->assertSame('user-2', $filtered[0]['user_id']);
+        $this->assertSame('national_id', $filtered[0]['identity_type']);
+        $this->assertSame('not_checked_in', $filtered[0]['attendance_status']);
+        $this->assertSame('Malaysia', collect($rows)->firstWhere('user_id', 'user-2')['country_label']);
+        $this->assertSame('Malaysia IC (MyKad)', $service->identityTypeLabel($filtered[0]['identity_type']));
     }
 
     public function test_country_labels_follow_shared_registration_catalog(): void
@@ -595,6 +600,47 @@ class AdminAnalyticsServiceTest extends TestCase
                 'count' => 1,
             ],
         ], $options['countries']);
+    }
+
+    public function test_user_filter_options_include_identity_document_types_with_human_labels(): void
+    {
+        $service = new AdminAnalyticsService;
+
+        $rows = $service->buildUserRows(
+            users: [
+                [
+                    'user_id' => 'user-1',
+                    'identity_type' => 'passport',
+                    'created_at' => '2026-03-25T10:00:00Z',
+                ],
+                [
+                    'user_id' => 'user-2',
+                    'identity_type' => 'national_id',
+                    'created_at' => '2026-03-25T11:00:00Z',
+                ],
+                [
+                    'user_id' => 'user-3',
+                    'identity_type' => 'passport',
+                    'created_at' => '2026-03-25T12:00:00Z',
+                ],
+            ],
+            tickets: [],
+        );
+
+        $options = $service->buildUserFilterOptions($rows);
+
+        $this->assertSame([
+            [
+                'value' => 'national_id',
+                'label' => 'Malaysia IC (MyKad)',
+                'count' => 1,
+            ],
+            [
+                'value' => 'passport',
+                'label' => 'Passport',
+                'count' => 2,
+            ],
+        ], $options['identity_types']);
     }
 
     public function test_user_search_can_match_full_country_label(): void

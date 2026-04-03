@@ -40,6 +40,11 @@ class AdminAnalyticsService
         'other' => 'Other',
     ];
 
+    private const IDENTITY_TYPE_LABELS = [
+        'national_id' => 'Malaysia IC (MyKad)',
+        'passport' => 'Passport',
+    ];
+
     public function buildDashboard(
         array $users,
         array $scanLogs,
@@ -295,15 +300,20 @@ class AdminAnalyticsService
     {
         $query = $this->normalizeText((string) ($filters['q'] ?? ''));
         $country = strtoupper(trim((string) ($filters['country'] ?? '')));
+        $identityType = $this->normalizeIdentityType($filters['identity_type'] ?? null, allowEmpty: true);
         $verificationStatus = strtolower(trim((string) ($filters['verification_status'] ?? '')));
         $attendanceStatus = $this->normalizeAttendanceStatus($filters['attendance_status'] ?? null, allowEmpty: true);
 
-        return array_values(array_filter($rows, function (array $row) use ($attendanceStatus, $country, $query, $verificationStatus) {
+        return array_values(array_filter($rows, function (array $row) use ($attendanceStatus, $country, $identityType, $query, $verificationStatus) {
             if ($query !== '' && ! str_contains($this->userSearchHaystack($row), $query)) {
                 return false;
             }
 
             if ($country !== '' && strtoupper((string) ($row['country'] ?? '')) !== $country) {
+                return false;
+            }
+
+            if ($identityType !== '' && $this->normalizeIdentityType($row['identity_type'] ?? null) !== $identityType) {
                 return false;
             }
 
@@ -368,6 +378,10 @@ class AdminAnalyticsService
             'verified' => 0,
             'unverified' => 0,
         ];
+        $identityTypeCounts = [
+            'national_id' => 0,
+            'passport' => 0,
+        ];
         $attendanceCounts = [
             'checked_in' => 0,
             'not_checked_in' => 0,
@@ -382,6 +396,11 @@ class AdminAnalyticsService
             $verificationStatus = strtolower((string) ($row['verification_status'] ?? 'unverified'));
             if (isset($verificationCounts[$verificationStatus])) {
                 $verificationCounts[$verificationStatus]++;
+            }
+
+            $identityType = $this->normalizeIdentityType($row['identity_type'] ?? null);
+            if (isset($identityTypeCounts[$identityType])) {
+                $identityTypeCounts[$identityType]++;
             }
 
             $attendanceStatus = $this->normalizeAttendanceStatus($row['attendance_status'] ?? null);
@@ -415,6 +434,18 @@ class AdminAnalyticsService
                     'value' => 'unverified',
                     'label' => 'Unverified',
                     'count' => $verificationCounts['unverified'],
+                ],
+            ],
+            'identity_types' => [
+                [
+                    'value' => 'national_id',
+                    'label' => $this->identityTypeLabel('national_id'),
+                    'count' => $identityTypeCounts['national_id'],
+                ],
+                [
+                    'value' => 'passport',
+                    'label' => $this->identityTypeLabel('passport'),
+                    'count' => $identityTypeCounts['passport'],
                 ],
             ],
             'attendance_statuses' => [
@@ -455,6 +486,13 @@ class AdminAnalyticsService
         }
 
         return self::COUNTRY_LABEL_FALLBACKS[$countryCode] ?? $countryCode;
+    }
+
+    public function identityTypeLabel(mixed $identityType): string
+    {
+        $normalized = $this->normalizeIdentityType($identityType);
+
+        return self::IDENTITY_TYPE_LABELS[$normalized] ?? 'Passport';
     }
 
     public function trafficSourceLabel(mixed $source): string
@@ -840,6 +878,8 @@ class AdminAnalyticsService
         return $this->normalizeText(implode(' ', array_filter([
             (string) ($row['full_name'] ?? ''),
             (string) ($row['email'] ?? ''),
+            (string) ($row['identity_type'] ?? ''),
+            $this->identityTypeLabel($row['identity_type'] ?? null),
             (string) ($row['identity_number'] ?? ''),
             (string) ($row['ticket_code'] ?? ''),
             (string) ($row['country'] ?? ''),
@@ -851,6 +891,17 @@ class AdminAnalyticsService
             (string) ($row['traffic_medium_label'] ?? ''),
             (string) ($row['traffic_referrer_host'] ?? ''),
         ])));
+    }
+
+    private function normalizeIdentityType(mixed $value, bool $allowEmpty = false): string
+    {
+        $normalized = strtolower(trim((string) $value));
+
+        if ($normalized === '') {
+            return $allowEmpty ? '' : 'passport';
+        }
+
+        return $normalized === 'national_id' ? 'national_id' : 'passport';
     }
 
     private function normalizeTrafficSource(mixed $value, bool $allowEmpty = false): string

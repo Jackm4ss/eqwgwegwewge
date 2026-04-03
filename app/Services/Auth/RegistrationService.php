@@ -4,8 +4,10 @@ namespace App\Services\Auth;
 
 use App\Contracts\UserRepositoryInterface;
 use App\Exceptions\RegistrationConflictException;
+use App\Services\Admin\AdminPanelService;
 use App\Mail\VerifyRegistrationMail;
 use App\Services\Tickets\TicketQrCodeService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
@@ -78,6 +80,7 @@ class RegistrationService
         );
         $result['user'] = $delivery['user'];
         $result['delivery'] = $delivery['delivery'];
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
 
         return $result;
     }

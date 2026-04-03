@@ -26,6 +26,7 @@ class UserManagementController extends Controller
             'page',
             'per_page',
             'country',
+            'identity_type',
             'verification_status',
             'attendance_status',
         ]);

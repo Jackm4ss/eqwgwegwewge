@@ -223,7 +223,7 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('All presence')
             ->assertSee('admin01@songkran.local')
             ->assertSee('Action')
-            ->assertSee('Tambah Admin')
+            ->assertSee('Create Admin')
             ->assertSee('sweetalert2.css')
             ->assertSee('sweetalert2.js')
             ->assertSee('Delete this admin account?')
@@ -500,6 +500,18 @@ class AdminAuthenticationTest extends TestCase
                                 'count' => 1,
                             ],
                         ],
+                        'identity_types' => [
+                            [
+                                'value' => 'national_id',
+                                'label' => 'Malaysia IC (MyKad)',
+                                'count' => 1,
+                            ],
+                            [
+                                'value' => 'passport',
+                                'label' => 'Passport',
+                                'count' => 1,
+                            ],
+                        ],
                         'verification_statuses' => [],
                         'attendance_statuses' => [],
                     ],
@@ -516,6 +528,11 @@ class AdminAuthenticationTest extends TestCase
         $response->assertOk()
             ->assertSee('fi fis fi-nz user-country-flag', false)
             ->assertSee('data-flag="jp"', false)
+            ->assertSee('Document Type')
+            ->assertSee('Malaysia IC (MyKad) (1)')
+            ->assertSee('Passport (1)')
+            ->assertSee('Filter participants by country, document type, verification, or check-in status.')
+            ->assertSee('Search includes name, email, document type, identity number, ticket code, country, and traffic source.')
             ->assertSee('QR Created, 25 Mar 2026, 03:26 AM')
             ->assertSee('QR Regenerated, 25 Mar 2026, 03:26 AM')
             ->assertSee('id="userOverviewModal"', false)

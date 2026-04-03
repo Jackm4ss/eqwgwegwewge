@@ -149,6 +149,14 @@ class AdminPanelServiceTest extends TestCase
                     return 0;
                 }
 
+                if ($filters === ['identity_type' => 'passport']) {
+                    return 5;
+                }
+
+                if ($filters === ['identity_type' => 'national_id']) {
+                    return 0;
+                }
+
                 if (array_key_exists('country', $filters)) {
                     return 0;
                 }
@@ -170,6 +178,8 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(0, $page['overview']['checked_in_users']);
         $this->assertSame(0, $page['filter_options']['attendance_statuses'][0]['count']);
         $this->assertSame(5, $page['filter_options']['attendance_statuses'][1]['count']);
+        $this->assertSame(0, $page['filter_options']['identity_types'][0]['count']);
+        $this->assertSame(5, $page['filter_options']['identity_types'][1]['count']);
     }
 
     public function test_optimized_user_management_meta_builds_country_filters_from_actual_users(): void
@@ -206,6 +216,8 @@ class AdminPanelServiceTest extends TestCase
                     [] => 4,
                     ['verification_status' => 'verified'] => 0,
                     ['verification_status' => 'verified', 'account_status' => 'active'] => 0,
+                    ['identity_type' => 'national_id'] => 1,
+                    ['identity_type' => 'passport'] => 3,
                     default => 0,
                 };
             });
@@ -228,6 +240,10 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(2, $countries['MM']['count'] ?? null);
         $this->assertSame('Malaysia', $countries['MY']['label'] ?? null);
         $this->assertSame(3, $page['overview']['countries_count']);
+        $this->assertSame('Malaysia IC (MyKad)', $page['filter_options']['identity_types'][0]['label']);
+        $this->assertSame(1, $page['filter_options']['identity_types'][0]['count']);
+        $this->assertSame('Passport', $page['filter_options']['identity_types'][1]['label']);
+        $this->assertSame(3, $page['filter_options']['identity_types'][1]['count']);
     }
 
     public function test_user_management_page_falls_back_to_legacy_when_firestore_query_needs_index(): void

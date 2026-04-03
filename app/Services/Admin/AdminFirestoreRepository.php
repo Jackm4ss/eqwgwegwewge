@@ -2117,6 +2117,10 @@ class AdminFirestoreRepository
             $normalized['country'] = $this->normalizeCountry((string) $filters['country']);
         }
 
+        if (filled($filters['identity_type'] ?? null)) {
+            $normalized['identity_type'] = $this->normalizeIdentityType((string) $filters['identity_type']);
+        }
+
         if (filled($filters['verification_status'] ?? null)) {
             $normalized['verification_status'] = strtolower(trim((string) $filters['verification_status']));
         }

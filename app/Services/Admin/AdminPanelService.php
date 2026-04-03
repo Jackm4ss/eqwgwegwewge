@@ -11,9 +11,10 @@ use RuntimeException;
 class AdminPanelService
 {
     public const DASHBOARD_CACHE_VERSION_KEY = 'admin:dashboard:version';
-    public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v3';
+    public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v4';
     private const DASHBOARD_CACHE_KEY_PREFIX = 'admin:dashboard:v2';
     private const DASHBOARD_CACHE_TTL_SECONDS = 30;
+    private const USER_MANAGEMENT_META_CACHE_TTL_HOURS = 12;
     private const ACTIVITY_LOG_MAX_PER_PAGE = 100;
 
     public function __construct(
@@ -391,7 +392,7 @@ class AdminPanelService
     {
         return Cache::remember(
             self::USER_MANAGEMENT_META_CACHE_KEY,
-            now()->addMinutes(5),
+            now()->addHours(self::USER_MANAGEMENT_META_CACHE_TTL_HOURS),
             fn (): array => $this->buildUserManagementMetaSnapshot(),
         );
     }
@@ -404,6 +405,8 @@ class AdminPanelService
             'verification_status' => 'verified',
             'account_status' => 'active',
         ]);
+        $passportUsers = $this->repository->countUsers(['identity_type' => 'passport']);
+        $nationalIdUsers = $this->repository->countUsers(['identity_type' => 'national_id']);
         $checkedInUsers = $this->repository->countTickets([
             'attendance_status' => 'checked_in',
         ]);
@@ -453,6 +456,18 @@ class AdminPanelService
                         'value' => 'unverified',
                         'label' => 'Unverified',
                         'count' => max(0, $totalUsers - $verifiedUsers),
+                    ],
+                ],
+                'identity_types' => [
+                    [
+                        'value' => 'national_id',
+                        'label' => $this->analytics->identityTypeLabel('national_id'),
+                        'count' => $nationalIdUsers,
+                    ],
+                    [
+                        'value' => 'passport',
+                        'label' => $this->analytics->identityTypeLabel('passport'),
+                        'count' => $passportUsers,
                     ],
                 ],
                 'attendance_statuses' => [
