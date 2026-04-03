@@ -186,6 +186,7 @@
                 <div class="col-md-6 form-control-validation">
                   <label for="identity_number" class="form-label">Nomor Dokumen</label>
                   <input type="text" class="form-control" id="identity_number" required value="{{ old('identity_number') }}" name="identity_number" placeholder="Input nomor dokumen" />
+                  <small class="text-muted d-block mt-1" id="identity_number_hint">Untuk Malaysia, Malaysia IC (MyKad) wajib tepat 12 digit.</small>
                 </div>
 
                 <!-- Section: Konfirmasi -->
@@ -252,11 +253,24 @@
         const nationalIdOption = identityTypeSelect?.querySelector('option[value="national_id"]');
         const passportOption = identityTypeSelect?.querySelector('option[value="passport"]');
         const identityNumberInput = document.getElementById('identity_number');
+        const identityNumberHint = document.getElementById('identity_number_hint');
         let previousCountry = countryInput?.value.trim().toUpperCase() ?? '';
 
         if (!countryInput || !identityTypeSelect || !nationalIdOption || !passportOption) {
           return;
         }
+
+        const normalizeIdentityNumber = (value, identityType) => {
+          if (identityType === 'national_id') {
+            return value.replace(/\D/g, '').slice(0, 12);
+          }
+
+          if (identityType !== 'passport') {
+            return value.trim();
+          }
+
+          return value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10).toUpperCase();
+        };
 
         const syncIdentityType = () => {
           const country = countryInput.value.trim().toUpperCase();
@@ -279,9 +293,29 @@
             identityNumberInput.value = '';
           }
 
+          if (identityNumberInput) {
+            const isNationalId = identityTypeSelect.value === 'national_id';
+            const isPassport = identityTypeSelect.value === 'passport';
+            identityNumberInput.inputMode = isNationalId ? 'numeric' : 'text';
+            identityNumberInput.maxLength = isNationalId ? 12 : (isPassport ? 10 : 80);
+            identityNumberInput.value = normalizeIdentityNumber(identityNumberInput.value, identityTypeSelect.value);
+          }
+
+          if (identityNumberHint) {
+            identityNumberHint.textContent = identityTypeSelect.value === 'national_id'
+              ? 'Untuk Malaysia, Malaysia IC (MyKad) wajib tepat 12 digit.'
+              : identityTypeSelect.value === 'passport'
+                ? 'Untuk luar Malaysia, gunakan Passport yang valid sesuai dokumen perjalanan.'
+                : 'Masukkan nomor dokumen sesuai jenis identitas yang dipilih.';
+          }
+
           previousCountry = country;
         };
 
+        identityTypeSelect.addEventListener('change', syncIdentityType);
+        identityNumberInput?.addEventListener('input', function () {
+          identityNumberInput.value = normalizeIdentityNumber(identityNumberInput.value, identityTypeSelect.value);
+        });
         countryInput.addEventListener('input', syncIdentityType);
         syncIdentityType();
       });

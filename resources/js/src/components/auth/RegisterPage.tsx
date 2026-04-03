@@ -311,8 +311,8 @@ function validateIdentityNumber(value: string, identityType: FormData['identity_
       return 'Malaysia IC must contain digits only.';
     }
 
-    if (value.length > 12) {
-      return 'Malaysia IC must be at most 12 digits.';
+    if (value.length !== 12) {
+      return 'Malaysia IC must be exactly 12 digits.';
     }
 
     return true;
@@ -1225,7 +1225,7 @@ export function RegisterPage() {
     ? 'For registrants outside Malaysia, use Passport Only as the primary document. Maximum 10 alphanumeric characters.'
     : identityTypeVal === 'national_id'
       ? isMalaysianRegistrant
-        ? 'For Malaysian citizens or permanent residents, use your IC / MyKad number with digits only, maximum 12.'
+        ? 'For Malaysian citizens or permanent residents, use your IC / MyKad number with digits only, exactly 12 digits.'
         : 'Use an official and valid national ID or resident ID number.'
       : identityTypeVal === 'passport'
         ? 'Use a valid passport number that matches your travel document. Maximum 10 alphanumeric characters.'
@@ -1722,6 +1722,7 @@ export function RegisterPage() {
                           placeholder={identityNumberPlaceholder}
                           className={inputClass('identity_number')}
                           inputMode={identityTypeVal === 'national_id' ? 'numeric' : 'text'}
+                          minLength={identityTypeVal === 'national_id' ? 12 : undefined}
                           maxLength={identityTypeVal === 'national_id' ? 12 : 10}
                           spellCheck={false}
                           {...identityNumberField}

@@ -25,15 +25,17 @@ class RegistrationService
         try {
             $country = $this->normalizeCountry((string) $data['country']);
             $identityType = $this->normalizeIdentityType((string) $data['identity_type']);
+            $identityNumber = $this->normalizeIdentityNumber((string) $data['identity_number'], $identityType);
             $phoneNumber = $this->normalizePhoneNumber((string) $data['phone_number']);
 
             $this->ensureIdentityTypeAllowedForCountry($identityType, $country);
+            $this->ensureIdentityNumberAllowedForCountry($identityNumber, $identityType, $country);
             $this->ensurePhoneNumberIsAvailable($phoneNumber);
 
             $payload = [
                 'full_name' => $this->normalizeName((string) $data['full_name']),
                 'identity_type' => $identityType,
-                'identity_number' => $this->normalizeIdentityNumber((string) $data['identity_number']),
+                'identity_number' => $identityNumber,
                 'email' => $this->normalizeEmail((string) $data['email']),
                 'phone_number' => $phoneNumber,
                 'country' => $country,
@@ -114,8 +116,12 @@ class RegistrationService
         return strtolower(trim($email));
     }
 
-    private function normalizeIdentityNumber(string $identityNumber): string
+    private function normalizeIdentityNumber(string $identityNumber, string $identityType): string
     {
+        if ($identityType === 'national_id') {
+            return preg_replace('/\D+/', '', $identityNumber) ?? '';
+        }
+
         return strtoupper(trim($identityNumber));
     }
 
@@ -217,6 +223,15 @@ class RegistrationService
         if ($country !== 'MY' && $identityType !== 'passport') {
             throw ValidationException::withMessages([
                 'identity_type' => ['Untuk pendaftar luar Malaysia, gunakan Passport sebagai identitas utama.'],
+            ]);
+        }
+    }
+
+    private function ensureIdentityNumberAllowedForCountry(string $identityNumber, string $identityType, string $country): void
+    {
+        if ($country === 'MY' && $identityType === 'national_id' && ! preg_match('/^\d{12}$/', $identityNumber)) {
+            throw ValidationException::withMessages([
+                'identity_number' => ['Malaysia IC (MyKad) harus tepat 12 digit.'],
             ]);
         }
     }

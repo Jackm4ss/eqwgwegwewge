@@ -42,6 +42,7 @@ class RegisterRequest extends FormRequest
         $validator->after(function (Validator $validator) {
             $country = strtoupper(trim((string) $this->input('country')));
             $identityType = strtolower(trim((string) $this->input('identity_type')));
+            $identityNumber = (string) $this->input('identity_number');
 
             if ($country === 'MY' && $identityType !== '' && $identityType !== 'national_id') {
                 $validator->errors()->add(
@@ -54,6 +55,13 @@ class RegisterRequest extends FormRequest
                 $validator->errors()->add(
                     'identity_type',
                     'Untuk pendaftar luar Malaysia, gunakan Passport sebagai identitas utama.'
+                );
+            }
+
+            if ($country === 'MY' && $identityType === 'national_id' && ! preg_match('/^\d{12}$/', $identityNumber)) {
+                $validator->errors()->add(
+                    'identity_number',
+                    'Malaysia IC (MyKad) harus tepat 12 digit.'
                 );
             }
 
@@ -101,7 +109,10 @@ class RegisterRequest extends FormRequest
             'email' => strtolower(trim((string) $this->input('email'))),
             'full_name' => trim((string) preg_replace('/\s+/u', ' ', (string) $this->input('full_name'))),
             'identity_type' => strtolower(trim((string) $this->input('identity_type'))),
-            'identity_number' => strtoupper(trim((string) $this->input('identity_number'))),
+            'identity_number' => $this->normalizeIdentityNumber(
+                (string) $this->input('identity_number'),
+                strtolower(trim((string) $this->input('identity_type')))
+            ),
             'phone_country_code' => $phoneCountryCode !== '' ? $phoneCountryCode : null,
             'phone_national_number' => $phoneNationalNumber !== '' ? $phoneNationalNumber : null,
             'phone_number' => $phoneNumber,
@@ -122,6 +133,15 @@ class RegisterRequest extends FormRequest
         $digits = preg_replace('/\D+/', '', $phoneCountryCode) ?? '';
 
         return $digits === '' ? '' : '+'.$digits;
+    }
+
+    private function normalizeIdentityNumber(string $identityNumber, string $identityType): string
+    {
+        if ($identityType === 'national_id') {
+            return preg_replace('/\D+/', '', $identityNumber) ?? '';
+        }
+
+        return strtoupper(trim($identityNumber));
     }
 
     private function normalizePhoneNationalNumber(string $phoneNationalNumber): string

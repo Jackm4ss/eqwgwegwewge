@@ -234,6 +234,61 @@ class RegisterApiTest extends TestCase
         $this->assertCount(0, $this->repository->users);
     }
 
+    public function test_register_rejects_malaysian_mykad_shorter_than_12_digits(): void
+    {
+        Mail::fake();
+
+        $response = $this->postJson('/api/register', array_merge($this->validPayload(), [
+            'country' => 'MY',
+            'identity_type' => 'national_id',
+            'identity_number' => '90123110123',
+        ]));
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['identity_number']);
+
+        $this->assertCount(0, $this->repository->users);
+    }
+
+    public function test_register_rejects_malaysian_mykad_longer_than_12_digits(): void
+    {
+        Mail::fake();
+
+        $response = $this->postJson('/api/register', array_merge($this->validPayload(), [
+            'country' => 'MY',
+            'identity_type' => 'national_id',
+            'identity_number' => '9012311012345',
+        ]));
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['identity_number']);
+
+        $this->assertCount(0, $this->repository->users);
+    }
+
+    public function test_register_normalizes_malaysian_mykad_to_12_digits(): void
+    {
+        Mail::fake();
+
+        $response = $this->postJson('/api/register', array_merge($this->validPayload(), [
+            'email' => 'malaysia-ic@example.com',
+            'phone_country_code' => '+60',
+            'phone_national_number' => '123456789',
+            'country' => 'MY',
+            'identity_type' => 'national_id',
+            'identity_number' => '901231-10-1234',
+        ]));
+
+        $response->assertCreated();
+
+        $user = $this->repository->firstUser();
+
+        $this->assertNotNull($user);
+        $this->assertSame('national_id', $user['identity_type']);
+        $this->assertSame('901231101234', $user['identity_number']);
+        $this->assertTrue($this->repository->identityIndexExists('national_id', 'MY', '901231101234'));
+    }
+
     public function test_register_success_response_matches_frontend_contract(): void
     {
         Mail::fake();

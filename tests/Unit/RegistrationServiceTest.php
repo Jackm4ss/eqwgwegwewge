@@ -91,4 +91,40 @@ class RegistrationServiceTest extends TestCase
             'identity_number' => 'A1234567',
         ], '127.0.0.1');
     }
+
+    public function test_register_rejects_malaysian_mykad_that_is_not_exactly_12_digits(): void
+    {
+        Mail::fake();
+
+        $this->expectException(ValidationException::class);
+
+        app(RegistrationService::class)->register([
+            'full_name' => 'Malaysia IC User',
+            'email' => 'malaysia-ic-invalid@example.com',
+            'phone_country_code' => '+60',
+            'phone_national_number' => '123456789',
+            'phone_number' => '+60123456789',
+            'country' => 'MY',
+            'identity_type' => 'national_id',
+            'identity_number' => '90123110123',
+        ], '127.0.0.1');
+    }
+
+    public function test_register_normalizes_malaysian_mykad_before_storing(): void
+    {
+        Mail::fake();
+
+        $result = app(RegistrationService::class)->register([
+            'full_name' => 'Malaysia IC User',
+            'email' => 'malaysia-ic@example.com',
+            'phone_country_code' => '+60',
+            'phone_national_number' => '123456789',
+            'phone_number' => '+60123456789',
+            'country' => 'MY',
+            'identity_type' => 'national_id',
+            'identity_number' => '901231-10-1234',
+        ], '127.0.0.1');
+
+        $this->assertSame('901231101234', $result['user']['identity_number']);
+    }
 }
