@@ -254,7 +254,6 @@ class StaffScannerServiceTest extends TestCase
         $repository->shouldReceive('queryScanLogs')
             ->once()
             ->with([
-                'scanner_post' => 'Gate A',
                 'from' => '2026-03-31',
                 'to' => '2026-03-31',
             ])
@@ -275,6 +274,14 @@ class StaffScannerServiceTest extends TestCase
                         'ticket_code' => 'TICKET123',
                         'entry_code_display' => 'ABCD-2345',
                     ],
+                ],
+                [
+                    'scan_id' => 'scan-other-gate',
+                    'result' => 'success',
+                    'ticket_code' => 'TICKET999',
+                    'entry_code_display' => 'OTHR-9999',
+                    'scanner_name' => 'Gate B',
+                    'scanned_at' => '2026-03-31T09:08:00Z',
                 ],
                 [
                     'scan_id' => 'scan-legacy',
@@ -345,18 +352,12 @@ class StaffScannerServiceTest extends TestCase
         $analytics = Mockery::mock(AdminAnalyticsService::class);
         $ticketQrCodeService = app(TicketQrCodeService::class);
 
-        $expectedBase = [
-            'scanner_post' => 'Gate A',
-            'from' => '2026-03-31',
-            'to' => '2026-03-31',
-        ];
-
         $repository->shouldReceive('queryScanLogs')
             ->once()
-            ->withArgs(function (array $filters) use ($expectedBase): bool {
-                $this->assertSame($expectedBase['scanner_post'], $filters['scanner_post'] ?? null);
-                $this->assertSame($expectedBase['from'], $filters['from'] ?? null);
-                $this->assertSame($expectedBase['to'], $filters['to'] ?? null);
+            ->withArgs(function (array $filters): bool {
+                $this->assertSame('2026-03-31', $filters['from'] ?? null);
+                $this->assertSame('2026-03-31', $filters['to'] ?? null);
+                $this->assertArrayNotHasKey('scanner_post', $filters);
 
                 return true;
             })
@@ -387,6 +388,15 @@ class StaffScannerServiceTest extends TestCase
                         'scanned_at' => '2026-03-31T09:15:00Z',
                     ],
                     range(1, 3),
+                ),
+                array_map(
+                    static fn (int $index): array => [
+                        'scan_id' => 'scan-other-gate-'.$index,
+                        'result' => 'success',
+                        'scanner_name' => 'Gate B',
+                        'scanned_at' => '2026-03-31T09:15:00Z',
+                    ],
+                    range(1, 2),
                 ),
             ));
 

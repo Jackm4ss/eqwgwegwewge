@@ -284,10 +284,15 @@ class StaffScannerService
     private function refreshDashboardSnapshot(string $scannerPost, ?string $scopeDate = null): array
     {
         $scopeDate ??= $this->scannerScopeDate();
-        $filters = $this->scannerActivityFilters($scannerPost, $scopeDate);
         $rows = array_map(
             fn (array $log): array => $this->dashboardActivityRow($log),
-            array_values($this->repository->queryScanLogs($filters)),
+            array_values(array_filter(
+                $this->repository->queryScanLogs([
+                    'from' => $scopeDate,
+                    'to' => $scopeDate,
+                ]),
+                static fn (array $log): bool => trim((string) ($log['scanner_name'] ?? '')) === $scannerPost,
+            )),
         );
         $snapshot = [
             'scanner_post' => $scannerPost,

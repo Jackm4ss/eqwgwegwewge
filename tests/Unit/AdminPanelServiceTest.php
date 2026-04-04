@@ -676,17 +676,7 @@ class AdminPanelServiceTest extends TestCase
         $repository->shouldReceive('latestNonFutureScanLogDate')
             ->once()
             ->andReturn('2026-03-30');
-        $repository->shouldReceive('paginateScanLogs')
-            ->once()
-            ->with([
-                'scanner_post' => 'Gate AB',
-                'from' => '2026-03-30',
-                'to' => '2026-03-30',
-            ], 1, 10)
-            ->andReturn([
-                'items' => [$log],
-                'total' => 1,
-            ]);
+        $repository->shouldNotReceive('paginateScanLogs');
         $repository->shouldNotReceive('allScanLogs');
         $repository->shouldNotReceive('allUsers');
         $repository->shouldNotReceive('allTickets');
@@ -797,6 +787,43 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(1, $attendance['history']->total());
         $this->assertCount(1, $attendance['daily_attendance']);
         $this->assertSame('Gate AB', $attendance['scan_post_options'][0]['value']);
+    }
+
+    public function test_warm_attendance_monitoring_cache_uses_collection_scan_reads_instead_of_query_scan_logs(): void
+    {
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, []);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allScanLogs')
+            ->once()
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-1',
+                    'ticket_id' => 'ticket-123',
+                    'ticket_code' => 'TICKET-123',
+                    'user_id' => 'user-123',
+                    'scanner_id' => 'scanner-post:gate-ab',
+                    'scanner_name' => 'Gate AB',
+                    'scanner_role' => 'staff',
+                    'scanned_at' => '2026-03-30T05:15:38Z',
+                    'scan_date' => '2026-03-30',
+                    'result' => 'success',
+                ],
+            ]);
+        $repository->shouldNotReceive('queryScanLogs');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+        $rows = $service->warmAttendanceMonitoringCache();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('scan-1', $rows[0]['scan_id']);
+        $this->assertSame('Gate AB', $rows[0]['scanner_name']);
+        $this->assertTrue(Cache::has(AdminPanelService::ATTENDANCE_DIRECTORY_CACHE_KEY));
     }
 
     public function test_attendance_data_defaults_to_latest_non_future_scan_date_when_opened_without_date_filters(): void

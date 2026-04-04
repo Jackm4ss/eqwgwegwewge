@@ -1010,7 +1010,14 @@ php artisan optimize:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+php artisan admin:warm-cache
 ```
+
+Command `php artisan admin:warm-cache` penting dijalankan setelah cache rebuild production supaya:
+
+- snapshot User Management tidak cold-start di request admin pertama
+- Attendance Monitoring tidak membangun ulang directory berat saat halaman pertama dibuka
+- dashboard scanner gate aktif langsung punya snapshot harian awal
 
 ### Step 23 - Final smoke test
 
@@ -1049,6 +1056,7 @@ php artisan optimize:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+php artisan admin:warm-cache
 sudo systemctl reload nginx
 sudo systemctl restart php8.2-fpm
 ```
@@ -1224,6 +1232,7 @@ php artisan optimize:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+php artisan admin:warm-cache
 ```
 
 ---

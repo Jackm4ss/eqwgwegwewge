@@ -699,7 +699,7 @@ class AdminPanelService
                 $participantsByUserId,
                 $participantsByTicketCode,
             ),
-            $this->repository->queryScanLogs(),
+            $this->repository->allScanLogs(),
         );
 
         Cache::forever(self::ATTENDANCE_DIRECTORY_CACHE_KEY, $rows);
@@ -982,7 +982,8 @@ class AdminPanelService
 
     private function shouldUseOptimizedAttendanceQuery(array $filters): bool
     {
-        return trim((string) ($filters['q'] ?? '')) === '';
+        return trim((string) ($filters['q'] ?? '')) === ''
+            && trim((string) ($filters['scanner_post'] ?? '')) === '';
     }
 
     private function hydrateUser(array $user, ?array $ticketOverride = null): array
