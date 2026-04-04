@@ -3,11 +3,26 @@
 namespace Tests\Unit;
 
 use App\Services\Admin\AdminAnalyticsService;
+use App\Support\EmailTypoInspector;
 use Carbon\CarbonImmutable;
 use Tests\TestCase;
 
 class AdminAnalyticsServiceTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        EmailTypoInspector::clearFakes();
+    }
+
+    protected function tearDown(): void
+    {
+        EmailTypoInspector::clearFakes();
+
+        parent::tearDown();
+    }
+
     public function test_dashboard_counts_unique_visitors_and_duplicate_scans_for_default_range(): void
     {
         $service = new AdminAnalyticsService;
@@ -347,6 +362,47 @@ class AdminAnalyticsServiceTest extends TestCase
         $this->assertSame('Malaysia IC (MyKad)', $service->identityTypeLabel($filtered[0]['identity_type']));
     }
 
+    public function test_user_rows_can_filter_suspected_email_typos(): void
+    {
+        EmailTypoInspector::fake([
+            'alya@gmial.com' => [
+                'suspected' => true,
+                'suggested_email' => 'alya@gmail.com',
+            ],
+            'brian@example.test' => [
+                'suspected' => false,
+            ],
+        ]);
+
+        $service = new AdminAnalyticsService;
+        $rows = $service->buildUserRows(
+            users: [
+                [
+                    'user_id' => 'user-1',
+                    'full_name' => 'Alya Putri',
+                    'email' => 'alya@gmial.com',
+                    'created_at' => '2026-03-25T10:00:00Z',
+                ],
+                [
+                    'user_id' => 'user-2',
+                    'full_name' => 'Brian Tan',
+                    'email' => 'brian@example.test',
+                    'created_at' => '2026-03-25T11:00:00Z',
+                ],
+            ],
+            tickets: [],
+        );
+
+        $filtered = $service->filterUserRows($rows, [
+            'email_typo' => 'suspected',
+        ]);
+
+        $this->assertCount(1, $filtered);
+        $this->assertSame('user-1', $filtered[0]['user_id']);
+        $this->assertTrue($filtered[0]['email_typo_suspected']);
+        $this->assertSame('alya@gmail.com', $filtered[0]['email_typo_suggestion']);
+    }
+
     public function test_country_labels_follow_shared_registration_catalog(): void
     {
         $service = new AdminAnalyticsService;
@@ -641,6 +697,42 @@ class AdminAnalyticsServiceTest extends TestCase
                 'count' => 2,
             ],
         ], $options['identity_types']);
+    }
+
+    public function test_user_filter_options_include_email_typo_counts(): void
+    {
+        EmailTypoInspector::fake([
+            'alya@gmial.com' => [
+                'suspected' => true,
+                'suggested_email' => 'alya@gmail.com',
+            ],
+            'brian@example.test' => [
+                'suspected' => false,
+            ],
+        ]);
+
+        $service = new AdminAnalyticsService;
+        $rows = $service->buildUserRows(
+            users: [
+                [
+                    'user_id' => 'user-1',
+                    'email' => 'alya@gmial.com',
+                    'created_at' => '2026-03-25T10:00:00Z',
+                ],
+                [
+                    'user_id' => 'user-2',
+                    'email' => 'brian@example.test',
+                    'created_at' => '2026-03-25T11:00:00Z',
+                ],
+            ],
+            tickets: [],
+        );
+
+        $options = collect($service->buildUserFilterOptions($rows)['email_typo_statuses'])
+            ->keyBy('value');
+
+        $this->assertSame(1, $options['suspected']['count']);
+        $this->assertSame(1, $options['clean']['count']);
     }
 
     public function test_user_search_can_match_full_country_label(): void

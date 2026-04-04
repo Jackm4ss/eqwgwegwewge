@@ -302,8 +302,12 @@
       $filters['identity_type'] ?? null,
       $filters['verification_status'] ?? null,
       $filters['attendance_status'] ?? null,
+      $filters['email_typo'] ?? null,
       $filters['q'] ?? null,
     ])->filter(fn($value) => filled($value))->count();
+    $suspectedEmailTypoOption = collect($filterOptions['email_typo_statuses'] ?? [])
+      ->firstWhere('value', 'suspected');
+    $suspectedEmailTypoCount = (int) ($suspectedEmailTypoOption['count'] ?? 0);
 
     $eventStartDate = \Carbon\CarbonImmutable::parse(
       config('admin.event.start_date', '2026-04-09'),
@@ -393,9 +397,12 @@
       <div class="card-header d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
         <div>
           <h5 class="mb-1">Filters</h5>
-          <small class="text-muted">Filter participants by country, document type, verification, or check-in status.</small>
+          <small class="text-muted">Filter participants by country, document type, verification, check-in status, or suspected email typos.</small>
         </div>
         <div class="d-flex align-items-center gap-2">
+          @if ($suspectedEmailTypoCount > 0)
+            <span class="badge bg-label-warning">{{ number_format($suspectedEmailTypoCount) }} suspected email typos</span>
+          @endif
           @if ($activeFilterCount > 0)
             <span class="badge bg-label-primary">{{ $activeFilterCount }} active filters</span>
           @endif
@@ -449,6 +456,18 @@
               <option value="">All Check-In Statuses</option>
               @foreach ($filterOptions['attendance_statuses'] ?? [] as $status)
                 <option value="{{ $status['value'] }}" @selected(($filters['attendance_status'] ?? '') === $status['value'])>
+                  {{ $status['label'] }} ({{ number_format($status['count']) }})
+                </option>
+              @endforeach
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <label for="email_typo" class="form-label">Email Quality</label>
+            <select class="form-select js-submit-on-change" id="email_typo" name="email_typo">
+              <option value="">All Emails</option>
+              @foreach ($filterOptions['email_typo_statuses'] ?? [] as $status)
+                <option value="{{ $status['value'] }}" @selected(($filters['email_typo'] ?? '') === $status['value'])>
                   {{ $status['label'] }} ({{ number_format($status['count']) }})
                 </option>
               @endforeach
@@ -577,6 +596,14 @@
                       {{ $user['full_name'] ?? '-' }}
                     </button>
                     <small class="text-muted">{{ $user['email'] ?? '-' }}</small>
+                    @if (!empty($user['email_typo_suspected']))
+                      <small class="text-warning">
+                        Possible typo
+                        @if (!empty($user['email_typo_suggestion']))
+                          . Suggested: {{ $user['email_typo_suggestion'] }}
+                        @endif
+                      </small>
+                    @endif
                   </div>
                 </div>
               </td>

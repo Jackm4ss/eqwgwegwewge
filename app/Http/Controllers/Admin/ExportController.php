@@ -21,7 +21,7 @@ class ExportController extends Controller
         AdminExportService $exportService,
         AdminAuditLogger $auditLogger,
     ): Response {
-        $filters = $request->only(['q', 'from', 'to', 'report_type']);
+        $filters = $this->resolveFilters($request, $type);
         $rows = $type === 'public-reports'
             ? $publicReportService->exportRows($filters)
             : $adminPanel->exportRows($type, $filters);
@@ -49,5 +49,38 @@ class ExportController extends Controller
         return $format === 'xlsx'
             ? $exportService->xlsxDownload($filename, $rows)
             : $exportService->csvDownload($filename, $rows);
+    }
+
+    private function resolveFilters(Request $request, string $type): array
+    {
+        return match ($type) {
+            'users' => $request->only([
+                'q',
+                'country',
+                'identity_type',
+                'verification_status',
+                'attendance_status',
+                'email_typo',
+            ]),
+            'attendance' => $request->only([
+                'q',
+                'scanner_post',
+                'from',
+                'to',
+            ]),
+            'public-reports' => $request->only([
+                'q',
+                'from',
+                'to',
+                'report_type',
+                'action_status',
+            ]),
+            default => $request->only([
+                'q',
+                'from',
+                'to',
+                'report_type',
+            ]),
+        };
     }
 }

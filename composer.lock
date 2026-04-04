@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7212e16fae59b18a1f665be3cbaddd14",
+    "content-hash": "466c3aec410f164770a5b367f06d12af",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -4046,6 +4046,66 @@
                 }
             ],
             "time": "2025-12-02T15:19:04+00:00"
+        },
+        {
+            "name": "silassiai/laravel-email-validation",
+            "version": "v1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Silassiai/laravel-email-validation.git",
+                "reference": "45599ff42b7217a3f0b2a3da552b948ed43b679d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Silassiai/laravel-email-validation/zipball/45599ff42b7217a3f0b2a3da552b948ed43b679d",
+                "reference": "45599ff42b7217a3f0b2a3da552b948ed43b679d",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Agent": "Silassiai\\LaravelEmailValidation\\Facades\\EmailValidationFacade"
+                    },
+                    "providers": [
+                        "Silassiai\\LaravelEmailValidation\\EmailValidationServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Silassiai\\LaravelEmailValidation\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Silas de Rooy",
+                    "email": "silasderooy@gmail.com"
+                }
+            ],
+            "description": "Validate your email with this email validation package on email filter, typos. dns and spoofing.",
+            "keywords": [
+                "email",
+                "email-validaton",
+                "email-validator",
+                "emailvalidation",
+                "laravel",
+                "package",
+                "silassiai",
+                "validation"
+            ],
+            "support": {
+                "issues": "https://github.com/Silassiai/laravel-email-validation/issues",
+                "source": "https://github.com/Silassiai/laravel-email-validation/tree/v1.0.1"
+            },
+            "time": "2024-09-02T12:52:57+00:00"
         },
         {
             "name": "symfony/clock",

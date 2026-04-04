@@ -6,6 +6,7 @@ use App\Services\Admin\AdminAnalyticsService;
 use App\Services\Admin\AdminFirestoreRepository;
 use App\Services\Admin\AdminPanelService;
 use App\Services\Admin\AdminParticipantNotificationService;
+use App\Support\EmailTypoInspector;
 use App\Services\Scanner\ScannerGateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
@@ -18,12 +19,14 @@ class AdminPanelServiceTest extends TestCase
     {
         parent::setUp();
 
+        EmailTypoInspector::clearFakes();
         $this->clearUserManagementMetaCache();
         $this->clearAttendanceCache();
     }
 
     protected function tearDown(): void
     {
+        EmailTypoInspector::clearFakes();
         $this->clearUserManagementMetaCache();
         $this->clearAttendanceCache();
 
@@ -262,6 +265,70 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(3, $page['filter_options']['identity_types'][1]['count']);
     }
 
+    public function test_optimized_user_management_meta_includes_email_typo_counts(): void
+    {
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+
+        EmailTypoInspector::fake([
+            'bad@gmial.com' => [
+                'suspected' => true,
+                'suggested_email' => 'bad@gmail.com',
+            ],
+            'good@example.test' => [
+                'suspected' => false,
+            ],
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('paginateUsers')
+            ->once()
+            ->with([], 1, 10)
+            ->andReturn([
+                'items' => [],
+                'total' => 0,
+            ]);
+        $repository->shouldReceive('findTicketsByIds')
+            ->once()
+            ->with([])
+            ->andReturn([]);
+        $repository->shouldReceive('findScanLogsByUserIds')
+            ->once()
+            ->with([])
+            ->andReturn([]);
+        $repository->shouldReceive('allUsers')
+            ->once()
+            ->andReturn([
+                ['user_id' => 'user-1', 'country' => 'MY', 'email' => 'bad@gmial.com'],
+                ['user_id' => 'user-2', 'country' => 'ID', 'email' => 'good@example.test'],
+            ]);
+        $repository->shouldReceive('countUsers')
+            ->andReturnUsing(function (array $filters = []): int {
+                return match ($filters) {
+                    [] => 2,
+                    ['verification_status' => 'verified'] => 0,
+                    ['verification_status' => 'verified', 'account_status' => 'active'] => 0,
+                    ['identity_type' => 'national_id'] => 0,
+                    ['identity_type' => 'passport'] => 2,
+                    default => 0,
+                };
+            });
+        $repository->shouldReceive('countTickets')
+            ->once()
+            ->with(['attendance_status' => 'checked_in'])
+            ->andReturn(0);
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+        $page = $service->userManagementPage([]);
+        $emailTypoOptions = collect($page['filter_options']['email_typo_statuses'])
+            ->keyBy('value');
+
+        $this->assertSame(1, $emailTypoOptions['suspected']['count']);
+        $this->assertSame(1, $emailTypoOptions['clean']['count']);
+    }
+
     public function test_optimized_user_management_page_uses_cached_meta_snapshot_while_marked_stale(): void
     {
         Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
@@ -468,6 +535,92 @@ class AdminPanelServiceTest extends TestCase
 
         $this->assertSame(1, $page['users']->total());
         $this->assertSame('user-mm', $page['users']->items()[0]['user_id']);
+    }
+
+    public function test_user_management_email_typo_filter_uses_cached_directory_snapshot(): void
+    {
+        EmailTypoInspector::fake([
+            'cherry@gmial.com' => [
+                'suspected' => true,
+                'suggested_email' => 'cherry@gmail.com',
+            ],
+            'hein@example.test' => [
+                'suspected' => false,
+            ],
+        ]);
+
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 2],
+            'filter_options' => [
+                'countries' => [],
+                'verification_statuses' => [],
+                'identity_types' => [],
+                'attendance_statuses' => [],
+                'email_typo_statuses' => [],
+            ],
+        ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-my',
+                'full_name' => 'Cherry Thin',
+                'email' => 'cherry@gmial.com',
+                'country' => 'MY',
+                'country_label' => 'Malaysia',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'attendance_status' => 'not_checked_in',
+                'ticket_id' => 'ticket-my',
+                'ticket_code' => 'TICKET-MY',
+                'identity_type' => 'passport',
+                'identity_number' => 'A1234567',
+                'created_at' => '2026-04-02T10:00:00Z',
+            ],
+            [
+                'user_id' => 'user-mm',
+                'full_name' => 'Hein Lin',
+                'email' => 'hein@example.test',
+                'country' => 'MM',
+                'country_label' => 'Myanmar',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'attendance_status' => 'checked_in',
+                'ticket_id' => 'ticket-mm',
+                'ticket_code' => 'TICKET-MM',
+                'identity_type' => 'passport',
+                'identity_number' => 'B1234567',
+                'created_at' => '2026-04-02T09:00:00Z',
+            ],
+        ]);
+
+        $filters = [
+            'email_typo' => 'suspected',
+            'page' => 1,
+            'per_page' => 10,
+        ];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findScanLogsByUserIds')
+            ->once()
+            ->with(['user-my'])
+            ->andReturn([]);
+        $repository->shouldNotReceive('paginateUsers');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('allScanLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+        $page = $service->userManagementPage($filters);
+
+        $this->assertSame(1, $page['users']->total());
+        $this->assertSame('user-my', $page['users']->items()[0]['user_id']);
+        $this->assertTrue($page['users']->items()[0]['email_typo_suspected']);
     }
 
     public function test_user_management_page_falls_back_to_cached_directory_when_firestore_query_needs_index(): void

@@ -2,6 +2,7 @@
 
 namespace App\Services\Admin;
 
+use App\Support\EmailTypoInspector;
 use App\Support\CountryCatalog;
 use Carbon\CarbonImmutable;
 
@@ -177,6 +178,11 @@ class AdminAnalyticsService
 
     public function buildUserRows(array $users, array $tickets): array
     {
+        EmailTypoInspector::preload(array_map(
+            fn (array $user): string => (string) ($user['email'] ?? ''),
+            $users,
+        ));
+
         $ticketsById = [];
         $ticketsByUserId = [];
 
@@ -200,18 +206,20 @@ class AdminAnalyticsService
             $userId = (string) ($user['user_id'] ?? '');
             $ticket = $ticketsById[$ticketId] ?? $ticketsByUserId[$userId] ?? null;
 
-            $row = $this->decorateTrafficAttribution(array_merge($user, [
-                'ticket_code' => (string) ($ticket['ticket_code'] ?? ''),
-                'ticket_status' => (string) ($ticket['status'] ?? ''),
-                'qr_version' => (string) ($ticket['qr_version'] ?? ''),
-                'attendance_status' => $this->normalizeAttendanceStatus($ticket['attendance_status'] ?? null),
-                'checked_in_at' => $ticket['checked_in_at'] ?? null,
-                'ticket_created_at' => $ticket['created_at'] ?? null,
-                'ticket_regenerated_at' => $ticket['regenerated_at'] ?? null,
-                'ticket_updated_at' => $ticket['updated_at'] ?? null,
-                'has_ticket' => $ticket !== null,
-                'country_label' => $this->countryLabel($user['country'] ?? null),
-            ]));
+            $row = $this->decorateEmailQuality(
+                $this->decorateTrafficAttribution(array_merge($user, [
+                    'ticket_code' => (string) ($ticket['ticket_code'] ?? ''),
+                    'ticket_status' => (string) ($ticket['status'] ?? ''),
+                    'qr_version' => (string) ($ticket['qr_version'] ?? ''),
+                    'attendance_status' => $this->normalizeAttendanceStatus($ticket['attendance_status'] ?? null),
+                    'checked_in_at' => $ticket['checked_in_at'] ?? null,
+                    'ticket_created_at' => $ticket['created_at'] ?? null,
+                    'ticket_regenerated_at' => $ticket['regenerated_at'] ?? null,
+                    'ticket_updated_at' => $ticket['updated_at'] ?? null,
+                    'has_ticket' => $ticket !== null,
+                    'country_label' => $this->countryLabel($user['country'] ?? null),
+                ]))
+            );
 
             $rows[] = $row;
         }
@@ -224,6 +232,19 @@ class AdminAnalyticsService
         });
 
         return $rows;
+    }
+
+    public function decorateEmailTypoRows(array $rows): array
+    {
+        EmailTypoInspector::preload(array_map(
+            fn (array $row): string => (string) ($row['email'] ?? ''),
+            $rows,
+        ));
+
+        return array_map(
+            fn (array $row): array => $this->decorateEmailQuality($row),
+            $rows,
+        );
     }
 
     public function attachAttendanceProgress(array $rows, array $scanLogs): array
@@ -298,13 +319,19 @@ class AdminAnalyticsService
 
     public function filterUserRows(array $rows, array $filters = []): array
     {
+        EmailTypoInspector::preload(array_map(
+            fn (array $row): string => (string) ($row['email'] ?? ''),
+            $rows,
+        ));
+
         $query = $this->normalizeText((string) ($filters['q'] ?? ''));
         $country = strtoupper(trim((string) ($filters['country'] ?? '')));
         $identityType = $this->normalizeIdentityType($filters['identity_type'] ?? null, allowEmpty: true);
         $verificationStatus = strtolower(trim((string) ($filters['verification_status'] ?? '')));
         $attendanceStatus = $this->normalizeAttendanceStatus($filters['attendance_status'] ?? null, allowEmpty: true);
+        $emailTypo = strtolower(trim((string) ($filters['email_typo'] ?? '')));
 
-        return array_values(array_filter($rows, function (array $row) use ($attendanceStatus, $country, $identityType, $query, $verificationStatus) {
+        return array_values(array_filter($rows, function (array $row) use ($attendanceStatus, $country, $emailTypo, $identityType, $query, $verificationStatus) {
             if ($query !== '' && ! str_contains($this->userSearchHaystack($row), $query)) {
                 return false;
             }
@@ -322,6 +349,10 @@ class AdminAnalyticsService
             }
 
             if ($attendanceStatus !== '' && $this->normalizeAttendanceStatus($row['attendance_status'] ?? null) !== $attendanceStatus) {
+                return false;
+            }
+
+            if (! $this->rowMatchesEmailTypoFilter($row, $emailTypo)) {
                 return false;
             }
 
@@ -373,6 +404,11 @@ class AdminAnalyticsService
 
     public function buildUserFilterOptions(array $rows): array
     {
+        EmailTypoInspector::preload(array_map(
+            fn (array $row): string => (string) ($row['email'] ?? ''),
+            $rows,
+        ));
+
         $countries = [];
         $verificationCounts = [
             'verified' => 0,
@@ -385,6 +421,10 @@ class AdminAnalyticsService
         $attendanceCounts = [
             'checked_in' => 0,
             'not_checked_in' => 0,
+        ];
+        $emailTypoCounts = [
+            'suspected' => 0,
+            'clean' => 0,
         ];
 
         foreach ($rows as $row) {
@@ -409,6 +449,9 @@ class AdminAnalyticsService
             } else {
                 $attendanceCounts['not_checked_in']++;
             }
+
+            $emailTypoAnalysis = $this->emailTypoAnalysisForRow($row);
+            $emailTypoCounts[$emailTypoAnalysis['suspected'] ? 'suspected' : 'clean']++;
         }
 
         $countryOptions = array_map(
@@ -458,6 +501,18 @@ class AdminAnalyticsService
                     'value' => 'not_checked_in',
                     'label' => 'Not Checked In',
                     'count' => $attendanceCounts['not_checked_in'],
+                ],
+            ],
+            'email_typo_statuses' => [
+                [
+                    'value' => 'suspected',
+                    'label' => 'Suspected Typo',
+                    'count' => $emailTypoCounts['suspected'],
+                ],
+                [
+                    'value' => 'clean',
+                    'label' => 'Looks Valid',
+                    'count' => $emailTypoCounts['clean'],
                 ],
             ],
         ];
@@ -878,6 +933,7 @@ class AdminAnalyticsService
         return $this->normalizeText(implode(' ', array_filter([
             (string) ($row['full_name'] ?? ''),
             (string) ($row['email'] ?? ''),
+            (string) ($row['email_typo_suggestion'] ?? ''),
             (string) ($row['identity_type'] ?? ''),
             $this->identityTypeLabel($row['identity_type'] ?? null),
             (string) ($row['identity_number'] ?? ''),
@@ -891,6 +947,51 @@ class AdminAnalyticsService
             (string) ($row['traffic_medium_label'] ?? ''),
             (string) ($row['traffic_referrer_host'] ?? ''),
         ])));
+    }
+
+    private function decorateEmailQuality(array $row): array
+    {
+        $analysis = $this->emailTypoAnalysisForRow($row);
+
+        $row['email_typo_status'] = $analysis['status'];
+        $row['email_typo_suspected'] = $analysis['suspected'];
+        $row['email_typo_suggestion'] = $analysis['suggested_email'];
+        $row['email_typo_reason'] = $analysis['reason'];
+
+        return $row;
+    }
+
+    private function rowMatchesEmailTypoFilter(array $row, string $filter): bool
+    {
+        if ($filter === '') {
+            return true;
+        }
+
+        $analysis = $this->emailTypoAnalysisForRow($row);
+
+        return match ($filter) {
+            'suspected' => (bool) ($analysis['suspected'] ?? false),
+            'clean' => ! ((bool) ($analysis['suspected'] ?? false)),
+            default => true,
+        };
+    }
+
+    private function emailTypoAnalysisForRow(array $row): array
+    {
+        if (array_key_exists('email_typo_suspected', $row)) {
+            return [
+                'status' => (string) ($row['email_typo_status'] ?? (((bool) ($row['email_typo_suspected'] ?? false)) ? 'suspected_typo' : 'clean')),
+                'suspected' => (bool) ($row['email_typo_suspected'] ?? false),
+                'suggested_email' => filled($row['email_typo_suggestion'] ?? null)
+                    ? (string) $row['email_typo_suggestion']
+                    : null,
+                'reason' => filled($row['email_typo_reason'] ?? null)
+                    ? (string) $row['email_typo_reason']
+                    : null,
+            ];
+        }
+
+        return EmailTypoInspector::analyze((string) ($row['email'] ?? ''));
     }
 
     private function normalizeIdentityType(mixed $value, bool $allowEmpty = false): string

@@ -29,6 +29,7 @@ class UserManagementController extends Controller
             'identity_type',
             'verification_status',
             'attendance_status',
+            'email_typo',
         ]);
         $pageData = $this->adminPanel->userManagementPage($filters);
 

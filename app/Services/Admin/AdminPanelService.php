@@ -2,6 +2,7 @@
 
 namespace App\Services\Admin;
 
+use App\Support\EmailTypoInspector;
 use App\Services\Scanner\ScannerGateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -11,9 +12,9 @@ use RuntimeException;
 class AdminPanelService
 {
     public const DASHBOARD_CACHE_VERSION_KEY = 'admin:dashboard:version';
-    public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v4';
+    public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v5';
     public const USER_MANAGEMENT_META_STALE_KEY = 'admin:user-management:meta:stale:v1';
-    public const USER_MANAGEMENT_DIRECTORY_CACHE_KEY = 'admin:user-management:directory:v1';
+    public const USER_MANAGEMENT_DIRECTORY_CACHE_KEY = 'admin:user-management:directory:v2';
     public const USER_MANAGEMENT_DIRECTORY_STALE_KEY = 'admin:user-management:directory:stale:v1';
     public const ATTENDANCE_DIRECTORY_CACHE_KEY = 'admin:attendance:directory:v1';
     public const ATTENDANCE_DIRECTORY_STALE_KEY = 'admin:attendance:directory:stale:v1';
@@ -493,10 +494,13 @@ class AdminPanelService
             $pageRows,
         ));
         $meta = $this->cachedUserManagementMeta();
+        $rows = $this->analytics->decorateEmailTypoRows(
+            $this->analytics->attachAttendanceProgress($pageRows, $scanLogs),
+        );
 
         return [
             'users' => new LengthAwarePaginator(
-                $this->analytics->attachAttendanceProgress($pageRows, $scanLogs),
+                $rows,
                 count($filteredRows),
                 $perPage,
                 $page,
@@ -570,15 +574,31 @@ class AdminPanelService
             'attendance_status' => 'checked_in',
         ]);
         $countryCounts = [];
+        $emailTypoCounts = [
+            'suspected' => 0,
+            'clean' => 0,
+        ];
+        $allUsers = $this->repository->allUsers();
 
-        foreach ($this->repository->allUsers() as $user) {
+        EmailTypoInspector::preload(array_map(
+            fn (array $user): string => (string) ($user['email'] ?? ''),
+            $allUsers,
+        ));
+
+        foreach ($allUsers as $user) {
             $countryCode = strtoupper(trim((string) ($user['country'] ?? '')));
 
             if ($countryCode === '') {
+                $emailAnalysis = EmailTypoInspector::analyze((string) ($user['email'] ?? ''));
+                $emailTypoCounts[$emailAnalysis['suspected'] ? 'suspected' : 'clean']++;
+
                 continue;
             }
 
             $countryCounts[$countryCode] = ($countryCounts[$countryCode] ?? 0) + 1;
+
+            $emailAnalysis = EmailTypoInspector::analyze((string) ($user['email'] ?? ''));
+            $emailTypoCounts[$emailAnalysis['suspected'] ? 'suspected' : 'clean']++;
         }
 
         $countryOptions = array_map(
@@ -639,6 +659,18 @@ class AdminPanelService
                         'value' => 'not_checked_in',
                         'label' => 'Not Checked In',
                         'count' => max(0, $totalUsers - $checkedInUsers),
+                    ],
+                ],
+                'email_typo_statuses' => [
+                    [
+                        'value' => 'suspected',
+                        'label' => 'Suspected Typo',
+                        'count' => $emailTypoCounts['suspected'],
+                    ],
+                    [
+                        'value' => 'clean',
+                        'label' => 'Looks Valid',
+                        'count' => $emailTypoCounts['clean'],
                     ],
                 ],
             ],
@@ -972,7 +1004,8 @@ class AdminPanelService
     private function shouldUseOptimizedUserManagementQuery(array $filters): bool
     {
         return trim((string) ($filters['q'] ?? '')) === ''
-            && trim((string) ($filters['attendance_status'] ?? '')) === '';
+            && trim((string) ($filters['attendance_status'] ?? '')) === ''
+            && trim((string) ($filters['email_typo'] ?? '')) === '';
     }
 
     private function shouldUseOptimizedActivityLogQuery(array $filters): bool
