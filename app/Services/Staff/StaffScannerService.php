@@ -6,12 +6,16 @@ use App\Models\Admin;
 use App\Services\Admin\AdminAnalyticsService;
 use App\Services\Admin\AdminFirestoreRepository;
 use App\Services\Tickets\TicketQrCodeService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 class StaffScannerService
 {
+    private const DASHBOARD_CACHE_TTL_DAYS = 2;
+    private const DASHBOARD_REFRESH_LOCK_SECONDS = 180;
+
     public function __construct(
         private readonly AdminFirestoreRepository $repository,
         private readonly AdminAnalyticsService $analytics,
@@ -169,46 +173,31 @@ class StaffScannerService
 
     public function dashboard(Admin $operator, string $scannerPost, int $page = 1, int $perPage = 5): array
     {
+        $snapshot = $this->cachedDashboardSnapshot($scannerPost);
+
         return [
-            'stats' => $this->stats($operator, $scannerPost),
-            'history' => $this->history($operator, $scannerPost, $page, $perPage),
+            'stats' => $snapshot['stats'],
+            'history' => $this->historyFromSnapshot($snapshot, $page, $perPage),
         ];
     }
 
     public function history(Admin $operator, string $scannerPost, int $page = 1, int $perPage = 5): array
     {
-        $filters = $this->scannerActivityFilters($scannerPost);
-        $page = max(1, $page);
-        $perPage = max(1, min($perPage, 50));
-        $history = $this->repository->paginateScanLogs($filters, $page, $perPage);
-        $items = array_map(
-            fn (array $log): array => $this->historyItemFromLog($log),
-            array_values($history['items'] ?? []),
+        return $this->historyFromSnapshot(
+            $this->cachedDashboardSnapshot($scannerPost),
+            $page,
+            $perPage,
         );
-        $total = max(0, (int) ($history['total'] ?? 0));
-
-        return [
-            'items' => $items,
-            'meta' => [
-                'page' => $page,
-                'per_page' => $perPage,
-                'total' => $total,
-                'has_more' => ($page * $perPage) < $total,
-                'scope_date' => (string) ($filters['from'] ?? ''),
-            ],
-        ];
     }
 
     public function stats(Admin $operator, string $scannerPost): array
     {
-        $filters = $this->scannerActivityFilters($scannerPost);
+        return $this->cachedDashboardSnapshot($scannerPost)['stats'];
+    }
 
-        return [
-            'total_scans' => $this->repository->countScanLogs($filters),
-            'successful_scans' => $this->repository->countScanLogs([...$filters, 'result' => 'success']),
-            'duplicate_scans' => $this->repository->countScanLogs([...$filters, 'result' => 'duplicate']),
-            'invalid_scans' => $this->repository->countScanLogs([...$filters, 'result' => 'invalid']),
-        ];
+    public function warmDashboardCache(string $scannerPost): array
+    {
+        return $this->refreshDashboardSnapshot($scannerPost);
     }
 
     private function buildScanResponse(
@@ -230,7 +219,9 @@ class StaffScannerService
             'scanner_post' => $scannerPost,
             'participant' => $this->participantSummary($user, $ticket),
             'activity_item' => is_array($log) ? $this->historyItemFromLog($log, $ticket, $user) : null,
-            'stats' => $this->stats($this->placeholderOperator(), $scannerPost),
+            'stats' => is_array($log)
+                ? $this->syncDashboardStatsAfterScan($scannerPost, $log, $ticket, $user)
+                : $this->stats($this->placeholderOperator(), $scannerPost),
         ];
     }
 
@@ -257,19 +248,247 @@ class StaffScannerService
             'scanner_post' => $scannerPost,
             'participant' => null,
             'activity_item' => $this->historyItemFromLog($log),
-            'stats' => $this->stats($this->placeholderOperator(), $scannerPost),
+            'stats' => $this->syncDashboardStatsAfterScan($scannerPost, $log),
         ];
     }
 
-    private function scannerActivityFilters(string $scannerPost): array
+    private function scannerActivityFilters(string $scannerPost, ?string $scopeDate = null): array
     {
-        $scopeDate = now($this->eventTimezone())->toDateString();
+        $scopeDate ??= $this->scannerScopeDate();
 
         return [
             'scanner_post' => $scannerPost,
             'from' => $scopeDate,
             'to' => $scopeDate,
         ];
+    }
+
+    private function cachedDashboardSnapshot(string $scannerPost): array
+    {
+        $scopeDate = $this->scannerScopeDate();
+        $cacheKey = StaffScannerDashboardCache::snapshotKey($scannerPost, $scopeDate);
+        $snapshot = Cache::get($cacheKey);
+
+        if ($this->validDashboardSnapshot($snapshot)) {
+            if (Cache::has(StaffScannerDashboardCache::staleKey($scannerPost, $scopeDate))) {
+                $this->scheduleDashboardSnapshotRefreshAfterResponse($scannerPost, $scopeDate);
+            }
+
+            /** @var array{rows:array<int, array<string, mixed>>, stats:array<string, int>, scope_date:string} $snapshot */
+            return $snapshot;
+        }
+
+        return $this->refreshDashboardSnapshot($scannerPost, $scopeDate);
+    }
+
+    private function refreshDashboardSnapshot(string $scannerPost, ?string $scopeDate = null): array
+    {
+        $scopeDate ??= $this->scannerScopeDate();
+        $filters = $this->scannerActivityFilters($scannerPost, $scopeDate);
+        $rows = array_map(
+            fn (array $log): array => $this->dashboardActivityRow($log),
+            array_values($this->repository->queryScanLogs($filters)),
+        );
+        $snapshot = [
+            'scanner_post' => $scannerPost,
+            'scope_date' => $scopeDate,
+            'rows' => $rows,
+            'stats' => $this->statsFromRows($rows),
+            'generated_at' => now()->toIso8601String(),
+        ];
+
+        Cache::put(
+            StaffScannerDashboardCache::snapshotKey($scannerPost, $scopeDate),
+            $snapshot,
+            now()->addDays(self::DASHBOARD_CACHE_TTL_DAYS),
+        );
+        Cache::forget(StaffScannerDashboardCache::staleKey($scannerPost, $scopeDate));
+
+        return $snapshot;
+    }
+
+    private function historyFromSnapshot(array $snapshot, int $page = 1, int $perPage = 5): array
+    {
+        $page = max(1, $page);
+        $perPage = max(1, min($perPage, 50));
+        $rows = array_values(array_filter(
+            $snapshot['rows'] ?? [],
+            static fn (mixed $row): bool => is_array($row),
+        ));
+        $total = count($rows);
+        $items = array_map(
+            fn (array $log): array => $this->historyItemFromLog($log),
+            array_slice($rows, ($page - 1) * $perPage, $perPage),
+        );
+
+        return [
+            'items' => $items,
+            'meta' => [
+                'page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'has_more' => ($page * $perPage) < $total,
+                'scope_date' => (string) ($snapshot['scope_date'] ?? $this->scannerScopeDate()),
+            ],
+        ];
+    }
+
+    private function syncDashboardStatsAfterScan(
+        string $scannerPost,
+        array $log,
+        ?array $ticket = null,
+        ?array $user = null,
+    ): array {
+        $scopeDate = $this->scopeDateFromLog($log);
+        $cacheKey = StaffScannerDashboardCache::snapshotKey($scannerPost, $scopeDate);
+        $snapshot = Cache::get($cacheKey);
+
+        if (! $this->validDashboardSnapshot($snapshot)) {
+            return $this->refreshDashboardSnapshot($scannerPost, $scopeDate)['stats'];
+        }
+
+        $updatedRow = $this->dashboardActivityRow($log, $ticket, $user);
+        $updatedRows = [$updatedRow];
+        $updatedScanId = $this->scanIdFromLog($updatedRow);
+
+        foreach ($snapshot['rows'] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            if ($this->scanIdFromLog($row) === $updatedScanId) {
+                continue;
+            }
+
+            $updatedRows[] = $row;
+        }
+
+        $updatedSnapshot = [
+            'scanner_post' => $scannerPost,
+            'scope_date' => $scopeDate,
+            'rows' => $updatedRows,
+            'stats' => $this->statsFromRows($updatedRows),
+            'generated_at' => now()->toIso8601String(),
+        ];
+
+        Cache::put($cacheKey, $updatedSnapshot, now()->addDays(self::DASHBOARD_CACHE_TTL_DAYS));
+        Cache::forget(StaffScannerDashboardCache::staleKey($scannerPost, $scopeDate));
+
+        return $updatedSnapshot['stats'];
+    }
+
+    private function scheduleDashboardSnapshotRefreshAfterResponse(string $scannerPost, string $scopeDate): void
+    {
+        if (app()->environment('testing')) {
+            return;
+        }
+
+        $refreshLockKey = StaffScannerDashboardCache::refreshLockKey($scannerPost, $scopeDate);
+
+        if (! Cache::add(
+            $refreshLockKey,
+            now()->toIso8601String(),
+            now()->addSeconds(self::DASHBOARD_REFRESH_LOCK_SECONDS),
+        )) {
+            return;
+        }
+
+        app()->terminating(function () use ($refreshLockKey, $scannerPost, $scopeDate): void {
+            try {
+                $this->refreshDashboardSnapshot($scannerPost, $scopeDate);
+            } catch (\Throwable) {
+                // Keep serving the last known gate snapshot and retry later
+                // rather than slowing down the current operator request.
+            } finally {
+                Cache::forget($refreshLockKey);
+            }
+        });
+    }
+
+    private function statsFromRows(array $rows): array
+    {
+        $stats = [
+            'total_scans' => 0,
+            'successful_scans' => 0,
+            'duplicate_scans' => 0,
+            'invalid_scans' => 0,
+        ];
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $stats['total_scans']++;
+
+            match (strtolower(trim((string) ($row['result'] ?? 'invalid')))) {
+                'success' => $stats['successful_scans']++,
+                'duplicate' => $stats['duplicate_scans']++,
+                default => $stats['invalid_scans']++,
+            };
+        }
+
+        return $stats;
+    }
+
+    private function dashboardActivityRow(
+        array $log,
+        ?array $ticket = null,
+        ?array $user = null,
+    ): array {
+        $participantSnapshot = $this->participantSnapshotFromLog($log);
+
+        if ($participantSnapshot === null && is_array($ticket) && is_array($user)) {
+            $participantSnapshot = $this->participantSummary($user, $ticket);
+        }
+
+        return [
+            'scan_id' => $this->scanIdFromLog($log),
+            'result' => strtolower(trim((string) ($log['result'] ?? 'invalid'))),
+            'ticket_id' => (string) ($log['ticket_id'] ?? ($ticket['ticket_id'] ?? '')),
+            'user_id' => (string) ($log['user_id'] ?? ($user['user_id'] ?? $ticket['user_id'] ?? '')),
+            'ticket_code' => (string) ($log['ticket_code'] ?? ($ticket['ticket_code'] ?? '')),
+            'entry_code_display' => trim((string) ($log['entry_code_display'] ?? ($ticket['entry_code_display'] ?? ''))),
+            'scanner_name' => (string) ($log['scanner_name'] ?? ''),
+            'scanned_at' => (string) ($log['scanned_at'] ?? ''),
+            'participant_snapshot' => $participantSnapshot,
+        ];
+    }
+
+    private function validDashboardSnapshot(mixed $snapshot): bool
+    {
+        return is_array($snapshot)
+            && is_array($snapshot['rows'] ?? null)
+            && is_array($snapshot['stats'] ?? null)
+            && is_string($snapshot['scope_date'] ?? null);
+    }
+
+    private function scannerScopeDate(): string
+    {
+        return now($this->eventTimezone())->toDateString();
+    }
+
+    private function scopeDateFromLog(array $log): string
+    {
+        $scanDate = trim((string) ($log['scan_date'] ?? ''));
+
+        if ($scanDate !== '') {
+            return $scanDate;
+        }
+
+        $scannedAt = trim((string) ($log['scanned_at'] ?? ''));
+
+        if ($scannedAt === '') {
+            return $this->scannerScopeDate();
+        }
+
+        try {
+            return Carbon::parse($scannedAt)
+                ->setTimezone($this->eventTimezone())
+                ->toDateString();
+        } catch (\Throwable) {
+            return $this->scannerScopeDate();
+        }
     }
 
     private function ticketIsActive(?array $ticket): bool

@@ -7,6 +7,7 @@ use App\Services\Admin\AdminFirestoreRepository;
 use App\Services\Firebase\FirebaseClientFactory;
 use App\Services\Firebase\FirestoreRestApi;
 use App\Services\Firebase\FirestoreTimestampNormalizer;
+use App\Services\Staff\StaffScannerDashboardCache;
 use App\Services\Tickets\TicketQrCodeService;
 use Google\Cloud\Firestore\FirestoreClient;
 use Google\Cloud\Firestore\Query;
@@ -27,6 +28,7 @@ class AdminFirestoreRepositoryTest extends TestCase
         ]);
 
         Carbon::setTestNow('2026-03-29 10:00:00');
+        Cache::flush();
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY);
         Cache::forget(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
@@ -326,6 +328,9 @@ class AdminFirestoreRepositoryTest extends TestCase
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY));
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY));
+        $this->assertTrue(Cache::has(
+            StaffScannerDashboardCache::staleKey('Gate A', '2026-03-29')
+        ));
     }
 
     public function test_paginate_admin_activity_logs_uses_firestore_range_query_for_date_filters(): void

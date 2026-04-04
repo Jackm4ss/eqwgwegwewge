@@ -5,6 +5,7 @@ namespace App\Services\Admin;
 use App\Services\Firebase\FirebaseClientFactory;
 use App\Services\Firebase\FirestoreRestApi;
 use App\Services\Firebase\FirestoreTimestampNormalizer;
+use App\Services\Staff\StaffScannerDashboardCache;
 use App\Services\Tickets\TicketQrCodeService;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
@@ -474,6 +475,10 @@ class AdminFirestoreRepository
             $payload,
         );
         $this->markAttendanceMonitoringCacheStale();
+        $this->markScannerDashboardCacheStale(
+            (string) ($payload['scanner_name'] ?? ''),
+            (string) ($payload['scan_date'] ?? ''),
+        );
 
         return $payload;
     }
@@ -1201,7 +1206,11 @@ class AdminFirestoreRepository
 
             $this->restApi->commit($writes, $transaction);
             $committed = true;
-            $this->markAttendanceCachesStale($result);
+            $this->markAttendanceCachesStale(
+                $result,
+                (string) ($scanLog['scanner_name'] ?? ''),
+                (string) ($scanLog['scan_date'] ?? ''),
+            );
 
             return [
                 'result' => $result,
@@ -1276,7 +1285,11 @@ class AdminFirestoreRepository
                 $this->timestamps->prepareForStorage($scanLog),
             );
 
-            $this->markAttendanceCachesStale($result);
+            $this->markAttendanceCachesStale(
+                $result,
+                (string) ($scanLog['scanner_name'] ?? ''),
+                (string) ($scanLog['scan_date'] ?? ''),
+            );
 
             return [
                 'result' => $result,
@@ -1938,9 +1951,14 @@ class AdminFirestoreRepository
         }
     }
 
-    private function markAttendanceCachesStale(string $result): void
+    private function markAttendanceCachesStale(
+        string $result,
+        ?string $scannerName = null,
+        ?string $scanDate = null,
+    ): void
     {
         $this->markAttendanceMonitoringCacheStale();
+        $this->markScannerDashboardCacheStale($scannerName, $scanDate);
 
         if ($result !== 'success') {
             return;
@@ -1953,6 +1971,21 @@ class AdminFirestoreRepository
     private function markAttendanceMonitoringCacheStale(): void
     {
         Cache::forever(AdminPanelService::ATTENDANCE_DIRECTORY_STALE_KEY, true);
+    }
+
+    private function markScannerDashboardCacheStale(?string $scannerName, ?string $scanDate): void
+    {
+        $normalizedScannerName = trim((string) $scannerName);
+        $normalizedScanDate = trim((string) $scanDate);
+
+        if ($normalizedScannerName === '' || $normalizedScanDate === '') {
+            return;
+        }
+
+        Cache::forever(
+            StaffScannerDashboardCache::staleKey($normalizedScannerName, $normalizedScanDate),
+            true,
+        );
     }
 
     private function buildStructuredQuery(
