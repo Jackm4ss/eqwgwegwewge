@@ -133,6 +133,13 @@ const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw';
 const ENABLE_LEGACY_SUCCESS_SCREEN = true;
 const TICKET_HEADER_FONT_FAMILY = '"Tilt Warp", sans-serif';
 const PUBLIC_HOME_URL = getSpaUrl('publicHome', '/');
+const MYANMAR_COUNTRY_CODE = 'MM';
+const MYANMAR_REGISTRATION_HOLD_COPY = 'Myanmar registrations are temporarily on hold until further notice.';
+const MYANMAR_POPUP_BODY = [
+  'Registration requests for applicants from Myanmar are temporarily on hold until further notice.',
+  'If your passport or official ID is issued by Myanmar, please wait for the next official registration update before submitting this form.',
+  'Please do not continue under a different nationality. Every registration must match the passport or official ID presented during verification at the venue.',
+] as const;
 
 function MapsPinIcon() {
   return (
@@ -797,6 +804,7 @@ export function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isRecaptchaReady, setIsRecaptchaReady] = useState(!recaptchaEnabled);
+  const [isMyanmarNoticeOpen, setIsMyanmarNoticeOpen] = useState(true);
   const [legalDialog, setLegalDialog] = useState<LegalDialogType | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState('');
@@ -1624,7 +1632,13 @@ export function RegisterPage() {
                       <Controller
                         control={control}
                         name="country"
-                        rules={{ required: 'Nationality is required.' }}
+                        rules={{
+                          required: 'Nationality is required.',
+                          validate: (value) => (
+                            value !== MYANMAR_COUNTRY_CODE
+                              || MYANMAR_REGISTRATION_HOLD_COPY
+                          ),
+                        }}
                         render={({ field }) => (
                           <Select value={field.value} onValueChange={field.onChange}>
                             <SelectTrigger
@@ -1649,13 +1663,22 @@ export function RegisterPage() {
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-sky-100">
                               {PRIORITY_SORTED_COUNTRIES.map(c => (
-                                <SelectItem key={c.code} value={c.code}>
+                                <SelectItem
+                                  key={c.code}
+                                  value={c.code}
+                                  disabled={c.code === MYANMAR_COUNTRY_CODE}
+                                >
                                   <span className="flex items-center gap-2.5">
                                     <span
                                       className={`fi fi-${c.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
                                       aria-hidden="true"
                                     />
                                     <span>{c.name}</span>
+                                    {c.code === MYANMAR_COUNTRY_CODE ? (
+                                      <span className="text-[11px] font-medium text-amber-700">
+                                        Temporarily unavailable
+                                      </span>
+                                    ) : null}
                                   </span>
                                 </SelectItem>
                               ))}
@@ -1663,13 +1686,22 @@ export function RegisterPage() {
                                 <SelectSeparator className="my-1 bg-sky-100" />
                               )}
                               {OTHER_SORTED_COUNTRIES.map(c => (
-                                <SelectItem key={c.code} value={c.code}>
+                                <SelectItem
+                                  key={c.code}
+                                  value={c.code}
+                                  disabled={c.code === MYANMAR_COUNTRY_CODE}
+                                >
                                   <span className="flex items-center gap-2.5">
                                     <span
                                       className={`fi fi-${c.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
                                       aria-hidden="true"
                                     />
                                     <span>{c.name}</span>
+                                    {c.code === MYANMAR_COUNTRY_CODE ? (
+                                      <span className="text-[11px] font-medium text-amber-700">
+                                        Temporarily unavailable
+                                      </span>
+                                    ) : null}
                                   </span>
                                 </SelectItem>
                               ))}
@@ -1858,6 +1890,38 @@ export function RegisterPage() {
 
         </motion.main>
       </div>
+
+      <Dialog open={isMyanmarNoticeOpen} onOpenChange={setIsMyanmarNoticeOpen}>
+        <DialogContent showCloseButton={false} className="max-w-lg gap-0 overflow-hidden rounded-[1.75rem] border-amber-100 p-0 shadow-2xl">
+          <div className="bg-gradient-to-r from-amber-100 via-white to-sky-50 px-6 py-5">
+            <DialogHeader className="text-left">
+              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 text-amber-700 shadow-sm">
+                <AlertCircle className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <DialogTitle className="text-xl font-bold tracking-tight text-slate-900" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                Important Registration Update
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-600">
+                Myanmar registrations are currently paused.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="px-6 py-5">
+            <div className="flex flex-col gap-3 text-sm leading-7 text-slate-600">
+              {MYANMAR_POPUP_BODY.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter className="border-t border-slate-100 px-6 py-4">
+            <Button type="button" onClick={() => setIsMyanmarNoticeOpen(false)}>
+              I Understand
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={legalDialog !== null} onOpenChange={(open) => !open && setLegalDialog(null)}>
         {activeLegalDialog ? (
