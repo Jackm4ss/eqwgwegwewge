@@ -82,7 +82,7 @@ class RegistrationService
         );
         $result['user'] = $delivery['user'];
         $result['delivery'] = $delivery['delivery'];
-        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY, true);
 
         return $result;
     }

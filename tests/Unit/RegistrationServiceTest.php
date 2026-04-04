@@ -4,7 +4,9 @@ namespace Tests\Unit;
 
 use App\Contracts\UserRepositoryInterface;
 use App\Mail\TicketReadyMail;
+use App\Services\Admin\AdminPanelService;
 use App\Services\Auth\RegistrationService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Tests\Fakes\InMemoryUserRepository;
@@ -20,6 +22,16 @@ class RegistrationServiceTest extends TestCase
 
         $this->repository = new InMemoryUserRepository;
         $this->app->instance(UserRepositoryInterface::class, $this->repository);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY);
+    }
+
+    protected function tearDown(): void
+    {
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY);
+
+        parent::tearDown();
     }
 
     public function test_register_issues_scanner_compatible_ticket_for_new_participant(): void
@@ -126,5 +138,29 @@ class RegistrationServiceTest extends TestCase
         ], '127.0.0.1');
 
         $this->assertSame('901231101234', $result['user']['identity_number']);
+    }
+
+    public function test_register_marks_user_management_meta_cache_stale_without_dropping_snapshot(): void
+    {
+        Mail::fake();
+
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 9349],
+            'filter_options' => [],
+        ]);
+
+        app(RegistrationService::class)->register([
+            'full_name' => 'Cache Refresh User',
+            'email' => 'cache-refresh@example.com',
+            'phone_country_code' => '+62',
+            'phone_national_number' => '8123456789',
+            'phone_number' => '+628123456789',
+            'country' => 'ID',
+            'identity_type' => 'passport',
+            'identity_number' => 'B7654321',
+        ], '127.0.0.1');
+
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY));
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
     }
 }

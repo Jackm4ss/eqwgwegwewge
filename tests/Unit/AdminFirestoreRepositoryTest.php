@@ -27,11 +27,15 @@ class AdminFirestoreRepositoryTest extends TestCase
         ]);
 
         Carbon::setTestNow('2026-03-29 10:00:00');
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY);
     }
 
     protected function tearDown(): void
     {
         Carbon::setTestNow();
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY);
         Mockery::close();
 
         parent::tearDown();
@@ -180,9 +184,12 @@ class AdminFirestoreRepositoryTest extends TestCase
         $this->assertSame($user, $result['user']);
     }
 
-    public function test_record_scanner_attendance_flushes_admin_user_management_cache_on_success(): void
+    public function test_record_scanner_attendance_marks_admin_user_management_cache_stale_on_success(): void
     {
-        Cache::put(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, ['stale' => true], now()->addMinutes(5));
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 1],
+            'filter_options' => [],
+        ]);
 
         $restApi = Mockery::mock(FirestoreRestApi::class);
         $timestamps = Mockery::mock(FirestoreTimestampNormalizer::class);
@@ -308,7 +315,8 @@ class AdminFirestoreRepositoryTest extends TestCase
         $result = $repository->recordScannerAttendance($ticket, $user, $scanLogInput);
 
         $this->assertSame('success', $result['result']);
-        $this->assertFalse(Cache::has(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY));
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY));
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
     }
 
     public function test_paginate_admin_activity_logs_uses_firestore_range_query_for_date_filters(): void

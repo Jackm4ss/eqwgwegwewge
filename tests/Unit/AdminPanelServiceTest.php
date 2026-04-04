@@ -14,6 +14,20 @@ use Tests\TestCase;
 
 class AdminPanelServiceTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->clearUserManagementMetaCache();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->clearUserManagementMetaCache();
+
+        parent::tearDown();
+    }
+
     public function test_dashboard_data_uses_targeted_queries_and_caches_default_range_snapshot(): void
     {
         Cache::forget(AdminPanelService::DASHBOARD_CACHE_VERSION_KEY);
@@ -244,6 +258,65 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(1, $page['filter_options']['identity_types'][0]['count']);
         $this->assertSame('Passport', $page['filter_options']['identity_types'][1]['label']);
         $this->assertSame(3, $page['filter_options']['identity_types'][1]['count']);
+    }
+
+    public function test_optimized_user_management_page_uses_cached_meta_snapshot_while_marked_stale(): void
+    {
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => [
+                'total_users' => 9350,
+                'verified_users' => 9100,
+                'checked_in_users' => 1200,
+                'follow_up_users' => 250,
+                'countries_count' => 12,
+                'verified_rate' => 97.33,
+                'checked_in_rate' => 12.83,
+                'follow_up_rate' => 2.67,
+            ],
+            'filter_options' => [
+                'countries' => [
+                    [
+                        'value' => 'MY',
+                        'label' => 'Malaysia',
+                        'count' => 1200,
+                    ],
+                ],
+                'verification_statuses' => [],
+                'identity_types' => [],
+                'attendance_statuses' => [],
+            ],
+        ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY, true);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('paginateUsers')
+            ->once()
+            ->with([], 1, 10)
+            ->andReturn([
+                'items' => [],
+                'total' => 0,
+            ]);
+        $repository->shouldReceive('findTicketsByIds')
+            ->once()
+            ->with([])
+            ->andReturn([]);
+        $repository->shouldReceive('findScanLogsByUserIds')
+            ->once()
+            ->with([])
+            ->andReturn([]);
+        $repository->shouldNotReceive('countUsers');
+        $repository->shouldNotReceive('countTickets');
+        $repository->shouldNotReceive('allUsers');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+        $page = $service->userManagementPage([]);
+
+        $this->assertSame(9350, $page['overview']['total_users']);
+        $this->assertSame('Malaysia', $page['filter_options']['countries'][0]['label']);
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
     }
 
     public function test_user_management_page_falls_back_to_legacy_when_firestore_query_needs_index(): void
@@ -742,5 +815,11 @@ class AdminPanelServiceTest extends TestCase
             $notifications,
             $scannerGates,
         );
+    }
+
+    private function clearUserManagementMetaCache(): void
+    {
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY);
     }
 }

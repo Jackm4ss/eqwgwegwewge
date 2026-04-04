@@ -12,9 +12,11 @@ class AdminPanelService
 {
     public const DASHBOARD_CACHE_VERSION_KEY = 'admin:dashboard:version';
     public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v4';
+    public const USER_MANAGEMENT_META_STALE_KEY = 'admin:user-management:meta:stale:v1';
     private const DASHBOARD_CACHE_KEY_PREFIX = 'admin:dashboard:v2';
     private const DASHBOARD_CACHE_TTL_SECONDS = 30;
-    private const USER_MANAGEMENT_META_CACHE_TTL_HOURS = 12;
+    private const USER_MANAGEMENT_META_REFRESH_LOCK_KEY = 'admin:user-management:meta:refreshing:v1';
+    private const USER_MANAGEMENT_META_REFRESH_LOCK_SECONDS = 300;
     private const ACTIVITY_LOG_MAX_PER_PAGE = 100;
 
     public function __construct(
@@ -62,7 +64,19 @@ class AdminPanelService
 
     public function flushUserManagementCache(): void
     {
+        Cache::forget(self::USER_MANAGEMENT_META_STALE_KEY);
+        Cache::forget(self::USER_MANAGEMENT_META_REFRESH_LOCK_KEY);
         Cache::forget(self::USER_MANAGEMENT_META_CACHE_KEY);
+    }
+
+    public function markUserManagementCacheStale(): void
+    {
+        Cache::forever(self::USER_MANAGEMENT_META_STALE_KEY, true);
+    }
+
+    public function warmUserManagementCache(): array
+    {
+        return $this->refreshUserManagementMetaCache();
     }
 
     public function flushDashboardCache(): void
@@ -390,11 +404,17 @@ class AdminPanelService
 
     private function cachedUserManagementMeta(): array
     {
-        return Cache::remember(
-            self::USER_MANAGEMENT_META_CACHE_KEY,
-            now()->addHours(self::USER_MANAGEMENT_META_CACHE_TTL_HOURS),
-            fn (): array => $this->buildUserManagementMetaSnapshot(),
-        );
+        $cachedSnapshot = Cache::get(self::USER_MANAGEMENT_META_CACHE_KEY);
+
+        if (is_array($cachedSnapshot)) {
+            if (Cache::has(self::USER_MANAGEMENT_META_STALE_KEY)) {
+                $this->scheduleUserManagementMetaRefreshAfterResponse();
+            }
+
+            return $cachedSnapshot;
+        }
+
+        return $this->refreshUserManagementMetaCache();
     }
 
     private function buildUserManagementMetaSnapshot(): array
@@ -484,6 +504,42 @@ class AdminPanelService
                 ],
             ],
         ];
+    }
+
+    private function refreshUserManagementMetaCache(): array
+    {
+        $snapshot = $this->buildUserManagementMetaSnapshot();
+
+        Cache::forever(self::USER_MANAGEMENT_META_CACHE_KEY, $snapshot);
+        Cache::forget(self::USER_MANAGEMENT_META_STALE_KEY);
+
+        return $snapshot;
+    }
+
+    private function scheduleUserManagementMetaRefreshAfterResponse(): void
+    {
+        if (app()->environment('testing')) {
+            return;
+        }
+
+        if (! Cache::add(
+            self::USER_MANAGEMENT_META_REFRESH_LOCK_KEY,
+            now()->toIso8601String(),
+            now()->addSeconds(self::USER_MANAGEMENT_META_REFRESH_LOCK_SECONDS),
+        )) {
+            return;
+        }
+
+        app()->terminating(function (): void {
+            try {
+                $this->refreshUserManagementMetaCache();
+            } catch (\Throwable) {
+                // Keep serving the last known snapshot and retry later rather
+                // than slowing down the current admin page load.
+            } finally {
+                Cache::forget(self::USER_MANAGEMENT_META_REFRESH_LOCK_KEY);
+            }
+        });
     }
 
     private function shouldUseOptimizedUserManagementQuery(array $filters): bool
