@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster, toast } from 'sonner';
+import emailSpellChecker from '@zootools/email-spell-checker';
 import {
   User, Mail, Phone, Globe, MapPin, IdCard,
   Calendar, Music2, ChevronDown, CheckCircle2,
@@ -133,6 +134,7 @@ const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw';
 const ENABLE_LEGACY_SUCCESS_SCREEN = true;
 const TICKET_HEADER_FONT_FAMILY = '"Tilt Warp", sans-serif';
 const PUBLIC_HOME_URL = getSpaUrl('publicHome', '/');
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Myanmar registration hold popup kept here for quick re-enable if needed.
 // const MYANMAR_COUNTRY_CODE = 'MM';
 // const MYANMAR_REGISTRATION_HOLD_COPY = 'Myanmar registrations are temporarily on hold until further notice.';
@@ -141,6 +143,24 @@ const PUBLIC_HOME_URL = getSpaUrl('publicHome', '/');
 //   'If your passport or official ID is issued by Myanmar, please wait for the next official registration update before submitting this form.',
 //   'Please do not continue under a different nationality. Every registration must match the passport or official ID presented during verification at the venue.',
 // ] as const;
+
+function normalizeEmailValue(value: string) {
+  return value.trim();
+}
+
+function getEmailTypoSuggestion(email: string) {
+  const normalizedEmail = normalizeEmailValue(email);
+
+  if (!EMAIL_PATTERN.test(normalizedEmail)) {
+    return null;
+  }
+
+  return emailSpellChecker.run({ email: normalizedEmail }) ?? null;
+}
+
+function buildEmailTypoMessage(suggestedEmail: string) {
+  return `Please double-check your email address. Did you mean ${suggestedEmail}? Update it before submit.`;
+}
 
 function MapsPinIcon() {
   return (
@@ -1060,6 +1080,21 @@ export function RegisterPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
+      const emailSuggestion = getEmailTypoSuggestion(data.email);
+
+      if (emailSuggestion) {
+        setError(
+          'email',
+          {
+            type: 'manual',
+            message: buildEmailTypoMessage(emailSuggestion.full),
+          },
+          { shouldFocus: true },
+        );
+
+        return;
+      }
+
       const phoneNumber = buildPhoneNumber(data.phone_country_code, data.phone_national_number);
       const selectedCountry = SORTED_COUNTRIES.find(country => country.code === data.country)?.name ?? data.country;
       const selectedIdentityLabel = data.identity_type === 'national_id'
@@ -1528,7 +1563,15 @@ export function RegisterPage() {
                           className={inputClass('email')}
                           {...register('email', {
                             required: 'Email is required.',
-                            pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email format.' },
+                            setValueAs: (value: string) => normalizeEmailValue(value),
+                            pattern: { value: EMAIL_PATTERN, message: 'Invalid email format.' },
+                            validate: (value: string) => {
+                              const suggestion = getEmailTypoSuggestion(value);
+
+                              return suggestion
+                                ? buildEmailTypoMessage(suggestion.full)
+                                : true;
+                            },
                           })}
                         />
                       </div>
