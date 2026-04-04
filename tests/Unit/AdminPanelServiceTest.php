@@ -319,9 +319,166 @@ class AdminPanelServiceTest extends TestCase
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
     }
 
-    public function test_user_management_page_falls_back_to_legacy_when_firestore_query_needs_index(): void
+    public function test_user_management_search_uses_cached_directory_snapshot_when_query_is_present(): void
     {
-        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 2],
+            'filter_options' => [
+                'countries' => [],
+                'verification_statuses' => [],
+                'identity_types' => [],
+                'attendance_statuses' => [],
+            ],
+        ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-my',
+                'full_name' => 'Cherry Thin',
+                'email' => 'cherry@example.test',
+                'country' => 'MY',
+                'country_label' => 'Malaysia',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'attendance_status' => 'not_checked_in',
+                'ticket_id' => 'ticket-my',
+                'ticket_code' => 'TICKET-MY',
+                'identity_type' => 'passport',
+                'identity_number' => 'A1234567',
+                'created_at' => '2026-04-02T10:00:00Z',
+            ],
+            [
+                'user_id' => 'user-mm',
+                'full_name' => 'Hein Lin',
+                'email' => 'hein@example.test',
+                'country' => 'MM',
+                'country_label' => 'Myanmar',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'attendance_status' => 'checked_in',
+                'ticket_id' => 'ticket-mm',
+                'ticket_code' => 'TICKET-MM',
+                'identity_type' => 'passport',
+                'identity_number' => 'B1234567',
+                'created_at' => '2026-04-02T09:00:00Z',
+            ],
+        ]);
+
+        $filters = [
+            'q' => 'cherry',
+            'page' => 1,
+            'per_page' => 10,
+        ];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findScanLogsByUserIds')
+            ->once()
+            ->with(['user-my'])
+            ->andReturn([]);
+        $repository->shouldNotReceive('paginateUsers');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('allScanLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+
+        $page = $service->userManagementPage($filters);
+
+        $this->assertSame(1, $page['users']->total());
+        $this->assertSame('user-my', $page['users']->items()[0]['user_id']);
+    }
+
+    public function test_user_management_check_in_filter_uses_cached_directory_snapshot(): void
+    {
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 2],
+            'filter_options' => [
+                'countries' => [],
+                'verification_statuses' => [],
+                'identity_types' => [],
+                'attendance_statuses' => [],
+            ],
+        ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-my',
+                'full_name' => 'Cherry Thin',
+                'email' => 'cherry@example.test',
+                'country' => 'MY',
+                'country_label' => 'Malaysia',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'attendance_status' => 'not_checked_in',
+                'ticket_id' => 'ticket-my',
+                'ticket_code' => 'TICKET-MY',
+                'identity_type' => 'passport',
+                'identity_number' => 'A1234567',
+                'created_at' => '2026-04-02T10:00:00Z',
+            ],
+            [
+                'user_id' => 'user-mm',
+                'full_name' => 'Hein Lin',
+                'email' => 'hein@example.test',
+                'country' => 'MM',
+                'country_label' => 'Myanmar',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'attendance_status' => 'checked_in',
+                'ticket_id' => 'ticket-mm',
+                'ticket_code' => 'TICKET-MM',
+                'identity_type' => 'passport',
+                'identity_number' => 'B1234567',
+                'created_at' => '2026-04-02T09:00:00Z',
+            ],
+        ]);
+
+        $filters = [
+            'attendance_status' => 'checked_in',
+            'page' => 1,
+            'per_page' => 10,
+        ];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findScanLogsByUserIds')
+            ->once()
+            ->with(['user-mm'])
+            ->andReturn([]);
+        $repository->shouldNotReceive('paginateUsers');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('allScanLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+        $page = $service->userManagementPage($filters);
+
+        $this->assertSame(1, $page['users']->total());
+        $this->assertSame('user-mm', $page['users']->items()[0]['user_id']);
+    }
+
+    public function test_user_management_page_falls_back_to_cached_directory_when_firestore_query_needs_index(): void
+    {
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 2],
+            'filter_options' => [
+                'countries' => [],
+                'verification_statuses' => [],
+                'identity_types' => [],
+                'attendance_statuses' => [],
+            ],
+        ]);
 
         $filters = [
             'country' => 'MY',
@@ -374,8 +531,9 @@ class AdminPanelServiceTest extends TestCase
                     'attendance_status' => 'not_checked_in',
                 ],
             ]);
-        $repository->shouldReceive('allScanLogs')
+        $repository->shouldReceive('findScanLogsByUserIds')
             ->once()
+            ->with(['user-my'])
             ->andReturn([]);
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
@@ -821,5 +979,7 @@ class AdminPanelServiceTest extends TestCase
     {
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY);
     }
 }

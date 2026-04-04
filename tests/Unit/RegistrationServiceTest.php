@@ -24,12 +24,16 @@ class RegistrationServiceTest extends TestCase
         $this->app->instance(UserRepositoryInterface::class, $this->repository);
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY);
     }
 
     protected function tearDown(): void
     {
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY);
 
         parent::tearDown();
     }
@@ -148,6 +152,9 @@ class RegistrationServiceTest extends TestCase
             'overview' => ['total_users' => 9349],
             'filter_options' => [],
         ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            ['user_id' => 'user-1'],
+        ]);
 
         app(RegistrationService::class)->register([
             'full_name' => 'Cache Refresh User',
@@ -162,5 +169,7 @@ class RegistrationServiceTest extends TestCase
 
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY));
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY));
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY));
     }
 }

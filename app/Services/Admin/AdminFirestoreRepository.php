@@ -1944,6 +1944,7 @@ class AdminFirestoreRepository
         }
 
         Cache::forever(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY, true);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY, true);
     }
 
     private function buildStructuredQuery(
