@@ -14,7 +14,7 @@ class AdminUpdateAdminRequest extends FormRequest
 
     public function rules(): array
     {
-        $adminUser = $this->route('adminUser');
+        $adminUser = $this->route('adminUser') ?? $this->route('scannerUser');
         $adminUserId = $adminUser?->getKey();
 
         return [

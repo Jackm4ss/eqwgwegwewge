@@ -57,6 +57,7 @@
 
         @php
           $adminManagementOpen = request()->routeIs('admin.logs.*') || request()->routeIs('admin.admin-users.*');
+          $scannerManagementOpen = request()->routeIs('admin.scanner-users.*');
           $reportManagementOpen = request()->routeIs('admin.reports.*') || request()->routeIs('admin.public-reports.*');
         @endphp
 
@@ -105,6 +106,19 @@
               <li class="menu-item {{ request()->routeIs('admin.admin-users.*') ? 'active' : '' }}">
                 <a href="{{ route('admin.admin-users.index') }}" class="menu-link">
                   <div>List User Admin</div>
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="menu-item {{ $scannerManagementOpen ? 'active open' : '' }}">
+            <a href="javascript:void(0);" class="menu-link menu-toggle">
+              <i class="menu-icon icon-base ti tabler-scan"></i>
+              <div>Scanner Management</div>
+            </a>
+            <ul class="menu-sub">
+              <li class="menu-item {{ request()->routeIs('admin.scanner-users.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.scanner-users.index') }}" class="menu-link">
+                  <div>List User Scanner</div>
                 </a>
               </li>
             </ul>

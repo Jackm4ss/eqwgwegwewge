@@ -1,7 +1,33 @@
 @extends('admin.layouts.app')
 
 @php
-  $title = 'List User Admin';
+  $management = array_merge([
+    'badge' => 'Admin Management',
+    'list_title' => 'List User Admin',
+    'list_description' => '',
+    'summary_total_label' => 'Total admins',
+    'summary_active_label' => 'Active accounts',
+    'summary_online_label' => 'Visible online',
+    'summary_offline_label' => 'Visible offline',
+    'index_route' => 'admin.admin-users.index',
+    'search_label' => 'Search admin',
+    'search_placeholder' => 'Search by admin name or email',
+    'directory_title' => 'Admin Account Directory',
+    'directory_count_noun' => 'admin accounts',
+    'create_route' => 'admin.admin-users.create',
+    'create_button_label' => 'Create Admin',
+    'edit_route' => 'admin.admin-users.edit',
+    'destroy_route' => 'admin.admin-users.destroy',
+    'empty_state' => 'No admin accounts matched the current filters.',
+    'presence_footer_resource_label' => 'admin accounts',
+    'delete_dialog_title' => 'Delete this admin account?',
+    'delete_dialog_subject' => 'this admin',
+    'delete_dialog_directory' => 'admin directory',
+    'delete_dialog_access' => 'admin dashboard',
+    'delete_confirm_label' => 'Yes, delete admin',
+    'delete_cancel_label' => 'Keep account',
+  ], $management ?? []);
+  $title = $management['list_title'];
 @endphp
 
 @push('vendor-styles')
@@ -54,47 +80,69 @@
     <div class="card-body">
       <div>
         <div>
-          <span class="badge bg-label-primary mb-2">Admin Management</span>
-          <h5 class="mb-1">List User Admin</h5>
-          <p class="text-muted mb-0">
-            View administrator accounts stored in the local SQL table, including account status,
-            email identity, and live online presence.
-          </p>
+          <span class="badge bg-label-primary mb-2">{{ $management['badge'] }}</span>
+          <h5 class="mb-1">{{ $management['list_title'] }}</h5>
+          @if (filled($management['list_description'] ?? null))
+            <p class="text-muted mb-0">
+              {{ $management['list_description'] }}
+            </p>
+          @endif
         </div>
       </div>
     </div>
-  </div>
-
-  <div class="row g-4 mb-6">
-    <div class="col-sm-6 col-xl-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <small class="text-muted d-block mb-1">Total admins</small>
-          <h4 class="mb-0">{{ number_format((int) ($summary['total'] ?? 0)) }}</h4>
+    <div class="card-body border-top pt-4">
+      <div class="row g-4">
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 h-100 p-4">
+            <div class="d-flex align-items-start mb-3">
+              <div class="avatar flex-shrink-0">
+                <span class="avatar-initial rounded bg-label-primary">
+                  <i class="icon-base ti tabler-users"></i>
+                </span>
+              </div>
+            </div>
+            <small class="text-muted d-block mb-1">{{ $management['summary_total_label'] }}</small>
+            <h4 class="mb-0">{{ number_format((int) ($summary['total'] ?? 0)) }}</h4>
+          </div>
         </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-xl-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <small class="text-muted d-block mb-1">Active accounts</small>
-          <h4 class="mb-0">{{ number_format((int) ($summary['active'] ?? 0)) }}</h4>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 h-100 p-4">
+            <div class="d-flex align-items-start mb-3">
+              <div class="avatar flex-shrink-0">
+                <span class="avatar-initial rounded bg-label-success">
+                  <i class="icon-base ti tabler-user-check"></i>
+                </span>
+              </div>
+            </div>
+            <small class="text-muted d-block mb-1">{{ $management['summary_active_label'] }}</small>
+            <h4 class="mb-0">{{ number_format((int) ($summary['active'] ?? 0)) }}</h4>
+          </div>
         </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-xl-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <small class="text-muted d-block mb-1">Visible online</small>
-          <h4 class="mb-0" data-online-count>{{ number_format($visibleOnlineCount) }}</h4>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 h-100 p-4">
+            <div class="d-flex align-items-start mb-3">
+              <div class="avatar flex-shrink-0">
+                <span class="avatar-initial rounded bg-label-info">
+                  <i class="icon-base ti tabler-circle-check"></i>
+                </span>
+              </div>
+            </div>
+            <small class="text-muted d-block mb-1">{{ $management['summary_online_label'] }}</small>
+            <h4 class="mb-0" data-online-count>{{ number_format($visibleOnlineCount) }}</h4>
+          </div>
         </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-xl-3">
-      <div class="card h-100">
-        <div class="card-body">
-          <small class="text-muted d-block mb-1">Visible offline</small>
-          <h4 class="mb-0" data-offline-count>{{ number_format($visibleOfflineCount) }}</h4>
+        <div class="col-sm-6 col-xl-3">
+          <div class="border rounded-3 h-100 p-4">
+            <div class="d-flex align-items-start mb-3">
+              <div class="avatar flex-shrink-0">
+                <span class="avatar-initial rounded bg-label-secondary">
+                  <i class="icon-base ti tabler-eye-off"></i>
+                </span>
+              </div>
+            </div>
+            <small class="text-muted d-block mb-1">{{ $management['summary_offline_label'] }}</small>
+            <h4 class="mb-0" data-offline-count>{{ number_format($visibleOfflineCount) }}</h4>
+          </div>
         </div>
       </div>
     </div>
@@ -102,11 +150,11 @@
 
   <div class="card mb-6">
     <div class="card-body">
-      <form method="GET" action="{{ route('admin.admin-users.index') }}" class="row g-4 align-items-end">
+      <form method="GET" action="{{ route($management['index_route']) }}" class="row g-4 align-items-end">
         <div class="col-md-3">
-          <label class="form-label" for="q">Search admin</label>
+          <label class="form-label" for="q">{{ $management['search_label'] }}</label>
           <input type="text" class="form-control" id="q" name="q" value="{{ $filters['q'] ?? '' }}"
-            placeholder="Search by admin name or email" />
+            placeholder="{{ $management['search_placeholder'] }}" />
         </div>
         <div class="col-md-2">
           <label class="form-label" for="status">Status</label>
@@ -135,7 +183,7 @@
         <div class="col-md-3">
           <div class="d-flex flex-column flex-sm-row gap-2">
             <button type="submit" class="btn btn-primary flex-fill">Apply</button>
-            <a href="{{ route('admin.admin-users.index') }}" class="btn btn-label-danger flex-fill">
+            <a href="{{ route($management['index_route']) }}" class="btn btn-label-danger flex-fill">
               Reset filters
             </a>
           </div>
@@ -147,12 +195,12 @@
   <div class="card">
     <div class="card-header d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center">
       <div>
-        <h5 class="mb-1">Admin Account Directory</h5>
-        <small class="text-muted">{{ number_format($admins->total()) }} admin accounts found</small>
+        <h5 class="mb-1">{{ $management['directory_title'] }}</h5>
+        <small class="text-muted">{{ number_format($admins->total()) }} {{ $management['directory_count_noun'] }} found</small>
       </div>
       <div class="d-flex flex-wrap gap-2">
-        <a href="{{ route('admin.admin-users.create') }}" class="btn btn-primary">
-          Create Admin
+        <a href="{{ route($management['create_route']) }}" class="btn btn-primary">
+          {{ $management['create_button_label'] }}
         </a>
       </div>
     </div>
@@ -208,7 +256,7 @@
               <td>{{ $formatDateTime($admin->created_at) }}</td>
               <td class="text-end">
                 <div class="d-inline-flex flex-wrap justify-content-end gap-2">
-                  <a href="{{ route('admin.admin-users.edit', $admin) }}" class="btn btn-sm btn-label-primary">
+                  <a href="{{ route($management['edit_route'], $admin) }}" class="btn btn-sm btn-label-primary">
                     Edit
                   </a>
                   @if ($isCurrentAdmin)
@@ -216,7 +264,7 @@
                       Current account
                     </button>
                   @else
-                    <form method="POST" action="{{ route('admin.admin-users.destroy', $admin) }}"
+                    <form method="POST" action="{{ route($management['destroy_route'], $admin) }}"
                       class="js-delete-admin-form d-inline">
                       @csrf
                       @method('DELETE')
@@ -231,7 +279,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="7" class="text-center py-6 text-muted">No admin accounts matched the current filters.</td>
+              <td colspan="7" class="text-center py-6 text-muted">{{ $management['empty_state'] }}</td>
             </tr>
           @endforelse
         </tbody>
@@ -239,8 +287,8 @@
     </div>
     <div class="card-body border-top">
       <div class="small text-muted mb-3">
-        Presence updates automatically every {{ (int) ($presence['heartbeat_seconds'] ?? 45) }} seconds for the admin
-        accounts shown on this page,
+        Presence updates automatically every {{ (int) ($presence['heartbeat_seconds'] ?? 45) }} seconds for the
+        {{ $management['presence_footer_resource_label'] }} shown on this page,
       </div>
       {{ $admins->withQueryString()->links('pagination::bootstrap-5') }}
     </div>
@@ -250,6 +298,13 @@
 @push('page-scripts')
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+      const deleteDialogTitle = @json($management['delete_dialog_title']);
+      const deleteDialogSubject = @json($management['delete_dialog_subject']);
+      const deleteDialogDirectory = @json($management['delete_dialog_directory']);
+      const deleteDialogAccess = @json($management['delete_dialog_access']);
+      const deleteDialogConfirmLabel = @json($management['delete_confirm_label']);
+      const deleteDialogCancelLabel = @json($management['delete_cancel_label']);
+
       const escapeHtml = function (value) {
         return String(value)
           .replace(/&/g, '&amp;')
@@ -266,7 +321,7 @@
           }
 
           const button = form.querySelector('button[type="submit"]');
-          const adminName = button?.dataset.adminName || 'this admin';
+          const adminName = button?.dataset.adminName || deleteDialogSubject;
           const adminEmail = button?.dataset.adminEmail || '';
 
           event.preventDefault();
@@ -275,21 +330,21 @@
             ? `${adminName} (${adminEmail})`
             : adminName;
           const safeDetailLine = escapeHtml(detailLine);
-          const fallbackMessage = `${detailLine} will be removed from the admin directory and will no longer be able to sign in.`;
+          const fallbackMessage = `${detailLine} will be removed from the ${deleteDialogDirectory} and will no longer be able to sign in to the ${deleteDialogAccess}.`;
 
           let shouldDelete = false;
 
           if (window.Swal?.fire) {
             const result = await window.Swal.fire({
-              title: 'Delete this admin account?',
+              title: deleteDialogTitle,
               html: `
-                      <p class="mb-2 text-start">You are about to remove <strong>${safeDetailLine}</strong> from the admin directory.</p>
-                      <p class="mb-0 text-start text-muted">This account will immediately lose access to the admin dashboard.</p>
+                      <p class="mb-2 text-start">You are about to remove <strong>${safeDetailLine}</strong> from the ${escapeHtml(deleteDialogDirectory)}.</p>
+                      <p class="mb-0 text-start text-muted">This account will immediately lose access to the ${escapeHtml(deleteDialogAccess)}.</p>
                     `,
               icon: 'warning',
               showCancelButton: true,
-              confirmButtonText: 'Yes, delete admin',
-              cancelButtonText: 'Keep account',
+              confirmButtonText: deleteDialogConfirmLabel,
+              cancelButtonText: deleteDialogCancelLabel,
               reverseButtons: true,
               focusCancel: true,
               buttonsStyling: false,
@@ -301,7 +356,7 @@
 
             shouldDelete = Boolean(result.isConfirmed);
           } else {
-            shouldDelete = window.confirm(`${fallbackMessage}\n\nContinue deleting this admin account?`);
+            shouldDelete = window.confirm(`${fallbackMessage}\n\nContinue deleting this account?`);
           }
 
           if (!shouldDelete) {

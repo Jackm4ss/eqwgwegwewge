@@ -1,7 +1,24 @@
 @extends('admin.layouts.app')
 
 @php
-  $title = 'Edit Admin';
+  $management = array_merge([
+    'badge' => 'Admin Management',
+    'edit_page_title' => 'Edit Admin',
+    'edit_heading' => 'Edit Admin',
+    'edit_description' => 'Update the local administrator profile, email identity, and account status from one place.',
+    'index_route' => 'admin.admin-users.index',
+    'back_to_list_label' => 'Back to List User Admin',
+    'edit_card_title' => 'Admin Profile',
+    'edit_card_description' => 'Edit the main fields used to sign in to the admin dashboard.',
+    'update_route' => 'admin.admin-users.update',
+    'edit_role_display_help' => 'This page only manages admin-role accounts.',
+    'save_button_label' => 'Save Changes',
+    'cancel_label' => 'Cancel',
+    'snapshot_title' => 'Account Snapshot',
+    'snapshot_description' => 'Quick reference before saving changes.',
+    'snapshot_id_label' => 'Admin ID',
+  ], $management ?? []);
+  $title = $management['edit_page_title'];
 @endphp
 
 @section('content')
@@ -26,14 +43,14 @@
       <div class="card mb-6">
         <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-start gap-4">
           <div>
-            <span class="badge bg-label-primary mb-2">Admin Management</span>
-            <h4 class="mb-1">Edit Admin</h4>
+            <span class="badge bg-label-primary mb-2">{{ $management['badge'] }}</span>
+            <h4 class="mb-1">{{ $management['edit_heading'] }}</h4>
             <p class="text-muted mb-0">
-              Update the local administrator profile, email identity, and account status from one place.
+              {{ $management['edit_description'] }}
             </p>
           </div>
-          <a href="{{ route('admin.admin-users.index') }}" class="btn btn-label-secondary">
-            Back to List User Admin
+          <a href="{{ route($management['index_route']) }}" class="btn btn-label-secondary">
+            {{ $management['back_to_list_label'] }}
           </a>
         </div>
       </div>
@@ -42,11 +59,11 @@
         <div class="col-lg-8">
           <div class="card">
             <div class="card-header">
-              <h5 class="mb-1">Admin Profile</h5>
-              <small class="text-muted">Edit the main fields used to sign in to the admin dashboard.</small>
+              <h5 class="mb-1">{{ $management['edit_card_title'] }}</h5>
+              <small class="text-muted">{{ $management['edit_card_description'] }}</small>
             </div>
             <div class="card-body">
-              <form method="POST" action="{{ route('admin.admin-users.update', $adminUser) }}" class="row g-4">
+              <form method="POST" action="{{ route($management['update_route'], $adminUser) }}" class="row g-4">
                 @csrf
                 @method('PUT')
 
@@ -88,7 +105,7 @@
                     class="form-control"
                     value="{{ ucfirst((string) $adminUser->role) }}"
                     disabled />
-                  <small class="text-muted">This page only manages admin-role accounts.</small>
+                  <small class="text-muted">{{ $management['edit_role_display_help'] }}</small>
                 </div>
 
                 <div class="col-md-6">
@@ -134,8 +151,8 @@
                 </div>
 
                 <div class="col-12 d-flex flex-wrap gap-2 pt-2">
-                  <button type="submit" class="btn btn-primary">Save Changes</button>
-                  <a href="{{ route('admin.admin-users.index') }}" class="btn btn-label-secondary">Cancel</a>
+                  <button type="submit" class="btn btn-primary">{{ $management['save_button_label'] }}</button>
+                  <a href="{{ route($management['index_route']) }}" class="btn btn-label-secondary">{{ $management['cancel_label'] }}</a>
                 </div>
               </form>
             </div>
@@ -145,12 +162,12 @@
         <div class="col-lg-4">
           <div class="card mb-6">
             <div class="card-header">
-              <h5 class="mb-1">Account Snapshot</h5>
-              <small class="text-muted">Quick reference before saving changes.</small>
+              <h5 class="mb-1">{{ $management['snapshot_title'] }}</h5>
+              <small class="text-muted">{{ $management['snapshot_description'] }}</small>
             </div>
             <div class="card-body">
               <dl class="row mb-0 g-3">
-                <dt class="col-sm-5 text-muted">Admin ID</dt>
+                <dt class="col-sm-5 text-muted">{{ $management['snapshot_id_label'] }}</dt>
                 <dd class="col-sm-7 mb-0">{{ $adminUser->getKey() }}</dd>
 
                 <dt class="col-sm-5 text-muted">Current Status</dt>

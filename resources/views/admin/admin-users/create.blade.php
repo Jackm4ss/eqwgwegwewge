@@ -1,7 +1,29 @@
 @extends('admin.layouts.app')
 
 @php
-  $title = 'Create Admin';
+  $management = array_merge([
+    'badge' => 'Admin Management',
+    'create_page_title' => 'Create Admin',
+    'create_heading' => 'Create Admin',
+    'create_description' => 'Add a new local admin account so the team can sign in to the dashboard with its own credentials.',
+    'index_route' => 'admin.admin-users.index',
+    'back_to_list_label' => 'Back to List User Admin',
+    'create_card_title' => 'New Admin Profile',
+    'create_card_description' => 'Create a new administrator account in the local SQL admin table.',
+    'store_route' => 'admin.admin-users.store',
+    'role_display_value' => 'Admin',
+    'role_display_help' => 'This page creates dashboard admin accounts only.',
+    'create_submit_label' => 'Create Admin',
+    'cancel_label' => 'Cancel',
+    'notes_title' => 'Provisioning Notes',
+    'notes_description' => 'Quick reminders before the account goes live.',
+    'notes_items' => [
+      'Use a unique email address for each admin account.',
+      'Set the initial password to at least 8 characters.',
+      'Inactive admins stay listed but cannot access the dashboard.',
+    ],
+  ], $management ?? []);
+  $title = $management['create_page_title'];
 @endphp
 
 @section('content')
@@ -10,14 +32,14 @@
       <div class="card mb-6">
         <div class="card-body d-flex flex-column flex-lg-row justify-content-between align-items-start gap-4">
           <div>
-            <span class="badge bg-label-primary mb-2">Admin Management</span>
-            <h4 class="mb-1">Create Admin</h4>
+            <span class="badge bg-label-primary mb-2">{{ $management['badge'] }}</span>
+            <h4 class="mb-1">{{ $management['create_heading'] }}</h4>
             <p class="text-muted mb-0">
-              Add a new local admin account so the team can sign in to the dashboard with its own credentials.
+              {{ $management['create_description'] }}
             </p>
           </div>
-          <a href="{{ route('admin.admin-users.index') }}" class="btn btn-label-secondary">
-            Back to List User Admin
+          <a href="{{ route($management['index_route']) }}" class="btn btn-label-secondary">
+            {{ $management['back_to_list_label'] }}
           </a>
         </div>
       </div>
@@ -26,11 +48,11 @@
         <div class="col-lg-8">
           <div class="card">
             <div class="card-header">
-              <h5 class="mb-1">New Admin Profile</h5>
-              <small class="text-muted">Create a new administrator account in the local SQL admin table.</small>
+              <h5 class="mb-1">{{ $management['create_card_title'] }}</h5>
+              <small class="text-muted">{{ $management['create_card_description'] }}</small>
             </div>
             <div class="card-body">
-              <form method="POST" action="{{ route('admin.admin-users.store') }}" class="row g-4">
+              <form method="POST" action="{{ route($management['store_route']) }}" class="row g-4">
                 @csrf
 
                 <div class="col-md-6">
@@ -69,9 +91,9 @@
                     type="text"
                     id="role_display"
                     class="form-control"
-                    value="Admin"
+                    value="{{ $management['role_display_value'] }}"
                     disabled />
-                  <small class="text-muted">This page creates dashboard admin accounts only.</small>
+                  <small class="text-muted">{{ $management['role_display_help'] }}</small>
                 </div>
 
                 <div class="col-md-6">
@@ -117,8 +139,8 @@
                 </div>
 
                 <div class="col-12 d-flex flex-wrap gap-2 pt-2">
-                  <button type="submit" class="btn btn-primary">Create Admin</button>
-                  <a href="{{ route('admin.admin-users.index') }}" class="btn btn-label-secondary">Cancel</a>
+                  <button type="submit" class="btn btn-primary">{{ $management['create_submit_label'] }}</button>
+                  <a href="{{ route($management['index_route']) }}" class="btn btn-label-secondary">{{ $management['cancel_label'] }}</a>
                 </div>
               </form>
             </div>
@@ -128,14 +150,14 @@
         <div class="col-lg-4">
           <div class="card">
             <div class="card-header">
-              <h5 class="mb-1">Provisioning Notes</h5>
-              <small class="text-muted">Quick reminders before the account goes live.</small>
+              <h5 class="mb-1">{{ $management['notes_title'] }}</h5>
+              <small class="text-muted">{{ $management['notes_description'] }}</small>
             </div>
             <div class="card-body">
               <ul class="mb-0 ps-3 text-muted">
-                <li>Use a unique email address for each admin account.</li>
-                <li>Set the initial password to at least 8 characters.</li>
-                <li>Inactive admins stay listed but cannot access the dashboard.</li>
+                @foreach ($management['notes_items'] as $noteItem)
+                  <li>{{ $noteItem }}</li>
+                @endforeach
               </ul>
             </div>
           </div>

@@ -4,6 +4,7 @@ use App\Helpers\EmailMasker;
 use App\Http\Controllers\Admin\AdminActivityLogController;
 use App\Http\Controllers\Admin\AdminPresenceController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\ScannerUserController;
 use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\Auth\AuthenticatedAdminSessionController;
 use App\Http\Controllers\Admin\CampaignLinkController;
@@ -376,6 +377,18 @@ if ($isSubdomainMode) {
                     ->name('admin-users.update');
                 Route::delete('/admin-users/{adminUser}', [AdminUserController::class, 'destroy'])
                     ->name('admin-users.destroy');
+                Route::get('/scanner-users', [ScannerUserController::class, 'index'])
+                    ->name('scanner-users.index');
+                Route::get('/scanner-users/create', [ScannerUserController::class, 'create'])
+                    ->name('scanner-users.create');
+                Route::post('/scanner-users', [ScannerUserController::class, 'store'])
+                    ->name('scanner-users.store');
+                Route::get('/scanner-users/{scannerUser}/edit', [ScannerUserController::class, 'edit'])
+                    ->name('scanner-users.edit');
+                Route::put('/scanner-users/{scannerUser}', [ScannerUserController::class, 'update'])
+                    ->name('scanner-users.update');
+                Route::delete('/scanner-users/{scannerUser}', [ScannerUserController::class, 'destroy'])
+                    ->name('scanner-users.destroy');
                 Route::post('/presence/heartbeat', [AdminPresenceController::class, 'heartbeat'])
                     ->name('presence.heartbeat');
                 Route::get('/presence/statuses', [AdminPresenceController::class, 'statuses'])
@@ -472,6 +485,18 @@ if ($isSubdomainMode) {
                     ->name('admin-users.update');
                 Route::delete('/admin-users/{adminUser}', [AdminUserController::class, 'destroy'])
                     ->name('admin-users.destroy');
+                Route::get('/scanner-users', [ScannerUserController::class, 'index'])
+                    ->name('scanner-users.index');
+                Route::get('/scanner-users/create', [ScannerUserController::class, 'create'])
+                    ->name('scanner-users.create');
+                Route::post('/scanner-users', [ScannerUserController::class, 'store'])
+                    ->name('scanner-users.store');
+                Route::get('/scanner-users/{scannerUser}/edit', [ScannerUserController::class, 'edit'])
+                    ->name('scanner-users.edit');
+                Route::put('/scanner-users/{scannerUser}', [ScannerUserController::class, 'update'])
+                    ->name('scanner-users.update');
+                Route::delete('/scanner-users/{scannerUser}', [ScannerUserController::class, 'destroy'])
+                    ->name('scanner-users.destroy');
                 Route::post('/presence/heartbeat', [AdminPresenceController::class, 'heartbeat'])
                     ->name('presence.heartbeat');
                 Route::get('/presence/statuses', [AdminPresenceController::class, 'statuses'])
