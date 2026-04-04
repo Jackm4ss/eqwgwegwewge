@@ -5,7 +5,7 @@ import { Toaster, toast } from 'sonner';
 import {
   User, Mail, Phone, Globe, MapPin, IdCard,
   Calendar, Music2, ChevronDown, CheckCircle2,
-  AlertCircle, Loader2,
+  Loader2,
   Droplets, Star, Waves, Sparkles, X, Lock
 } from 'lucide-react';
 import {
@@ -133,13 +133,14 @@ const MAPS_LOCATION_URL = 'https://maps.app.goo.gl/UEPceTqzjesMy1ze8?g_st=iw';
 const ENABLE_LEGACY_SUCCESS_SCREEN = true;
 const TICKET_HEADER_FONT_FAMILY = '"Tilt Warp", sans-serif';
 const PUBLIC_HOME_URL = getSpaUrl('publicHome', '/');
-const MYANMAR_COUNTRY_CODE = 'MM';
-const MYANMAR_REGISTRATION_HOLD_COPY = 'Myanmar registrations are temporarily on hold until further notice.';
-const MYANMAR_POPUP_BODY = [
-  'Registration requests for applicants from Myanmar are temporarily on hold until further notice.',
-  'If your passport or official ID is issued by Myanmar, please wait for the next official registration update before submitting this form.',
-  'Please do not continue under a different nationality. Every registration must match the passport or official ID presented during verification at the venue.',
-] as const;
+// Myanmar registration hold popup kept here for quick re-enable if needed.
+// const MYANMAR_COUNTRY_CODE = 'MM';
+// const MYANMAR_REGISTRATION_HOLD_COPY = 'Myanmar registrations are temporarily on hold until further notice.';
+// const MYANMAR_POPUP_BODY = [
+//   'Registration requests for applicants from Myanmar are temporarily on hold until further notice.',
+//   'If your passport or official ID is issued by Myanmar, please wait for the next official registration update before submitting this form.',
+//   'Please do not continue under a different nationality. Every registration must match the passport or official ID presented during verification at the venue.',
+// ] as const;
 
 function MapsPinIcon() {
   return (
@@ -804,7 +805,7 @@ export function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isRecaptchaReady, setIsRecaptchaReady] = useState(!recaptchaEnabled);
-  const [isMyanmarNoticeOpen, setIsMyanmarNoticeOpen] = useState(true);
+  // const [isMyanmarNoticeOpen, setIsMyanmarNoticeOpen] = useState(true);
   const [legalDialog, setLegalDialog] = useState<LegalDialogType | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [registrationSuccessMessage, setRegistrationSuccessMessage] = useState('');
@@ -1634,10 +1635,6 @@ export function RegisterPage() {
                         name="country"
                         rules={{
                           required: 'Nationality is required.',
-                          validate: (value) => (
-                            value !== MYANMAR_COUNTRY_CODE
-                              || MYANMAR_REGISTRATION_HOLD_COPY
-                          ),
                         }}
                         render={({ field }) => (
                           <Select value={field.value} onValueChange={field.onChange}>
@@ -1666,7 +1663,6 @@ export function RegisterPage() {
                                 <SelectItem
                                   key={c.code}
                                   value={c.code}
-                                  disabled={c.code === MYANMAR_COUNTRY_CODE}
                                 >
                                   <span className="flex items-center gap-2.5">
                                     <span
@@ -1674,11 +1670,6 @@ export function RegisterPage() {
                                       aria-hidden="true"
                                     />
                                     <span>{c.name}</span>
-                                    {c.code === MYANMAR_COUNTRY_CODE ? (
-                                      <span className="text-[11px] font-medium text-amber-700">
-                                        Temporarily unavailable
-                                      </span>
-                                    ) : null}
                                   </span>
                                 </SelectItem>
                               ))}
@@ -1689,7 +1680,6 @@ export function RegisterPage() {
                                 <SelectItem
                                   key={c.code}
                                   value={c.code}
-                                  disabled={c.code === MYANMAR_COUNTRY_CODE}
                                 >
                                   <span className="flex items-center gap-2.5">
                                     <span
@@ -1697,11 +1687,6 @@ export function RegisterPage() {
                                       aria-hidden="true"
                                     />
                                     <span>{c.name}</span>
-                                    {c.code === MYANMAR_COUNTRY_CODE ? (
-                                      <span className="text-[11px] font-medium text-amber-700">
-                                        Temporarily unavailable
-                                      </span>
-                                    ) : null}
                                   </span>
                                 </SelectItem>
                               ))}
@@ -1891,6 +1876,7 @@ export function RegisterPage() {
         </motion.main>
       </div>
 
+      {/* Myanmar registration hold popup kept as comment for future reuse.
       <Dialog open={isMyanmarNoticeOpen} onOpenChange={setIsMyanmarNoticeOpen}>
         <DialogContent showCloseButton={false} className="max-w-lg gap-0 overflow-hidden rounded-[1.75rem] border-amber-100 p-0 shadow-2xl">
           <div className="bg-gradient-to-r from-amber-100 via-white to-sky-50 px-6 py-5">
@@ -1922,6 +1908,7 @@ export function RegisterPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      */}
 
       <Dialog open={legalDialog !== null} onOpenChange={(open) => !open && setLegalDialog(null)}>
         {activeLegalDialog ? (
