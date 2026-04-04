@@ -57,7 +57,9 @@
 
         @php
           $adminManagementOpen = request()->routeIs('admin.logs.*') || request()->routeIs('admin.admin-users.*');
-          $scannerManagementOpen = request()->routeIs('admin.scanner-users.*');
+          $scannerManagementOpen = request()->routeIs('admin.scanner-users.*')
+            || request()->routeIs('admin.attendance.*')
+            || request()->routeIs('admin.gates.*');
           $reportManagementOpen = request()->routeIs('admin.reports.*') || request()->routeIs('admin.public-reports.*');
         @endphp
 
@@ -72,18 +74,6 @@
             <a href="{{ route('admin.users.index') }}" class="menu-link">
               <i class="menu-icon icon-base ti tabler-users"></i>
               <div>User Management</div>
-            </a>
-          </li>
-          <li class="menu-item {{ request()->routeIs('admin.attendance.*') ? 'active' : '' }}">
-            <a href="{{ route('admin.attendance.index') }}" class="menu-link">
-              <i class="menu-icon icon-base ti tabler-scan"></i>
-              <div>Monitoring Attendance</div>
-            </a>
-          </li>
-          <li class="menu-item {{ request()->routeIs('admin.gates.*') ? 'active' : '' }}">
-            <a href="{{ route('admin.gates.index') }}" class="menu-link">
-              <i class="menu-icon icon-base ti tabler-qrcode"></i>
-              <div>Gate Management</div>
             </a>
           </li>
           <li class="menu-item {{ request()->routeIs('admin.campaign-links.*') ? 'active' : '' }}">
@@ -116,6 +106,16 @@
               <div>Scanner Management</div>
             </a>
             <ul class="menu-sub">
+              <li class="menu-item {{ request()->routeIs('admin.attendance.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.attendance.index') }}" class="menu-link">
+                  <div>Monitoring Attendance</div>
+                </a>
+              </li>
+              <li class="menu-item {{ request()->routeIs('admin.gates.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.gates.index') }}" class="menu-link">
+                  <div>Gate Management</div>
+                </a>
+              </li>
               <li class="menu-item {{ request()->routeIs('admin.scanner-users.*') ? 'active' : '' }}">
                 <a href="{{ route('admin.scanner-users.index') }}" class="menu-link">
                   <div>List User Scanner</div>
