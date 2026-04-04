@@ -15,10 +15,14 @@ class AdminPanelService
     public const USER_MANAGEMENT_META_STALE_KEY = 'admin:user-management:meta:stale:v1';
     public const USER_MANAGEMENT_DIRECTORY_CACHE_KEY = 'admin:user-management:directory:v1';
     public const USER_MANAGEMENT_DIRECTORY_STALE_KEY = 'admin:user-management:directory:stale:v1';
+    public const ATTENDANCE_DIRECTORY_CACHE_KEY = 'admin:attendance:directory:v1';
+    public const ATTENDANCE_DIRECTORY_STALE_KEY = 'admin:attendance:directory:stale:v1';
     private const DASHBOARD_CACHE_KEY_PREFIX = 'admin:dashboard:v2';
     private const DASHBOARD_CACHE_TTL_SECONDS = 30;
     private const USER_MANAGEMENT_REFRESH_LOCK_KEY = 'admin:user-management:refreshing:v2';
     private const USER_MANAGEMENT_REFRESH_LOCK_SECONDS = 300;
+    private const ATTENDANCE_REFRESH_LOCK_KEY = 'admin:attendance:refreshing:v1';
+    private const ATTENDANCE_REFRESH_LOCK_SECONDS = 300;
     private const ACTIVITY_LOG_MAX_PER_PAGE = 100;
 
     public function __construct(
@@ -86,6 +90,23 @@ class AdminPanelService
     public function warmUserManagementCache(): array
     {
         return $this->refreshUserManagementCaches();
+    }
+
+    public function flushAttendanceMonitoringCache(): void
+    {
+        Cache::forget(self::ATTENDANCE_DIRECTORY_STALE_KEY);
+        Cache::forget(self::ATTENDANCE_REFRESH_LOCK_KEY);
+        Cache::forget(self::ATTENDANCE_DIRECTORY_CACHE_KEY);
+    }
+
+    public function markAttendanceMonitoringCacheStale(): void
+    {
+        Cache::forever(self::ATTENDANCE_DIRECTORY_STALE_KEY, true);
+    }
+
+    public function warmAttendanceMonitoringCache(): array
+    {
+        return $this->refreshAttendanceDirectoryCache();
     }
 
     public function flushDashboardCache(): void
@@ -169,6 +190,13 @@ class AdminPanelService
                 // Fall back to the legacy in-memory implementation if Firestore
                 // indexes are not ready yet in a new project.
             }
+        }
+
+        try {
+            return $this->cachedAttendanceData($filters);
+        } catch (\Throwable) {
+            // Fall back to the legacy in-memory implementation if the cached
+            // attendance directory is unavailable for any reason.
         }
 
         return $this->legacyAttendanceData($filters);
@@ -303,10 +331,18 @@ class AdminPanelService
     {
         $page = max(1, (int) ($filters['page'] ?? 1));
         $perPage = max(1, (int) ($filters['per_page'] ?? config('admin.per_page', 10)));
+        $filteredCachedRows = $this->filterCachedAttendanceRows(
+            $this->cachedAttendanceDirectory(),
+            $filters,
+        );
+        $overview = $this->analytics->buildAttendanceOverview($filteredCachedRows);
         $pageResult = $this->repository->paginateScanLogs($filters, $page, $perPage);
-        $historyItems = $this->hydrateAttendanceHistoryPage($pageResult['items'] ?? []);
-        $summaryLogs = $this->repository->queryScanLogs($filters);
-        $overview = $this->analytics->buildAttendanceOverview($summaryLogs, $filters);
+        $historyItems = $this->hydrateAttendanceHistoryPage(
+            $this->mergeCachedAttendanceRows(
+                $pageResult['items'] ?? [],
+                $overview['history'],
+            ),
+        );
         $historyPaginator = new LengthAwarePaginator(
             $historyItems,
             (int) ($pageResult['total'] ?? 0),
@@ -324,7 +360,7 @@ class AdminPanelService
             'daily_attendance' => $overview['daily_attendance'],
             'scanner_activity' => $overview['scanner_activity'],
             'scan_post_options' => $this->buildAttendanceScanPostOptions(
-                $summaryLogs,
+                $overview['history'],
                 [$filters['scanner_post'] ?? null],
             ),
         ];
@@ -411,6 +447,39 @@ class AdminPanelService
         ];
     }
 
+    private function cachedAttendanceData(array $filters = []): array
+    {
+        $filteredRows = $this->filterCachedAttendanceRows(
+            $this->cachedAttendanceDirectory(),
+            $filters,
+        );
+        $overview = $this->analytics->buildAttendanceOverview($filteredRows);
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        $perPage = max(1, (int) ($filters['per_page'] ?? config('admin.per_page', 10)));
+        $offset = ($page - 1) * $perPage;
+        $pageRows = array_values(array_slice($overview['history'], $offset, $perPage));
+
+        return [
+            'history' => new LengthAwarePaginator(
+                $pageRows,
+                count($overview['history']),
+                $perPage,
+                $page,
+                [
+                    'path' => request()->url(),
+                    'query' => request()->query(),
+                    'pageName' => 'page',
+                ],
+            ),
+            'daily_attendance' => $overview['daily_attendance'],
+            'scanner_activity' => $overview['scanner_activity'],
+            'scan_post_options' => $this->buildAttendanceScanPostOptions(
+                $overview['history'],
+                [$filters['scanner_post'] ?? null],
+            ),
+        ];
+    }
+
     private function cachedDirectoryUserManagementPage(array $filters = []): array
     {
         $allRows = $this->cachedUserManagementDirectory();
@@ -470,6 +539,21 @@ class AdminPanelService
         }
 
         return $this->refreshUserManagementDirectoryCache();
+    }
+
+    private function cachedAttendanceDirectory(): array
+    {
+        $cachedRows = Cache::get(self::ATTENDANCE_DIRECTORY_CACHE_KEY);
+
+        if (is_array($cachedRows)) {
+            if (Cache::has(self::ATTENDANCE_DIRECTORY_STALE_KEY)) {
+                $this->scheduleAttendanceCacheRefreshAfterResponse();
+            }
+
+            return $cachedRows;
+        }
+
+        return $this->refreshAttendanceDirectoryCache();
     }
 
     private function buildUserManagementMetaSnapshot(): array
@@ -584,6 +668,46 @@ class AdminPanelService
         return $rows;
     }
 
+    private function refreshAttendanceDirectoryCache(): array
+    {
+        $userDirectory = $this->cachedUserManagementDirectory();
+        $participantsByUserId = [];
+        $participantsByTicketCode = [];
+
+        foreach ($userDirectory as $row) {
+            $participant = $this->attendanceParticipantFromUserDirectoryRow($row);
+
+            if ($participant === null) {
+                continue;
+            }
+
+            $userId = trim((string) ($row['user_id'] ?? ''));
+            $ticketCode = strtoupper(trim((string) ($participant['ticket_code'] ?? '')));
+
+            if ($userId !== '') {
+                $participantsByUserId[$userId] = $participant;
+            }
+
+            if ($ticketCode !== '') {
+                $participantsByTicketCode[$ticketCode] = $participant;
+            }
+        }
+
+        $rows = array_map(
+            fn (array $log): array => $this->buildAttendanceDirectoryRow(
+                $log,
+                $participantsByUserId,
+                $participantsByTicketCode,
+            ),
+            $this->repository->queryScanLogs(),
+        );
+
+        Cache::forever(self::ATTENDANCE_DIRECTORY_CACHE_KEY, $rows);
+        Cache::forget(self::ATTENDANCE_DIRECTORY_STALE_KEY);
+
+        return $rows;
+    }
+
     private function refreshUserManagementCaches(): array
     {
         return [
@@ -616,6 +740,233 @@ class AdminPanelService
                 Cache::forget(self::USER_MANAGEMENT_REFRESH_LOCK_KEY);
             }
         });
+    }
+
+    private function scheduleAttendanceCacheRefreshAfterResponse(): void
+    {
+        if (app()->environment('testing')) {
+            return;
+        }
+
+        if (! Cache::add(
+            self::ATTENDANCE_REFRESH_LOCK_KEY,
+            now()->toIso8601String(),
+            now()->addSeconds(self::ATTENDANCE_REFRESH_LOCK_SECONDS),
+        )) {
+            return;
+        }
+
+        app()->terminating(function (): void {
+            try {
+                $this->refreshAttendanceDirectoryCache();
+            } catch (\Throwable) {
+                // Keep serving the last known scan directory and retry later
+                // instead of slowing down the current admin request.
+            } finally {
+                Cache::forget(self::ATTENDANCE_REFRESH_LOCK_KEY);
+            }
+        });
+    }
+
+    private function buildAttendanceDirectoryRow(
+        array $log,
+        array $participantsByUserId,
+        array $participantsByTicketCode,
+    ): array {
+        $participant = $this->attendanceParticipantFromSnapshot($log);
+        $userId = trim((string) ($log['user_id'] ?? ''));
+        $ticketCode = strtoupper(trim((string) ($log['ticket_code'] ?? '')));
+
+        if ($participant === null && $userId !== '') {
+            $participant = $participantsByUserId[$userId] ?? null;
+        }
+
+        if ($participant === null && $ticketCode !== '') {
+            $participant = $participantsByTicketCode[$ticketCode] ?? null;
+        }
+
+        $entryCodeDisplay = trim((string) ($log['entry_code_display'] ?? ''));
+        if ($entryCodeDisplay === '' && is_array($participant)) {
+            $entryCodeDisplay = trim((string) ($participant['entry_code_display'] ?? ''));
+        }
+
+        $row = [
+            'scan_id' => (string) ($log['scan_id'] ?? ''),
+            'ticket_id' => (string) ($log['ticket_id'] ?? ''),
+            'ticket_code' => (string) ($log['ticket_code'] ?? ''),
+            'user_id' => (string) ($log['user_id'] ?? ''),
+            'scanner_id' => (string) ($log['scanner_id'] ?? ''),
+            'scanner_name' => (string) ($log['scanner_name'] ?? ''),
+            'scanner_role' => (string) ($log['scanner_role'] ?? ''),
+            'scanned_at' => (string) ($log['scanned_at'] ?? ''),
+            'scan_date' => (string) ($log['scan_date'] ?? ''),
+            'result' => (string) ($log['result'] ?? ''),
+            'entry_code_display' => $entryCodeDisplay,
+            'participant' => $participant,
+        ];
+
+        $row['search_blob'] = $this->buildAttendanceSearchBlob($row);
+
+        return $row;
+    }
+
+    private function attendanceParticipantFromSnapshot(array $log): ?array
+    {
+        $snapshot = $log['participant_snapshot'] ?? null;
+
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        $fullName = trim((string) ($snapshot['full_name'] ?? $snapshot['name'] ?? ''));
+        $country = strtoupper(trim((string) ($snapshot['country'] ?? '')));
+        $countryLabel = trim((string) ($snapshot['country_label'] ?? ''));
+
+        if ($countryLabel === '' && $country !== '') {
+            $countryLabel = $this->analytics->countryLabel($country);
+        }
+
+        return [
+            'name' => $fullName,
+            'full_name' => $fullName,
+            'email' => trim((string) ($snapshot['email'] ?? '')),
+            'phone_number' => trim((string) ($snapshot['phone_number'] ?? '')),
+            'country' => $country,
+            'country_label' => $countryLabel,
+            'ticket_code' => (string) ($snapshot['ticket_code'] ?? $log['ticket_code'] ?? ''),
+            'entry_code_display' => (string) ($snapshot['entry_code_display'] ?? $log['entry_code_display'] ?? ''),
+        ];
+    }
+
+    private function attendanceParticipantFromUserDirectoryRow(array $row): ?array
+    {
+        $fullName = trim((string) ($row['full_name'] ?? ''));
+        $email = trim((string) ($row['email'] ?? ''));
+        $phoneNumber = $this->participantPhoneNumber($row);
+        $country = strtoupper(trim((string) ($row['country'] ?? '')));
+        $ticketCode = (string) ($row['ticket_code'] ?? '');
+
+        if ($fullName === '' && $email === '' && $phoneNumber === '' && $ticketCode === '') {
+            return null;
+        }
+
+        return [
+            'name' => $fullName,
+            'full_name' => $fullName,
+            'email' => $email,
+            'phone_number' => $phoneNumber,
+            'country' => $country,
+            'country_label' => (string) ($row['country_label'] ?? ($country !== '' ? $this->analytics->countryLabel($country) : '')),
+            'ticket_code' => $ticketCode,
+            'entry_code_display' => (string) ($row['entry_code_display'] ?? ''),
+        ];
+    }
+
+    private function buildAttendanceSearchBlob(array $row): string
+    {
+        $participant = is_array($row['participant'] ?? null) ? $row['participant'] : null;
+
+        return $this->normalizeAttendanceSearchText(implode(' ', array_filter([
+            (string) ($row['scan_id'] ?? ''),
+            (string) ($row['ticket_code'] ?? ''),
+            (string) ($row['user_id'] ?? ''),
+            (string) ($row['scanner_id'] ?? ''),
+            (string) ($row['scanner_name'] ?? ''),
+            (string) ($row['result'] ?? ''),
+            (string) ($row['entry_code_display'] ?? ''),
+            (string) ($participant['full_name'] ?? $participant['name'] ?? ''),
+            (string) ($participant['email'] ?? ''),
+            (string) ($participant['phone_number'] ?? ''),
+            (string) ($participant['country'] ?? ''),
+            (string) ($participant['country_label'] ?? ''),
+        ])));
+    }
+
+    private function filterCachedAttendanceRows(array $rows, array $filters): array
+    {
+        $query = $this->normalizeAttendanceSearchText((string) ($filters['q'] ?? ''));
+        $fromDate = $this->normalizeAttendanceFilterDate($filters['from'] ?? null);
+        $toDate = $this->normalizeAttendanceFilterDate($filters['to'] ?? null);
+        $scannerPost = trim((string) ($filters['scanner_post'] ?? ''));
+
+        return array_values(array_filter($rows, function (array $row) use ($fromDate, $query, $scannerPost, $toDate): bool {
+            $scanDate = trim((string) ($row['scan_date'] ?? ''));
+
+            if ($fromDate !== null && $scanDate < $fromDate) {
+                return false;
+            }
+
+            if ($toDate !== null && $scanDate > $toDate) {
+                return false;
+            }
+
+            if ($scannerPost !== '' && (string) ($row['scanner_name'] ?? '') !== $scannerPost) {
+                return false;
+            }
+
+            if ($query !== '' && ! str_contains((string) ($row['search_blob'] ?? ''), $query)) {
+                return false;
+            }
+
+            return true;
+        }));
+    }
+
+    private function mergeCachedAttendanceRows(array $rows, array $cachedRows): array
+    {
+        $cachedByScanId = [];
+
+        foreach ($cachedRows as $cachedRow) {
+            $scanId = trim((string) ($cachedRow['scan_id'] ?? ''));
+
+            if ($scanId === '') {
+                continue;
+            }
+
+            $cachedByScanId[$scanId] = $cachedRow;
+        }
+
+        return array_map(function (array $row) use ($cachedByScanId): array {
+            $scanId = trim((string) ($row['scan_id'] ?? ''));
+            $cachedRow = $scanId !== '' ? ($cachedByScanId[$scanId] ?? null) : null;
+
+            if (! is_array($cachedRow)) {
+                return $row;
+            }
+
+            if (! filled($row['entry_code_display'] ?? null) && filled($cachedRow['entry_code_display'] ?? null)) {
+                $row['entry_code_display'] = $cachedRow['entry_code_display'];
+            }
+
+            if (is_array($cachedRow['participant'] ?? null)) {
+                $row['participant'] = $cachedRow['participant'];
+            }
+
+            return $row;
+        }, $rows);
+    }
+
+    private function normalizeAttendanceSearchText(string $value): string
+    {
+        return str_replace(["\r", "\n"], ' ', mb_strtolower(trim($value)));
+    }
+
+    private function normalizeAttendanceFilterDate(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::parse(
+                $value,
+                (string) config('admin.event.timezone', config('app.timezone', 'UTC')),
+            )->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function shouldUseOptimizedUserManagementQuery(array $filters): bool
@@ -781,9 +1132,18 @@ class AdminPanelService
 
     private function hydrateAttendanceHistoryPage(array $history): array
     {
+        $rowsNeedingHydration = array_values(array_filter(
+            $history,
+            fn (array $log): bool => ! is_array($log['participant'] ?? null),
+        ));
+
+        if ($rowsNeedingHydration === []) {
+            return $this->hydrateAttendanceHistory($history, [], []);
+        }
+
         $ticketIds = array_values(array_unique(array_filter(array_map(
             fn (array $log): string => trim((string) ($log['ticket_id'] ?? '')),
-            $history,
+            $rowsNeedingHydration,
         ))));
         $ticketRows = $this->repository->findTicketsByIds($ticketIds);
 
@@ -793,7 +1153,7 @@ class AdminPanelService
         ));
         $logUserIds = array_filter(array_map(
             fn (array $log): string => trim((string) ($log['user_id'] ?? '')),
-            $history,
+            $rowsNeedingHydration,
         ));
         $userRows = $this->repository->findUsersByIds(array_values(array_unique(array_merge(
             $logUserIds,
@@ -980,6 +1340,9 @@ class AdminPanelService
             $ticketId = (string) ($log['ticket_id'] ?? '');
             $ticketCode = strtoupper(trim((string) ($log['ticket_code'] ?? '')));
             $userId = (string) ($log['user_id'] ?? '');
+            $existingParticipant = is_array($log['participant'] ?? null)
+                ? $log['participant']
+                : null;
 
             $ticket = $ticketsById[$ticketId] ?? ($ticketCode !== '' ? ($ticketsByCode[$ticketCode] ?? null) : null);
             $user = $usersById[$userId] ?? null;
@@ -993,10 +1356,14 @@ class AdminPanelService
                 ? trim((string) ($ticket['entry_code_display'] ?? ($log['entry_code_display'] ?? '')))
                 : trim((string) ($log['entry_code_display'] ?? ''));
 
+            if ($entryCodeDisplay === '' && is_array($existingParticipant)) {
+                $entryCodeDisplay = trim((string) ($existingParticipant['entry_code_display'] ?? ''));
+            }
+
             $log['entry_code_display'] = $entryCodeDisplay;
-            $log['participant'] = is_array($ticket) && is_array($user)
+            $log['participant'] = $existingParticipant ?? (is_array($ticket) && is_array($user)
                 ? $this->attendanceParticipantSummary($user, $ticket)
-                : null;
+                : null);
 
             return $log;
         }, $history);

@@ -19,11 +19,13 @@ class AdminPanelServiceTest extends TestCase
         parent::setUp();
 
         $this->clearUserManagementMetaCache();
+        $this->clearAttendanceCache();
     }
 
     protected function tearDown(): void
     {
         $this->clearUserManagementMetaCache();
+        $this->clearAttendanceCache();
 
         parent::tearDown();
     }
@@ -645,6 +647,31 @@ class AdminPanelServiceTest extends TestCase
             'result' => 'duplicate',
         ];
 
+        Cache::forever(AdminPanelService::ATTENDANCE_DIRECTORY_CACHE_KEY, [[
+            'scan_id' => 'scan-1',
+            'ticket_id' => 'ticket-123',
+            'ticket_code' => '01KMYH3W10ECD5BV9F8APYPHTZ',
+            'user_id' => 'user-123',
+            'scanner_id' => 'scanner-post:gate-ab',
+            'scanner_name' => 'Gate AB',
+            'scanner_role' => 'staff',
+            'scanned_at' => '2026-03-30T05:15:38Z',
+            'scan_date' => '2026-03-30',
+            'result' => 'duplicate',
+            'entry_code_display' => '2RCA-GYXF',
+            'participant' => [
+                'name' => 'wegwegwegweg',
+                'full_name' => 'wegwegwegweg',
+                'email' => 'wegwegwegweg@gmail.com',
+                'phone_number' => '+603298592389',
+                'country' => 'MY',
+                'country_label' => 'Malaysia',
+                'ticket_code' => '01KMYH3W10ECD5BV9F8APYPHTZ',
+                'entry_code_display' => '2RCA-GYXF',
+            ],
+            'search_blob' => '01kmyh3w10ecd5bv9f8apyphtz wegwegwegweg wegwegwegweg@gmail.com gate ab',
+        ]]);
+
         $repository = Mockery::mock(AdminFirestoreRepository::class);
         $repository->shouldReceive('latestNonFutureScanLogDate')
             ->once()
@@ -660,40 +687,12 @@ class AdminPanelServiceTest extends TestCase
                 'items' => [$log],
                 'total' => 1,
             ]);
-        $repository->shouldReceive('findTicketsByIds')
-            ->once()
-            ->with(['ticket-123'])
-            ->andReturn([
-                [
-                    'ticket_id' => 'ticket-123',
-                    'user_id' => 'user-123',
-                    'ticket_code' => '01KMYH3W10ECD5BV9F8APYPHTZ',
-                    'entry_code_display' => '2RCA-GYXF',
-                ],
-            ]);
-        $repository->shouldReceive('findUsersByIds')
-            ->once()
-            ->with(['user-123'])
-            ->andReturn([
-                [
-                    'user_id' => 'user-123',
-                    'full_name' => 'wegwegwegweg',
-                    'email' => 'wegwegwegweg@gmail.com',
-                    'phone_number' => '+603298592389',
-                    'country' => 'MY',
-                ],
-            ]);
-        $repository->shouldReceive('queryScanLogs')
-            ->once()
-            ->with([
-                'scanner_post' => 'Gate AB',
-                'from' => '2026-03-30',
-                'to' => '2026-03-30',
-            ])
-            ->andReturn([$log]);
         $repository->shouldNotReceive('allScanLogs');
         $repository->shouldNotReceive('allUsers');
         $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('queryScanLogs');
+        $repository->shouldNotReceive('findTicketsByIds');
+        $repository->shouldNotReceive('findUsersByIds');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
@@ -712,6 +711,91 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame('2RCA-GYXF', $history[0]['participant']['entry_code_display']);
         $this->assertCount(1, $attendance['daily_attendance']);
         $this->assertSame('Gate AB', $attendance['scanner_activity'][0]['scanner_name']);
+        $this->assertSame('Gate AB', $attendance['scan_post_options'][0]['value']);
+    }
+
+    public function test_attendance_search_uses_cached_directory_without_loading_full_collections(): void
+    {
+        config(['scanner.posts' => ['Gate AB', 'Gate C']]);
+
+        Cache::forever(AdminPanelService::ATTENDANCE_DIRECTORY_CACHE_KEY, [
+            [
+                'scan_id' => 'scan-1',
+                'ticket_id' => 'ticket-123',
+                'ticket_code' => 'TICKET-123',
+                'user_id' => 'user-123',
+                'scanner_id' => 'scanner-post:gate-ab',
+                'scanner_name' => 'Gate AB',
+                'scanner_role' => 'staff',
+                'scanned_at' => '2026-03-30T05:15:38Z',
+                'scan_date' => '2026-03-30',
+                'result' => 'success',
+                'entry_code_display' => '2RCA-GYXF',
+                'participant' => [
+                    'name' => 'Alice Tan',
+                    'full_name' => 'Alice Tan',
+                    'email' => 'alice@example.com',
+                    'phone_number' => '+62811111111',
+                    'country' => 'ID',
+                    'country_label' => 'Indonesia',
+                    'ticket_code' => 'TICKET-123',
+                    'entry_code_display' => '2RCA-GYXF',
+                ],
+                'search_blob' => 'ticket-123 user-123 gate ab alice tan alice@example.com 2rca-gyxf',
+            ],
+            [
+                'scan_id' => 'scan-2',
+                'ticket_id' => 'ticket-456',
+                'ticket_code' => 'TICKET-456',
+                'user_id' => 'user-456',
+                'scanner_id' => 'scanner-post:gate-c',
+                'scanner_name' => 'Gate C',
+                'scanner_role' => 'staff',
+                'scanned_at' => '2026-03-30T04:10:00Z',
+                'scan_date' => '2026-03-30',
+                'result' => 'duplicate',
+                'entry_code_display' => 'WXYZ-6789',
+                'participant' => [
+                    'name' => 'Bob Lim',
+                    'full_name' => 'Bob Lim',
+                    'email' => 'bob@example.com',
+                    'phone_number' => '+62822222222',
+                    'country' => 'MY',
+                    'country_label' => 'Malaysia',
+                    'ticket_code' => 'TICKET-456',
+                    'entry_code_display' => 'WXYZ-6789',
+                ],
+                'search_blob' => 'ticket-456 user-456 gate c bob lim bob@example.com wxyz-6789',
+            ],
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldNotReceive('paginateScanLogs');
+        $repository->shouldNotReceive('queryScanLogs');
+        $repository->shouldNotReceive('allScanLogs');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('findTicketsByIds');
+        $repository->shouldNotReceive('findUsersByIds');
+        $repository->shouldNotReceive('latestNonFutureScanLogDate');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB', 'Gate C']);
+
+        $attendance = $service->attendanceData([
+            'q' => 'alice@example.com',
+            'from' => '2026-03-30',
+            'to' => '2026-03-30',
+        ]);
+        $history = $attendance['history']->items();
+
+        $this->assertCount(1, $history);
+        $this->assertSame('Alice Tan', $history[0]['participant']['full_name']);
+        $this->assertSame('Gate AB', $history[0]['scanner_name']);
+        $this->assertSame(1, $attendance['history']->total());
+        $this->assertCount(1, $attendance['daily_attendance']);
         $this->assertSame('Gate AB', $attendance['scan_post_options'][0]['value']);
     }
 
@@ -735,6 +819,22 @@ class AdminPanelServiceTest extends TestCase
                 'result' => 'duplicate',
             ];
 
+            Cache::forever(AdminPanelService::ATTENDANCE_DIRECTORY_CACHE_KEY, [[
+                'scan_id' => 'scan-current',
+                'ticket_id' => 'ticket-current',
+                'ticket_code' => 'CURRENT-1',
+                'user_id' => 'user-current',
+                'scanner_id' => 'scanner-post:gate-ab',
+                'scanner_name' => 'Gate AB',
+                'scanner_role' => 'staff',
+                'scanned_at' => '2026-03-30T05:15:38Z',
+                'scan_date' => '2026-03-30',
+                'result' => 'duplicate',
+                'entry_code_display' => '',
+                'participant' => null,
+                'search_blob' => 'current-1 user-current gate ab',
+            ]]);
+
             $repository = Mockery::mock(AdminFirestoreRepository::class);
             $repository->shouldReceive('latestNonFutureScanLogDate')
                 ->once()
@@ -757,16 +857,10 @@ class AdminPanelServiceTest extends TestCase
                 ->once()
                 ->with(['user-current'])
                 ->andReturn([]);
-            $repository->shouldReceive('queryScanLogs')
-                ->once()
-                ->with([
-                    'from' => '2026-03-30',
-                    'to' => '2026-03-30',
-                ])
-                ->andReturn([$log]);
             $repository->shouldNotReceive('allScanLogs');
             $repository->shouldNotReceive('allUsers');
             $repository->shouldNotReceive('allTickets');
+            $repository->shouldNotReceive('queryScanLogs');
 
             $notifications = Mockery::mock(AdminParticipantNotificationService::class);
             $notifications->shouldIgnoreMissing();
@@ -981,5 +1075,11 @@ class AdminPanelServiceTest extends TestCase
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY);
         Cache::forget(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
         Cache::forget(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY);
+    }
+
+    private function clearAttendanceCache(): void
+    {
+        Cache::forget(AdminPanelService::ATTENDANCE_DIRECTORY_CACHE_KEY);
+        Cache::forget(AdminPanelService::ATTENDANCE_DIRECTORY_STALE_KEY);
     }
 }

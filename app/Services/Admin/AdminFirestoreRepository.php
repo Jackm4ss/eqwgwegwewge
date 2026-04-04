@@ -473,6 +473,7 @@ class AdminFirestoreRepository
             $this->scanLogPath((string) $payload['scan_id']),
             $payload,
         );
+        $this->markAttendanceMonitoringCacheStale();
 
         return $payload;
     }
@@ -1200,7 +1201,7 @@ class AdminFirestoreRepository
 
             $this->restApi->commit($writes, $transaction);
             $committed = true;
-            $this->flushAdminUserManagementCacheOnSuccessfulAttendance($result);
+            $this->markAttendanceCachesStale($result);
 
             return [
                 'result' => $result,
@@ -1275,7 +1276,7 @@ class AdminFirestoreRepository
                 $this->timestamps->prepareForStorage($scanLog),
             );
 
-            $this->flushAdminUserManagementCacheOnSuccessfulAttendance($result);
+            $this->markAttendanceCachesStale($result);
 
             return [
                 'result' => $result,
@@ -1937,14 +1938,21 @@ class AdminFirestoreRepository
         }
     }
 
-    private function flushAdminUserManagementCacheOnSuccessfulAttendance(string $result): void
+    private function markAttendanceCachesStale(string $result): void
     {
+        $this->markAttendanceMonitoringCacheStale();
+
         if ($result !== 'success') {
             return;
         }
 
         Cache::forever(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY, true);
         Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY, true);
+    }
+
+    private function markAttendanceMonitoringCacheStale(): void
+    {
+        Cache::forever(AdminPanelService::ATTENDANCE_DIRECTORY_STALE_KEY, true);
     }
 
     private function buildStructuredQuery(
