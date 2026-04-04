@@ -12,7 +12,7 @@ use RuntimeException;
 class AdminPanelService
 {
     public const DASHBOARD_CACHE_VERSION_KEY = 'admin:dashboard:version';
-    public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v5';
+    public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v6';
     public const USER_MANAGEMENT_META_STALE_KEY = 'admin:user-management:meta:stale:v1';
     public const USER_MANAGEMENT_DIRECTORY_CACHE_KEY = 'admin:user-management:directory:v2';
     public const USER_MANAGEMENT_DIRECTORY_STALE_KEY = 'admin:user-management:directory:stale:v1';
@@ -578,6 +578,7 @@ class AdminPanelService
             'suspected' => 0,
             'clean' => 0,
         ];
+        $pendingVerificationUsers = 0;
         $allUsers = $this->repository->allUsers();
 
         EmailTypoInspector::preload(array_map(
@@ -587,6 +588,10 @@ class AdminPanelService
 
         foreach ($allUsers as $user) {
             $countryCode = strtoupper(trim((string) ($user['country'] ?? '')));
+
+            if (strtolower(trim((string) ($user['account_status'] ?? ''))) === 'pending_verification') {
+                $pendingVerificationUsers++;
+            }
 
             if ($countryCode === '') {
                 $emailAnalysis = EmailTypoInspector::analyze((string) ($user['email'] ?? ''));
@@ -630,6 +635,11 @@ class AdminPanelService
                         'value' => 'verified',
                         'label' => 'Verified',
                         'count' => $verifiedUsers,
+                    ],
+                    [
+                        'value' => 'pending_verification',
+                        'label' => 'Pending Verification',
+                        'count' => $pendingVerificationUsers,
                     ],
                     [
                         'value' => 'unverified',
@@ -1005,7 +1015,8 @@ class AdminPanelService
     {
         return trim((string) ($filters['q'] ?? '')) === ''
             && trim((string) ($filters['attendance_status'] ?? '')) === ''
-            && trim((string) ($filters['email_typo'] ?? '')) === '';
+            && trim((string) ($filters['email_typo'] ?? '')) === ''
+            && trim((string) ($filters['verification_status'] ?? '')) !== 'pending_verification';
     }
 
     private function shouldUseOptimizedActivityLogQuery(array $filters): bool

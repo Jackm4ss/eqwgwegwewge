@@ -305,10 +305,6 @@
       $filters['email_typo'] ?? null,
       $filters['q'] ?? null,
     ])->filter(fn($value) => filled($value))->count();
-    $suspectedEmailTypoOption = collect($filterOptions['email_typo_statuses'] ?? [])
-      ->firstWhere('value', 'suspected');
-    $suspectedEmailTypoCount = (int) ($suspectedEmailTypoOption['count'] ?? 0);
-
     $eventStartDate = \Carbon\CarbonImmutable::parse(
       config('admin.event.start_date', '2026-04-09'),
       $adminEventTimezone
@@ -400,9 +396,6 @@
           <small class="text-muted">Filter participants by country, document type, verification, check-in status, or suspected email typos.</small>
         </div>
         <div class="d-flex align-items-center gap-2">
-          @if ($suspectedEmailTypoCount > 0)
-            <span class="badge bg-label-warning">{{ number_format($suspectedEmailTypoCount) }} suspected email typos</span>
-          @endif
           @if ($activeFilterCount > 0)
             <span class="badge bg-label-primary">{{ $activeFilterCount }} active filters</span>
           @endif

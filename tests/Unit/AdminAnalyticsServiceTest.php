@@ -403,6 +403,41 @@ class AdminAnalyticsServiceTest extends TestCase
         $this->assertSame('alya@gmail.com', $filtered[0]['email_typo_suggestion']);
     }
 
+    public function test_user_rows_can_filter_pending_verification(): void
+    {
+        $service = new AdminAnalyticsService;
+
+        $rows = $service->buildUserRows(
+            users: [
+                [
+                    'user_id' => 'user-1',
+                    'full_name' => 'Alya Putri',
+                    'email' => 'alya@example.test',
+                    'verification_status' => 'verified',
+                    'account_status' => 'active',
+                    'created_at' => '2026-03-25T10:00:00Z',
+                ],
+                [
+                    'user_id' => 'user-2',
+                    'full_name' => 'Brian Tan',
+                    'email' => 'brian@example.test',
+                    'verification_status' => 'unverified',
+                    'account_status' => 'pending_verification',
+                    'created_at' => '2026-03-25T11:00:00Z',
+                ],
+            ],
+            tickets: [],
+        );
+
+        $filtered = $service->filterUserRows($rows, [
+            'verification_status' => 'pending_verification',
+        ]);
+
+        $this->assertCount(1, $filtered);
+        $this->assertSame('user-2', $filtered[0]['user_id']);
+        $this->assertSame('pending_verification', $filtered[0]['account_status']);
+    }
+
     public function test_country_labels_follow_shared_registration_catalog(): void
     {
         $service = new AdminAnalyticsService;
@@ -733,6 +768,44 @@ class AdminAnalyticsServiceTest extends TestCase
 
         $this->assertSame(1, $options['suspected']['count']);
         $this->assertSame(1, $options['clean']['count']);
+    }
+
+    public function test_user_filter_options_include_pending_verification_counts(): void
+    {
+        $service = new AdminAnalyticsService;
+        $rows = $service->buildUserRows(
+            users: [
+                [
+                    'user_id' => 'user-1',
+                    'email' => 'verified@example.test',
+                    'verification_status' => 'verified',
+                    'account_status' => 'active',
+                    'created_at' => '2026-03-25T09:00:00Z',
+                ],
+                [
+                    'user_id' => 'user-2',
+                    'email' => 'pending@example.test',
+                    'verification_status' => 'unverified',
+                    'account_status' => 'pending_verification',
+                    'created_at' => '2026-03-25T10:00:00Z',
+                ],
+                [
+                    'user_id' => 'user-3',
+                    'email' => 'review@example.test',
+                    'verification_status' => 'unverified',
+                    'account_status' => 'blocked',
+                    'created_at' => '2026-03-25T11:00:00Z',
+                ],
+            ],
+            tickets: [],
+        );
+
+        $options = collect($service->buildUserFilterOptions($rows)['verification_statuses'])
+            ->keyBy('value');
+
+        $this->assertSame(1, $options['verified']['count']);
+        $this->assertSame(1, $options['pending_verification']['count']);
+        $this->assertSame(2, $options['unverified']['count']);
     }
 
     public function test_user_search_can_match_full_country_label(): void

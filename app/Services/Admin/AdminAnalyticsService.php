@@ -344,7 +344,7 @@ class AdminAnalyticsService
                 return false;
             }
 
-            if ($verificationStatus !== '' && strtolower((string) ($row['verification_status'] ?? '')) !== $verificationStatus) {
+            if (! $this->rowMatchesVerificationFilter($row, $verificationStatus)) {
                 return false;
             }
 
@@ -413,6 +413,7 @@ class AdminAnalyticsService
         $verificationCounts = [
             'verified' => 0,
             'unverified' => 0,
+            'pending_verification' => 0,
         ];
         $identityTypeCounts = [
             'national_id' => 0,
@@ -436,6 +437,10 @@ class AdminAnalyticsService
             $verificationStatus = strtolower((string) ($row['verification_status'] ?? 'unverified'));
             if (isset($verificationCounts[$verificationStatus])) {
                 $verificationCounts[$verificationStatus]++;
+            }
+
+            if ($this->isPendingVerificationRow($row)) {
+                $verificationCounts['pending_verification']++;
             }
 
             $identityType = $this->normalizeIdentityType($row['identity_type'] ?? null);
@@ -472,6 +477,11 @@ class AdminAnalyticsService
                     'value' => 'verified',
                     'label' => 'Verified',
                     'count' => $verificationCounts['verified'],
+                ],
+                [
+                    'value' => 'pending_verification',
+                    'label' => 'Pending Verification',
+                    'count' => $verificationCounts['pending_verification'],
                 ],
                 [
                     'value' => 'unverified',
@@ -959,6 +969,24 @@ class AdminAnalyticsService
         $row['email_typo_reason'] = $analysis['reason'];
 
         return $row;
+    }
+
+    private function rowMatchesVerificationFilter(array $row, string $filter): bool
+    {
+        if ($filter === '') {
+            return true;
+        }
+
+        if ($filter === 'pending_verification') {
+            return $this->isPendingVerificationRow($row);
+        }
+
+        return strtolower((string) ($row['verification_status'] ?? '')) === $filter;
+    }
+
+    private function isPendingVerificationRow(array $row): bool
+    {
+        return strtolower((string) ($row['account_status'] ?? '')) === 'pending_verification';
     }
 
     private function rowMatchesEmailTypoFilter(array $row, string $filter): bool

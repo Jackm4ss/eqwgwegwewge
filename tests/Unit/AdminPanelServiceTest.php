@@ -329,6 +329,62 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(1, $emailTypoOptions['clean']['count']);
     }
 
+    public function test_optimized_user_management_meta_includes_pending_verification_counts(): void
+    {
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('paginateUsers')
+            ->once()
+            ->with([], 1, 10)
+            ->andReturn([
+                'items' => [],
+                'total' => 0,
+            ]);
+        $repository->shouldReceive('findTicketsByIds')
+            ->once()
+            ->with([])
+            ->andReturn([]);
+        $repository->shouldReceive('findScanLogsByUserIds')
+            ->once()
+            ->with([])
+            ->andReturn([]);
+        $repository->shouldReceive('allUsers')
+            ->once()
+            ->andReturn([
+                ['user_id' => 'user-1', 'country' => 'MY', 'verification_status' => 'verified', 'account_status' => 'active'],
+                ['user_id' => 'user-2', 'country' => 'ID', 'verification_status' => 'unverified', 'account_status' => 'pending_verification'],
+                ['user_id' => 'user-3', 'country' => 'TH', 'verification_status' => 'unverified', 'account_status' => 'blocked'],
+            ]);
+        $repository->shouldReceive('countUsers')
+            ->andReturnUsing(function (array $filters = []): int {
+                return match ($filters) {
+                    [] => 3,
+                    ['verification_status' => 'verified'] => 1,
+                    ['verification_status' => 'verified', 'account_status' => 'active'] => 1,
+                    ['identity_type' => 'national_id'] => 0,
+                    ['identity_type' => 'passport'] => 3,
+                    default => 0,
+                };
+            });
+        $repository->shouldReceive('countTickets')
+            ->once()
+            ->with(['attendance_status' => 'checked_in'])
+            ->andReturn(0);
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+        $page = $service->userManagementPage([]);
+        $verificationOptions = collect($page['filter_options']['verification_statuses'])
+            ->keyBy('value');
+
+        $this->assertSame(1, $verificationOptions['verified']['count']);
+        $this->assertSame(1, $verificationOptions['pending_verification']['count']);
+        $this->assertSame(2, $verificationOptions['unverified']['count']);
+    }
+
     public function test_optimized_user_management_page_uses_cached_meta_snapshot_while_marked_stale(): void
     {
         Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
@@ -621,6 +677,82 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(1, $page['users']->total());
         $this->assertSame('user-my', $page['users']->items()[0]['user_id']);
         $this->assertTrue($page['users']->items()[0]['email_typo_suspected']);
+    }
+
+    public function test_user_management_pending_verification_filter_uses_cached_directory_snapshot(): void
+    {
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 2],
+            'filter_options' => [
+                'countries' => [],
+                'verification_statuses' => [],
+                'identity_types' => [],
+                'attendance_statuses' => [],
+                'email_typo_statuses' => [],
+            ],
+        ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-pending',
+                'full_name' => 'Cherry Thin',
+                'email' => 'cherry@example.test',
+                'country' => 'MY',
+                'country_label' => 'Malaysia',
+                'verification_status' => 'unverified',
+                'account_status' => 'pending_verification',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'attendance_status' => 'not_checked_in',
+                'ticket_id' => 'ticket-my',
+                'ticket_code' => 'TICKET-MY',
+                'identity_type' => 'passport',
+                'identity_number' => 'A1234567',
+                'created_at' => '2026-04-02T10:00:00Z',
+            ],
+            [
+                'user_id' => 'user-active',
+                'full_name' => 'Hein Lin',
+                'email' => 'hein@example.test',
+                'country' => 'MM',
+                'country_label' => 'Myanmar',
+                'verification_status' => 'unverified',
+                'account_status' => 'blocked',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'attendance_status' => 'checked_in',
+                'ticket_id' => 'ticket-mm',
+                'ticket_code' => 'TICKET-MM',
+                'identity_type' => 'passport',
+                'identity_number' => 'B1234567',
+                'created_at' => '2026-04-02T09:00:00Z',
+            ],
+        ]);
+
+        $filters = [
+            'verification_status' => 'pending_verification',
+            'page' => 1,
+            'per_page' => 10,
+        ];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findScanLogsByUserIds')
+            ->once()
+            ->with(['user-pending'])
+            ->andReturn([]);
+        $repository->shouldNotReceive('paginateUsers');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('allScanLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+        $page = $service->userManagementPage($filters);
+
+        $this->assertSame(1, $page['users']->total());
+        $this->assertSame('user-pending', $page['users']->items()[0]['user_id']);
+        $this->assertSame('pending_verification', $page['users']->items()[0]['account_status']);
     }
 
     public function test_user_management_page_falls_back_to_cached_directory_when_firestore_query_needs_index(): void
