@@ -30,7 +30,8 @@ Jika kamu hanya butuh jalur paling cepat, baca urutan ini dulu:
    - `php artisan key:generate`
    - `php artisan migrate --force`
    - seed akun admin dan scanner
-   - `npm ci && npm run build`
+   - pastikan commit yang dideploy sudah membawa `public/build` yang benar
+   - rebuild cache Laravel lalu jalankan `php artisan admin:warm-cache`
    - set permission `storage`, `bootstrap/cache`, dan `database`
    - pasang Nginx
    - pasang SSL Let's Encrypt
@@ -830,16 +831,27 @@ Kalau file tidak ada di path itu, Firestore tidak akan jalan.
 ```bash
 cd /var/www/event-system
 composer install --no-dev --optimize-autoloader
-npm ci
 ```
 
-### Step 12 - Build frontend production
+### Step 12 - Pastikan asset frontend production sudah ikut di Git
+
+Untuk project ini, folder `public/build` memang dilacak Git.  
+Karena itu, jalur deploy production yang aman adalah:
+
+1. build frontend di local atau CI
+2. commit hasil `public/build`
+3. push ke branch deploy
+4. production cukup `git pull --ff-only`
+
+Sebelum push dari local, jalankan:
 
 ```bash
+npm ci
 npm run build
+git status --short -- public/build
 ```
 
-Tanpa langkah ini, asset frontend production tidak akan lengkap.
+Jangan biasakan `npm run build` langsung di VPS production saat update rutin, karena itu bisa membuat worktree Git kotor dan menyulitkan rollback.
 
 ### Step 13 - Buat database SQLite
 
@@ -1041,33 +1053,88 @@ Kalau semua lolos, deploy pertama dianggap sukses.
 
 ---
 
-## 13. Command Update Deploy Berikutnya
+## 13. Workflow Development dan Update Deploy yang Aman
+
+Kalau fitur UI, redesign, atau fitur baru akan terus menyusul, pakai SOP ini supaya production tetap stabil, `public/build` tidak kotor, dan cache admin tidak terlupa.
+
+### A. Aturan emas
+
+- jangan edit code aplikasi langsung di VPS production, kecuali emergency dan wajib dibackport lagi ke Git
+- jangan jalankan `npm audit fix`, `npm update`, `composer update`, atau `npm run build` langsung di VPS untuk deploy rutin
+- kalau frontend berubah, build di local atau CI lalu commit hasil `public/build`
+- sebelum `git pull` di VPS, `git status --short` harus bersih atau hanya berisi folder backup yang memang sengaja dibiarkan
+- `php artisan admin:warm-cache` wajib dijalankan setiap kali cache Laravel dibangun ulang atau ada perubahan yang menyentuh admin, scanner, attendance, atau export
+
+### B. Workflow kerja harian di local
+
+Mulai dari branch deploy terbaru:
+
+```bash
+git checkout demo-3
+git pull --ff-only origin demo-3
+```
+
+Buat branch fitur, lalu kerjakan perubahan di local:
+
+```bash
+git checkout -b feat/nama-fitur
+composer install
+npm ci
+php artisan test
+npm run build
+git status --short
+```
+
+Kalau perubahan frontend ikut menyentuh asset Vite, pastikan `public/build` ikut masuk commit. Setelah itu baru commit, push, review, dan merge ke `demo-3`.
+
+### C. Jalur deploy update rutin ke VPS
 
 Kalau app sudah pernah terpasang dan kalian hanya ingin update code:
 
 ```bash
 cd /var/www/event-system
-git pull origin main
+git status --short
+git fetch origin
+git pull --ff-only origin demo-3
 composer install --no-dev --optimize-autoloader
-npm ci
-npm run build
 php artisan migrate --force
 php artisan optimize:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 php artisan admin:warm-cache
-sudo systemctl reload nginx
-sudo systemctl restart php8.2-fpm
+php artisan queue:restart
 ```
 
-Kalau `.env` berubah:
+Catatan penting:
+
+- `php artisan queue:restart` dijalankan kalau queue worker Redis aktif di production
+- `sudo systemctl reload nginx` hanya perlu kalau config Nginx berubah
+- `sudo systemctl restart php8.2-fpm` jangan dijadikan langkah default, karena menambah risiko jeda layanan
+- jalur di atas lebih minim downtime karena tidak ada build frontend langsung di server live
+
+Kalau `git status --short` di VPS ternyata kotor karena ada hotfix manual, berhenti dulu. Rapikan dulu state Git production sebelum `git pull`.
+
+Kalau `.env` berubah, jalankan:
 
 ```bash
 nano .env
 php artisan optimize:clear
 php artisan config:cache
 ```
+
+### D. Smoke test minimal setelah deploy
+
+Minimal cek ini sebelum dianggap selesai:
+
+1. `https://portal.songkranfestival.my/login` terbuka
+2. `https://portal.songkranfestival.my/attendance` tidak `500`
+3. `https://app.songkranfestival.my/login` terbuka
+4. admin login berhasil
+5. scanner login berhasil
+6. `storage/logs/laravel.log` tidak menunjukkan error baru yang relevan
+
+Kalau semua aman, deploy dianggap selesai.
 
 ---
 
@@ -1158,9 +1225,13 @@ Gejala:
 Solusi:
 
 ```bash
+# jalankan di local atau CI
 npm ci
 npm run build
+git status --short -- public/build
 ```
+
+Lalu commit hasil `public/build` dan deploy ulang ke VPS dengan `git pull --ff-only origin demo-3`.
 
 ---
 
