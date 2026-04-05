@@ -533,10 +533,6 @@ class AdminPanelService
         $cachedSnapshot = Cache::get(self::USER_MANAGEMENT_META_CACHE_KEY);
 
         if (is_array($cachedSnapshot)) {
-            if (Cache::has(self::USER_MANAGEMENT_META_STALE_KEY)) {
-                $this->scheduleUserManagementCacheRefreshAfterResponse();
-            }
-
             return $cachedSnapshot;
         }
 
@@ -548,10 +544,6 @@ class AdminPanelService
         $cachedRows = Cache::get(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
 
         if (is_array($cachedRows)) {
-            if (Cache::has(self::USER_MANAGEMENT_DIRECTORY_STALE_KEY)) {
-                $this->scheduleUserManagementCacheRefreshAfterResponse();
-            }
-
             return $cachedRows;
         }
 

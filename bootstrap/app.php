@@ -19,6 +19,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule) {
         $schedule->command('admin:backup-data')->everySixHours();
+        $schedule->command('admin:warm-cache')->everyFifteenMinutes()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
