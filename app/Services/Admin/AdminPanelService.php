@@ -149,8 +149,9 @@ class AdminPanelService
                 'email' => (string) ($user['email'] ?? ''),
             ],
         );
+        // Keep request writes lightweight; the scheduler refreshes the
+        // expensive snapshot out of band while overview cards stay live.
         $this->markUserManagementCacheStale();
-        $this->scheduleUserManagementCacheRefreshAfterResponse();
 
         return $user;
     }
@@ -163,7 +164,6 @@ class AdminPanelService
             is_array($result['ticket'] ?? null) ? $result['ticket'] : null,
         );
         $this->markUserManagementCacheStale();
-        $this->scheduleUserManagementCacheRefreshAfterResponse();
         $this->flushDashboardCache();
 
         return $result;
@@ -173,7 +173,6 @@ class AdminPanelService
     {
         $result = $this->repository->resetQrCode($userId);
         $this->markUserManagementCacheStale();
-        $this->scheduleUserManagementCacheRefreshAfterResponse();
 
         return $result;
     }
@@ -190,7 +189,6 @@ class AdminPanelService
             is_array($result['ticket'] ?? null) ? $result['ticket'] : [],
         );
         $this->markUserManagementCacheStale();
-        $this->scheduleUserManagementCacheRefreshAfterResponse();
 
         return $result;
     }
