@@ -441,6 +441,8 @@ class AdminPanelService
             $scanLogs,
         );
         $meta = $this->cachedUserManagementMeta();
+        $overview = is_array($meta['overview'] ?? null) ? $meta['overview'] : [];
+        $overview['total_users'] = (int) ($pageResult['total'] ?? 0);
 
         return [
             'users' => new LengthAwarePaginator(
@@ -454,7 +456,7 @@ class AdminPanelService
                     'pageName' => 'page',
                 ],
             ),
-            'overview' => $meta['overview'],
+            'overview' => $overview,
             'filter_options' => $meta['filter_options'],
         ];
     }

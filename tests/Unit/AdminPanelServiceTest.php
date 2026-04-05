@@ -393,7 +393,7 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(1, data_get($result, 'meta.filter_options.verification_statuses.1.count'));
     }
 
-    public function test_optimized_user_management_page_uses_cached_meta_snapshot_while_marked_stale(): void
+    public function test_optimized_user_management_page_uses_live_total_while_meta_snapshot_is_stale(): void
     {
         Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
             'overview' => [
@@ -447,7 +447,8 @@ class AdminPanelServiceTest extends TestCase
         $service = $this->makeService($repository, $notifications, ['Gate AB']);
         $page = $service->userManagementPage([]);
 
-        $this->assertSame(9350, $page['overview']['total_users']);
+        $this->assertSame(0, $page['overview']['total_users']);
+        $this->assertSame(9100, $page['overview']['verified_users']);
         $this->assertSame('Malaysia', $page['filter_options']['countries'][0]['label']);
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
     }
@@ -1608,7 +1609,7 @@ class AdminPanelServiceTest extends TestCase
         ]);
         $page = $service->userManagementPage([]);
 
-        $this->assertSame(9349, $page['overview']['total_users']);
+        $this->assertSame(1, $page['overview']['total_users']);
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
     }
 
