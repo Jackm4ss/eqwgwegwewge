@@ -153,39 +153,18 @@ class AdminPanelServiceTest extends TestCase
             ->andReturn([]);
         $repository->shouldReceive('allUsers')
             ->once()
-            ->andReturn([]);
-        $repository->shouldReceive('countUsers')
-            ->andReturnUsing(function (array $filters = []): int {
-                if ($filters === []) {
-                    return 5;
-                }
-
-                if ($filters === ['verification_status' => 'verified']) {
-                    return 0;
-                }
-
-                if ($filters === ['verification_status' => 'verified', 'account_status' => 'active']) {
-                    return 0;
-                }
-
-                if ($filters === ['identity_type' => 'passport']) {
-                    return 5;
-                }
-
-                if ($filters === ['identity_type' => 'national_id']) {
-                    return 0;
-                }
-
-                if (array_key_exists('country', $filters)) {
-                    return 0;
-                }
-
-                return 0;
-            });
-        $repository->shouldReceive('countTickets')
+            ->andReturn([
+                ['user_id' => 'user-1', 'identity_type' => 'passport', 'verification_status' => 'unverified', 'account_status' => 'blocked'],
+                ['user_id' => 'user-2', 'identity_type' => 'passport', 'verification_status' => 'unverified', 'account_status' => 'blocked'],
+                ['user_id' => 'user-3', 'identity_type' => 'passport', 'verification_status' => 'unverified', 'account_status' => 'blocked'],
+                ['user_id' => 'user-4', 'identity_type' => 'passport', 'verification_status' => 'unverified', 'account_status' => 'blocked'],
+                ['user_id' => 'user-5', 'identity_type' => 'passport', 'verification_status' => 'unverified', 'account_status' => 'blocked'],
+            ]);
+        $repository->shouldReceive('allTickets')
             ->once()
-            ->with(['attendance_status' => 'checked_in'])
-            ->andReturn(0);
+            ->andReturn([]);
+        $repository->shouldNotReceive('countUsers');
+        $repository->shouldNotReceive('countTickets');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
@@ -224,26 +203,16 @@ class AdminPanelServiceTest extends TestCase
         $repository->shouldReceive('allUsers')
             ->once()
             ->andReturn([
-                ['user_id' => 'user-al', 'country' => 'AL'],
-                ['user_id' => 'user-mm-1', 'country' => 'MM'],
-                ['user_id' => 'user-mm-2', 'country' => 'MM'],
-                ['user_id' => 'user-my', 'country' => 'MY'],
+                ['user_id' => 'user-al', 'country' => 'AL', 'identity_type' => 'passport'],
+                ['user_id' => 'user-mm-1', 'country' => 'MM', 'identity_type' => 'passport'],
+                ['user_id' => 'user-mm-2', 'country' => 'MM', 'identity_type' => 'passport'],
+                ['user_id' => 'user-my', 'country' => 'MY', 'identity_type' => 'national_id'],
             ]);
-        $repository->shouldReceive('countUsers')
-            ->andReturnUsing(function (array $filters = []): int {
-                return match ($filters) {
-                    [] => 4,
-                    ['verification_status' => 'verified'] => 0,
-                    ['verification_status' => 'verified', 'account_status' => 'active'] => 0,
-                    ['identity_type' => 'national_id'] => 1,
-                    ['identity_type' => 'passport'] => 3,
-                    default => 0,
-                };
-            });
-        $repository->shouldReceive('countTickets')
+        $repository->shouldReceive('allTickets')
             ->once()
-            ->with(['attendance_status' => 'checked_in'])
-            ->andReturn(0);
+            ->andReturn([]);
+        $repository->shouldNotReceive('countUsers');
+        $repository->shouldNotReceive('countTickets');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
@@ -298,24 +267,14 @@ class AdminPanelServiceTest extends TestCase
         $repository->shouldReceive('allUsers')
             ->once()
             ->andReturn([
-                ['user_id' => 'user-1', 'country' => 'MY', 'email' => 'bad@gmial.com'],
-                ['user_id' => 'user-2', 'country' => 'ID', 'email' => 'good@example.test'],
+                ['user_id' => 'user-1', 'country' => 'MY', 'email' => 'bad@gmial.com', 'identity_type' => 'passport'],
+                ['user_id' => 'user-2', 'country' => 'ID', 'email' => 'good@example.test', 'identity_type' => 'passport'],
             ]);
-        $repository->shouldReceive('countUsers')
-            ->andReturnUsing(function (array $filters = []): int {
-                return match ($filters) {
-                    [] => 2,
-                    ['verification_status' => 'verified'] => 0,
-                    ['verification_status' => 'verified', 'account_status' => 'active'] => 0,
-                    ['identity_type' => 'national_id'] => 0,
-                    ['identity_type' => 'passport'] => 2,
-                    default => 0,
-                };
-            });
-        $repository->shouldReceive('countTickets')
+        $repository->shouldReceive('allTickets')
             ->once()
-            ->with(['attendance_status' => 'checked_in'])
-            ->andReturn(0);
+            ->andReturn([]);
+        $repository->shouldNotReceive('countUsers');
+        $repository->shouldNotReceive('countTickets');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
@@ -352,25 +311,15 @@ class AdminPanelServiceTest extends TestCase
         $repository->shouldReceive('allUsers')
             ->once()
             ->andReturn([
-                ['user_id' => 'user-1', 'country' => 'MY', 'verification_status' => 'verified', 'account_status' => 'active'],
-                ['user_id' => 'user-2', 'country' => 'ID', 'verification_status' => 'unverified', 'account_status' => 'pending_verification'],
-                ['user_id' => 'user-3', 'country' => 'TH', 'verification_status' => 'unverified', 'account_status' => 'blocked'],
+                ['user_id' => 'user-1', 'country' => 'MY', 'identity_type' => 'passport', 'verification_status' => 'verified', 'account_status' => 'active'],
+                ['user_id' => 'user-2', 'country' => 'ID', 'identity_type' => 'passport', 'verification_status' => 'unverified', 'account_status' => 'pending_verification'],
+                ['user_id' => 'user-3', 'country' => 'TH', 'identity_type' => 'passport', 'verification_status' => 'unverified', 'account_status' => 'blocked'],
             ]);
-        $repository->shouldReceive('countUsers')
-            ->andReturnUsing(function (array $filters = []): int {
-                return match ($filters) {
-                    [] => 3,
-                    ['verification_status' => 'verified'] => 1,
-                    ['verification_status' => 'verified', 'account_status' => 'active'] => 1,
-                    ['identity_type' => 'national_id'] => 0,
-                    ['identity_type' => 'passport'] => 3,
-                    default => 0,
-                };
-            });
-        $repository->shouldReceive('countTickets')
+        $repository->shouldReceive('allTickets')
             ->once()
-            ->with(['attendance_status' => 'checked_in'])
-            ->andReturn(0);
+            ->andReturn([]);
+        $repository->shouldNotReceive('countUsers');
+        $repository->shouldNotReceive('countTickets');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
@@ -383,6 +332,65 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(1, $verificationOptions['verified']['count']);
         $this->assertSame(1, $verificationOptions['pending_verification']['count']);
         $this->assertSame(2, $verificationOptions['unverified']['count']);
+    }
+
+    public function test_warm_user_management_cache_builds_meta_from_same_directory_snapshot(): void
+    {
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allUsers')
+            ->once()
+            ->andReturn([
+                [
+                    'user_id' => 'user-1',
+                    'country' => 'MY',
+                    'email' => 'first@example.test',
+                    'identity_type' => 'passport',
+                    'verification_status' => 'verified',
+                    'account_status' => 'active',
+                    'ticket_id' => 'ticket-1',
+                ],
+                [
+                    'user_id' => 'user-2',
+                    'country' => 'ID',
+                    'email' => 'second@example.test',
+                    'identity_type' => 'passport',
+                    'verification_status' => 'unverified',
+                    'account_status' => 'pending_verification',
+                    'ticket_id' => 'ticket-2',
+                ],
+            ]);
+        $repository->shouldReceive('allTickets')
+            ->once()
+            ->andReturn([
+                [
+                    'ticket_id' => 'ticket-1',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-1',
+                    'attendance_status' => 'checked_in',
+                ],
+                [
+                    'ticket_id' => 'ticket-2',
+                    'user_id' => 'user-2',
+                    'ticket_code' => 'TICKET-2',
+                    'attendance_status' => 'not_checked_in',
+                ],
+            ]);
+        $repository->shouldNotReceive('countUsers');
+        $repository->shouldNotReceive('countTickets');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications);
+        $result = $service->warmUserManagementCache();
+
+        $this->assertCount(2, $result['directory']);
+        $this->assertSame(2, data_get($result, 'meta.overview.total_users'));
+        $this->assertSame(1, data_get($result, 'meta.overview.checked_in_users'));
+        $this->assertSame(1, data_get($result, 'meta.filter_options.verification_statuses.1.count'));
     }
 
     public function test_optimized_user_management_page_uses_cached_meta_snapshot_while_marked_stale(): void
@@ -1228,6 +1236,168 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame('ticket_updated', $rows[0]['action_type']);
     }
 
+    public function test_reports_use_filtered_scan_log_query_without_loading_users_or_tickets(): void
+    {
+        $filters = [
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('queryScanLogs')
+            ->once()
+            ->with($filters)
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-1',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-1',
+                    'scanner_name' => 'Gate A',
+                    'result' => 'success',
+                    'scan_date' => '2026-03-29',
+                    'scanned_at' => '2026-03-29T10:00:00Z',
+                ],
+                [
+                    'scan_id' => 'scan-2',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-1',
+                    'scanner_name' => 'Gate A',
+                    'result' => 'duplicate',
+                    'scan_date' => '2026-03-29',
+                    'scanned_at' => '2026-03-29T10:05:00Z',
+                ],
+            ]);
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('allScanLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications);
+        $reports = $service->reports($filters);
+
+        $this->assertSame(2, data_get($reports, 'daily.total_scans'));
+        $this->assertSame(1, data_get($reports, 'overall.visitor_statistics.0.unique_visitors'));
+    }
+
+    public function test_export_users_uses_cached_directory_snapshot(): void
+    {
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-my',
+                'full_name' => 'Cherry Thin',
+                'email' => 'cherry@example.test',
+                'country' => 'MY',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'identity_type' => 'passport',
+                'attendance_status' => 'not_checked_in',
+                'traffic_source_label' => 'Instagram',
+                'traffic_source_caption' => 'Instagram / reel',
+                'created_at' => '2026-04-01T10:00:00Z',
+            ],
+            [
+                'user_id' => 'user-id',
+                'full_name' => 'Alya Putri',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'verification_status' => 'unverified',
+                'account_status' => 'pending_verification',
+                'identity_type' => 'passport',
+                'attendance_status' => 'not_checked_in',
+                'traffic_source_label' => 'Direct',
+                'traffic_source_caption' => 'Direct visit',
+                'created_at' => '2026-04-02T10:00:00Z',
+            ],
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications);
+        $rows = $service->exportRows('users', ['q' => 'cherry']);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('Cherry Thin', $rows[0]['full_name']);
+    }
+
+    public function test_export_attendance_uses_filtered_scan_log_query(): void
+    {
+        $filters = [
+            'scanner_post' => 'Gate A',
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('queryScanLogs')
+            ->once()
+            ->with($filters)
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-1',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-1',
+                    'scanner_name' => 'Gate A',
+                    'result' => 'success',
+                    'scan_date' => '2026-03-29',
+                    'scanned_at' => '2026-03-29T10:00:00Z',
+                ],
+            ]);
+        $repository->shouldNotReceive('allScanLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications);
+        $rows = $service->exportRows('attendance', $filters);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('Gate A', $rows[0]['scanner_name']);
+    }
+
+    public function test_export_daily_report_uses_filtered_scan_log_query_without_loading_users_or_tickets(): void
+    {
+        $filters = [
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('queryScanLogs')
+            ->once()
+            ->with($filters)
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-1',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-1',
+                    'scanner_name' => 'Gate A',
+                    'result' => 'success',
+                    'scan_date' => '2026-03-29',
+                    'scanned_at' => '2026-03-29T10:00:00Z',
+                ],
+            ]);
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('allScanLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications);
+        $rows = $service->exportRows('daily-report', $filters);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('2026-03-29', $rows[0]['scan_date']);
+        $this->assertSame(1, $rows[0]['successful_attendance']);
+    }
+
     public function test_update_user_by_admin_sends_profile_notification_with_hydrated_ticket(): void
     {
         $repository = Mockery::mock(AdminFirestoreRepository::class);
@@ -1288,6 +1458,207 @@ class AdminPanelServiceTest extends TestCase
         ]);
 
         $this->assertSame('Indonesia', $user['country_label']);
+        $this->assertSame('TICKET-123', $user['ticket']['ticket_code']);
+    }
+
+    public function test_update_user_by_admin_marks_user_management_cache_stale_without_dropping_snapshot(): void
+    {
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 9349],
+            'filter_options' => [],
+        ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            ['user_id' => 'user-123', 'full_name' => 'Alya'],
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findUser')
+            ->once()
+            ->with('user-123')
+            ->andReturn([
+                'user_id' => 'user-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'ticket_id' => 'ticket-123',
+                'account_status' => 'pending_verification',
+                'verification_status' => 'unverified',
+            ]);
+        $repository->shouldReceive('findTicket')
+            ->times(2)
+            ->with('ticket-123')
+            ->andReturn([
+                'ticket_id' => 'ticket-123',
+                'ticket_code' => 'TICKET-123',
+            ]);
+        $repository->shouldReceive('updateUserByAdmin')
+            ->once()
+            ->with('user-123', ['account_status' => 'active'])
+            ->andReturn([
+                'user_id' => 'user-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'ticket_id' => 'ticket-123',
+                'account_status' => 'active',
+                'verification_status' => 'unverified',
+            ]);
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldReceive('sendProfileUpdated')->once();
+
+        $service = $this->makeService($repository, $notifications);
+
+        $service->updateUserByAdmin('user-123', [
+            'account_status' => 'active',
+        ]);
+
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY));
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY));
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY));
+    }
+
+    public function test_update_user_by_admin_keeps_cached_meta_available_for_following_index_request(): void
+    {
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 9349],
+            'filter_options' => [
+                'countries' => [],
+                'verification_statuses' => [],
+                'identity_types' => [],
+                'attendance_statuses' => [],
+            ],
+        ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, []);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findUser')
+            ->once()
+            ->with('user-123')
+            ->andReturn([
+                'user_id' => 'user-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'ticket_id' => 'ticket-123',
+                'account_status' => 'pending_verification',
+                'verification_status' => 'unverified',
+            ]);
+        $repository->shouldReceive('findTicket')
+            ->times(2)
+            ->with('ticket-123')
+            ->andReturn([
+                'ticket_id' => 'ticket-123',
+                'ticket_code' => 'TICKET-123',
+            ]);
+        $repository->shouldReceive('updateUserByAdmin')
+            ->once()
+            ->with('user-123', ['account_status' => 'active'])
+            ->andReturn([
+                'user_id' => 'user-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'ticket_id' => 'ticket-123',
+                'account_status' => 'active',
+                'verification_status' => 'unverified',
+            ]);
+        $repository->shouldReceive('paginateUsers')
+            ->once()
+            ->with([], 1, 10)
+            ->andReturn([
+                'items' => [
+                    [
+                        'user_id' => 'user-123',
+                        'full_name' => 'Alya',
+                        'email' => 'alya@example.test',
+                        'country' => 'ID',
+                        'ticket_id' => 'ticket-123',
+                        'account_status' => 'active',
+                        'verification_status' => 'unverified',
+                        'created_at' => '2026-04-05T07:00:00Z',
+                    ],
+                ],
+                'total' => 1,
+            ]);
+        $repository->shouldReceive('findTicketsByIds')
+            ->once()
+            ->with(['ticket-123'])
+            ->andReturn([
+                [
+                    'ticket_id' => 'ticket-123',
+                    'ticket_code' => 'TICKET-123',
+                    'user_id' => 'user-123',
+                ],
+            ]);
+        $repository->shouldReceive('findScanLogsByUserIds')
+            ->once()
+            ->with(['user-123'])
+            ->andReturn([]);
+        $repository->shouldNotReceive('allUsers');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldReceive('sendProfileUpdated')->once();
+
+        $service = $this->makeService($repository, $notifications);
+
+        $service->updateUserByAdmin('user-123', [
+            'account_status' => 'active',
+        ]);
+        $page = $service->userManagementPage([]);
+
+        $this->assertSame(9349, $page['overview']['total_users']);
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
+    }
+
+    public function test_update_user_by_admin_ignores_profile_notification_failures(): void
+    {
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findUser')
+            ->once()
+            ->with('user-123')
+            ->andReturn([
+                'user_id' => 'user-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'ticket_id' => 'ticket-123',
+                'account_status' => 'pending_verification',
+                'verification_status' => 'unverified',
+            ]);
+        $repository->shouldReceive('findTicket')
+            ->times(2)
+            ->with('ticket-123')
+            ->andReturn([
+                'ticket_id' => 'ticket-123',
+                'ticket_code' => 'TICKET-123',
+            ]);
+        $repository->shouldReceive('updateUserByAdmin')
+            ->once()
+            ->with('user-123', ['account_status' => 'active'])
+            ->andReturn([
+                'user_id' => 'user-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'ticket_id' => 'ticket-123',
+                'account_status' => 'active',
+                'verification_status' => 'unverified',
+            ]);
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldReceive('sendProfileUpdated')
+            ->once()
+            ->andThrow(new \RuntimeException('SMTP timeout'));
+
+        $service = $this->makeService($repository, $notifications);
+
+        $user = $service->updateUserByAdmin('user-123', [
+            'account_status' => 'active',
+        ]);
+
+        $this->assertSame('active', $user['account_status']);
         $this->assertSame('TICKET-123', $user['ticket']['ticket_code']);
     }
 

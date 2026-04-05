@@ -2,11 +2,11 @@
 
 namespace App\Services\Admin;
 
-use App\Support\EmailTypoInspector;
 use App\Services\Scanner\ScannerGateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class AdminPanelService
@@ -133,12 +133,24 @@ class AdminPanelService
     {
         $previousUser = $this->findUser($userId);
         $user = $this->hydrateUser($this->repository->updateUserByAdmin($userId, $attributes));
-        $this->participantNotifications->sendProfileUpdated(
-            $previousUser ?? [],
-            $user,
-            is_array($user['ticket'] ?? null) ? $user['ticket'] : null,
+        $ticket = is_array($user['ticket'] ?? null) ? $user['ticket'] : null;
+
+        $this->dispatchAfterResponseSafely(
+            function () use ($previousUser, $ticket, $user): void {
+                $this->participantNotifications->sendProfileUpdated(
+                    $previousUser ?? [],
+                    $user,
+                    $ticket,
+                );
+            },
+            'Failed to send participant profile update notification.',
+            [
+                'user_id' => $userId,
+                'email' => (string) ($user['email'] ?? ''),
+            ],
         );
-        $this->flushUserManagementCache();
+        $this->markUserManagementCacheStale();
+        $this->scheduleUserManagementCacheRefreshAfterResponse();
 
         return $user;
     }
@@ -150,7 +162,8 @@ class AdminPanelService
             $result['user'] ?? [],
             is_array($result['ticket'] ?? null) ? $result['ticket'] : null,
         );
-        $this->flushUserManagementCache();
+        $this->markUserManagementCacheStale();
+        $this->scheduleUserManagementCacheRefreshAfterResponse();
         $this->flushDashboardCache();
 
         return $result;
@@ -159,7 +172,8 @@ class AdminPanelService
     public function resetQrCode(string $userId): array
     {
         $result = $this->repository->resetQrCode($userId);
-        $this->flushUserManagementCache();
+        $this->markUserManagementCacheStale();
+        $this->scheduleUserManagementCacheRefreshAfterResponse();
 
         return $result;
     }
@@ -175,7 +189,8 @@ class AdminPanelService
             $result['user'],
             is_array($result['ticket'] ?? null) ? $result['ticket'] : [],
         );
-        $this->flushUserManagementCache();
+        $this->markUserManagementCacheStale();
+        $this->scheduleUserManagementCacheRefreshAfterResponse();
 
         return $result;
     }
@@ -248,9 +263,9 @@ class AdminPanelService
     public function reports(array $filters = []): array
     {
         return $this->analytics->buildReports(
-            $this->repository->allUsers(),
-            $this->repository->allTickets(),
-            $this->repository->allScanLogs(),
+            [],
+            [],
+            $this->repository->queryScanLogs($filters),
             $filters,
         );
     }
@@ -258,19 +273,15 @@ class AdminPanelService
     public function exportRows(string $type, array $filters = []): array
     {
         return match ($type) {
-            'users' => $this->analytics->buildExportDataset(
-                $type,
-                $this->repository->allUsers(),
-                $this->repository->allTickets(),
-                [],
-                [],
+            'users' => $this->analytics->filterUserRows(
+                $this->cachedUserManagementDirectory(),
                 $filters,
             ),
             'attendance' => $this->analytics->buildExportDataset(
                 $type,
                 [],
                 [],
-                $this->repository->allScanLogs(),
+                $this->repository->queryScanLogs($filters),
                 [],
                 $filters,
             ),
@@ -284,9 +295,9 @@ class AdminPanelService
             ),
             'daily-report', 'overall-report' => $this->analytics->buildExportDataset(
                 $type,
-                $this->repository->allUsers(),
-                $this->repository->allTickets(),
-                $this->repository->allScanLogs(),
+                [],
+                [],
+                $this->repository->queryScanLogs($filters),
                 [],
                 $filters,
             ),
@@ -560,141 +571,15 @@ class AdminPanelService
         return $this->refreshAttendanceDirectoryCache();
     }
 
-    private function buildUserManagementMetaSnapshot(): array
-    {
-        $totalUsers = $this->repository->countUsers();
-        $verifiedUsers = $this->repository->countUsers(['verification_status' => 'verified']);
-        $activeVerifiedUsers = $this->repository->countUsers([
-            'verification_status' => 'verified',
-            'account_status' => 'active',
-        ]);
-        $passportUsers = $this->repository->countUsers(['identity_type' => 'passport']);
-        $nationalIdUsers = $this->repository->countUsers(['identity_type' => 'national_id']);
-        $checkedInUsers = $this->repository->countTickets([
-            'attendance_status' => 'checked_in',
-        ]);
-        $countryCounts = [];
-        $emailTypoCounts = [
-            'suspected' => 0,
-            'clean' => 0,
-        ];
-        $pendingVerificationUsers = 0;
-        $allUsers = $this->repository->allUsers();
-
-        EmailTypoInspector::preload(array_map(
-            fn (array $user): string => (string) ($user['email'] ?? ''),
-            $allUsers,
-        ));
-
-        foreach ($allUsers as $user) {
-            $countryCode = strtoupper(trim((string) ($user['country'] ?? '')));
-
-            if (strtolower(trim((string) ($user['account_status'] ?? ''))) === 'pending_verification') {
-                $pendingVerificationUsers++;
-            }
-
-            if ($countryCode === '') {
-                $emailAnalysis = EmailTypoInspector::analyze((string) ($user['email'] ?? ''));
-                $emailTypoCounts[$emailAnalysis['suspected'] ? 'suspected' : 'clean']++;
-
-                continue;
-            }
-
-            $countryCounts[$countryCode] = ($countryCounts[$countryCode] ?? 0) + 1;
-
-            $emailAnalysis = EmailTypoInspector::analyze((string) ($user['email'] ?? ''));
-            $emailTypoCounts[$emailAnalysis['suspected'] ? 'suspected' : 'clean']++;
-        }
-
-        $countryOptions = array_map(
-            fn (string $countryCode): array => [
-                'value' => $countryCode,
-                'label' => $this->analytics->countryLabel($countryCode),
-                'count' => $countryCounts[$countryCode],
-            ],
-            array_keys($countryCounts),
-        );
-
-        usort($countryOptions, fn (array $left, array $right): int => strcmp($left['label'], $right['label']));
-
-        return [
-            'overview' => [
-                'total_users' => $totalUsers,
-                'verified_users' => $verifiedUsers,
-                'checked_in_users' => $checkedInUsers,
-                'follow_up_users' => max(0, $totalUsers - $activeVerifiedUsers),
-                'countries_count' => count($countryOptions),
-                'verified_rate' => $this->calculateRate($verifiedUsers, $totalUsers),
-                'checked_in_rate' => $this->calculateRate($checkedInUsers, $totalUsers),
-                'follow_up_rate' => $this->calculateRate(max(0, $totalUsers - $activeVerifiedUsers), $totalUsers),
-            ],
-            'filter_options' => [
-                'countries' => $countryOptions,
-                'verification_statuses' => [
-                    [
-                        'value' => 'verified',
-                        'label' => 'Verified',
-                        'count' => $verifiedUsers,
-                    ],
-                    [
-                        'value' => 'pending_verification',
-                        'label' => 'Pending Verification',
-                        'count' => $pendingVerificationUsers,
-                    ],
-                    [
-                        'value' => 'unverified',
-                        'label' => 'Unverified',
-                        'count' => max(0, $totalUsers - $verifiedUsers),
-                    ],
-                ],
-                'identity_types' => [
-                    [
-                        'value' => 'national_id',
-                        'label' => $this->analytics->identityTypeLabel('national_id'),
-                        'count' => $nationalIdUsers,
-                    ],
-                    [
-                        'value' => 'passport',
-                        'label' => $this->analytics->identityTypeLabel('passport'),
-                        'count' => $passportUsers,
-                    ],
-                ],
-                'attendance_statuses' => [
-                    [
-                        'value' => 'checked_in',
-                        'label' => 'Checked In',
-                        'count' => $checkedInUsers,
-                    ],
-                    [
-                        'value' => 'not_checked_in',
-                        'label' => 'Not Checked In',
-                        'count' => max(0, $totalUsers - $checkedInUsers),
-                    ],
-                ],
-                'email_typo_statuses' => [
-                    [
-                        'value' => 'suspected',
-                        'label' => 'Suspected Typo',
-                        'count' => $emailTypoCounts['suspected'],
-                    ],
-                    [
-                        'value' => 'clean',
-                        'label' => 'Looks Valid',
-                        'count' => $emailTypoCounts['clean'],
-                    ],
-                ],
-            ],
-        ];
-    }
-
     private function refreshUserManagementMetaCache(): array
     {
-        $snapshot = $this->buildUserManagementMetaSnapshot();
+        $rows = Cache::get(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
 
-        Cache::forever(self::USER_MANAGEMENT_META_CACHE_KEY, $snapshot);
-        Cache::forget(self::USER_MANAGEMENT_META_STALE_KEY);
+        if (! is_array($rows)) {
+            $rows = $this->refreshUserManagementDirectoryCache();
+        }
 
-        return $snapshot;
+        return $this->refreshUserManagementMetaCacheFromRows($rows);
     }
 
     private function refreshUserManagementDirectoryCache(): array
@@ -752,10 +637,25 @@ class AdminPanelService
 
     private function refreshUserManagementCaches(): array
     {
+        $directory = $this->refreshUserManagementDirectoryCache();
+
         return [
-            'meta' => $this->refreshUserManagementMetaCache(),
-            'directory' => $this->refreshUserManagementDirectoryCache(),
+            'meta' => $this->refreshUserManagementMetaCacheFromRows($directory),
+            'directory' => $directory,
         ];
+    }
+
+    private function refreshUserManagementMetaCacheFromRows(array $rows): array
+    {
+        $snapshot = [
+            'overview' => $this->analytics->buildUserManagementOverview($rows),
+            'filter_options' => $this->analytics->buildUserFilterOptions($rows),
+        ];
+
+        Cache::forever(self::USER_MANAGEMENT_META_CACHE_KEY, $snapshot);
+        Cache::forget(self::USER_MANAGEMENT_META_STALE_KEY);
+
+        return $snapshot;
     }
 
     private function scheduleUserManagementCacheRefreshAfterResponse(): void
@@ -808,6 +708,28 @@ class AdminPanelService
                 Cache::forget(self::ATTENDANCE_REFRESH_LOCK_KEY);
             }
         });
+    }
+
+    private function dispatchAfterResponseSafely(callable $callback, string $message, array $context = []): void
+    {
+        $runner = function () use ($callback, $context, $message): void {
+            try {
+                $callback();
+            } catch (\Throwable $exception) {
+                Log::warning($message, array_merge($context, [
+                    'exception' => $exception::class,
+                    'error' => $exception->getMessage(),
+                ]));
+            }
+        };
+
+        if (app()->environment('testing')) {
+            $runner();
+
+            return;
+        }
+
+        app()->terminating($runner);
     }
 
     private function buildAttendanceDirectoryRow(
@@ -1043,15 +965,6 @@ class AdminPanelService
             'ticket' => $ticket,
             'country_label' => $this->analytics->countryLabel($user['country'] ?? null),
         ]));
-    }
-
-    private function calculateRate(int $portion, int $total): float
-    {
-        if ($total <= 0) {
-            return 0.0;
-        }
-
-        return round(($portion / $total) * 100, 2);
     }
 
     private function normalizeAttendanceFilters(array $filters): array

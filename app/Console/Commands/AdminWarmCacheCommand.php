@@ -39,6 +39,9 @@ class AdminWarmCacheCommand extends Command
                     count((array) data_get($userManagement, 'meta.filter_options.countries', [])),
                     count((array) data_get($userManagement, 'directory', [])),
                 ));
+
+                unset($userManagement);
+                $this->collectCycles();
             } catch (\Throwable $throwable) {
                 $failures[] = 'User Management cache failed: '.$throwable->getMessage();
             }
@@ -52,6 +55,9 @@ class AdminWarmCacheCommand extends Command
                     'Attendance cache warmed: %d rows.',
                     count($attendance),
                 ));
+
+                unset($attendance);
+                $this->collectCycles();
             } catch (\Throwable $throwable) {
                 $failures[] = 'Attendance cache failed: '.$throwable->getMessage();
             }
@@ -78,6 +84,9 @@ class AdminWarmCacheCommand extends Command
                         (int) ($stats['duplicate_scans'] ?? 0),
                         (int) ($stats['invalid_scans'] ?? 0),
                     ));
+
+                    unset($snapshot, $stats);
+                    $this->collectCycles();
                 } catch (\Throwable $throwable) {
                     $failures[] = sprintf(
                         'Scanner cache failed for [%s]: %s',
@@ -144,5 +153,12 @@ class AdminWarmCacheCommand extends Command
         }
 
         return array_values(array_unique($selected));
+    }
+
+    private function collectCycles(): void
+    {
+        if (function_exists('gc_collect_cycles')) {
+            gc_collect_cycles();
+        }
     }
 }
