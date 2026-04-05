@@ -441,8 +441,11 @@ class AdminPanelService
             $scanLogs,
         );
         $meta = $this->cachedUserManagementMeta();
-        $overview = is_array($meta['overview'] ?? null) ? $meta['overview'] : [];
-        $overview['total_users'] = (int) ($pageResult['total'] ?? 0);
+        $overview = $this->optimizedUserManagementOverview(
+            $filters,
+            (int) ($pageResult['total'] ?? 0),
+            is_array($meta['overview'] ?? null) ? $meta['overview'] : [],
+        );
 
         return [
             'users' => new LengthAwarePaginator(
@@ -459,6 +462,59 @@ class AdminPanelService
             'overview' => $overview,
             'filter_options' => $meta['filter_options'],
         ];
+    }
+
+    private function optimizedUserManagementOverview(
+        array $filters,
+        int $totalUsers,
+        array $fallbackOverview,
+    ): array {
+        $countFilters = $this->optimizedUserManagementOverviewCountFilters($filters);
+        $verifiedUsers = $this->repository->countUsers(array_merge($countFilters, [
+            'verification_status' => 'verified',
+        ]));
+        $healthyUsers = $this->repository->countUsers(array_merge($countFilters, [
+            'verification_status' => 'verified',
+            'account_status' => 'active',
+        ]));
+        $checkedInUsers = $this->canCountCheckedInUsersLive($countFilters)
+            ? $this->repository->countTickets(['attendance_status' => 'checked_in'])
+            : (int) ($fallbackOverview['checked_in_users'] ?? 0);
+        $followUpUsers = max(0, $totalUsers - $healthyUsers);
+
+        return array_merge($fallbackOverview, [
+            'total_users' => $totalUsers,
+            'verified_users' => $verifiedUsers,
+            'checked_in_users' => $checkedInUsers,
+            'follow_up_users' => $followUpUsers,
+            'verified_rate' => $this->calculateOverviewRate($verifiedUsers, $totalUsers),
+            'checked_in_rate' => $this->calculateOverviewRate($checkedInUsers, $totalUsers),
+            'follow_up_rate' => $this->calculateOverviewRate($followUpUsers, $totalUsers),
+        ]);
+    }
+
+    private function optimizedUserManagementOverviewCountFilters(array $filters): array
+    {
+        return array_filter([
+            'country' => $filters['country'] ?? null,
+            'identity_type' => $filters['identity_type'] ?? null,
+            'verification_status' => $filters['verification_status'] ?? null,
+            'account_status' => $filters['account_status'] ?? null,
+        ], static fn (mixed $value): bool => filled($value));
+    }
+
+    private function canCountCheckedInUsersLive(array $countFilters): bool
+    {
+        return $countFilters === [];
+    }
+
+    private function calculateOverviewRate(int $value, int $total): int
+    {
+        if ($total <= 0) {
+            return 0;
+        }
+
+        return (int) round(($value / $total) * 100);
     }
 
     private function cachedAttendanceData(array $filters = []): array
