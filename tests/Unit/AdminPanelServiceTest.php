@@ -10,6 +10,7 @@ use App\Support\EmailTypoInspector;
 use App\Services\Scanner\ScannerGateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Mockery;
 use Tests\TestCase;
 
@@ -19,6 +20,7 @@ class AdminPanelServiceTest extends TestCase
     {
         parent::setUp();
 
+        Storage::fake('local');
         EmailTypoInspector::clearFakes();
         $this->clearUserManagementMetaCache();
         $this->clearAttendanceCache();
@@ -889,6 +891,40 @@ class AdminPanelServiceTest extends TestCase
                 'attendance_statuses' => [],
             ],
         ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-my',
+                'full_name' => 'Cherry Thin',
+                'email' => 'cherry@example.test',
+                'country' => 'MY',
+                'country_label' => 'Malaysia',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'attendance_status' => 'not_checked_in',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'ticket_id' => 'ticket-my',
+                'ticket_code' => 'TICKET-MY',
+                'identity_type' => 'passport',
+                'created_at' => '2026-04-02T10:00:00Z',
+            ],
+            [
+                'user_id' => 'user-mm',
+                'full_name' => 'Hein Lin',
+                'email' => 'hein@example.test',
+                'country' => 'MM',
+                'country_label' => 'Myanmar',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'attendance_status' => 'not_checked_in',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'ticket_id' => 'ticket-mm',
+                'ticket_code' => 'TICKET-MM',
+                'identity_type' => 'passport',
+                'created_at' => '2026-04-02T11:00:00Z',
+            ],
+        ]);
 
         $filters = [
             'country' => 'MY',
@@ -901,49 +937,9 @@ class AdminPanelServiceTest extends TestCase
             ->once()
             ->with($filters, 1, 10)
             ->andThrow(new \RuntimeException('Firestore FAILED_PRECONDITION: query requires an index.'));
-        $repository->shouldReceive('allUsers')
-            ->once()
-            ->andReturn([
-                [
-                    'user_id' => 'user-my',
-                    'full_name' => 'Cherry Thin',
-                    'email' => 'cherry@example.test',
-                    'country' => 'MY',
-                    'verification_status' => 'verified',
-                    'account_status' => 'active',
-                    'created_at' => '2026-04-02T10:00:00Z',
-                    'ticket_id' => 'ticket-my',
-                ],
-                [
-                    'user_id' => 'user-mm',
-                    'full_name' => 'Hein Lin',
-                    'email' => 'hein@example.test',
-                    'country' => 'MM',
-                    'verification_status' => 'verified',
-                    'account_status' => 'active',
-                    'created_at' => '2026-04-02T11:00:00Z',
-                    'ticket_id' => 'ticket-mm',
-                ],
-            ]);
-        $repository->shouldReceive('allTickets')
-            ->once()
-            ->andReturn([
-                [
-                    'ticket_id' => 'ticket-my',
-                    'user_id' => 'user-my',
-                    'ticket_code' => 'TICKET-MY',
-                    'attendance_status' => 'not_checked_in',
-                ],
-                [
-                    'ticket_id' => 'ticket-mm',
-                    'user_id' => 'user-mm',
-                    'ticket_code' => 'TICKET-MM',
-                    'attendance_status' => 'not_checked_in',
-                ],
-            ]);
-        $repository->shouldReceive('allScanLogs')
-            ->once()
-            ->andReturn([]);
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('allScanLogs');
         $repository->shouldNotReceive('findScanLogsByUserIds');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
@@ -957,6 +953,76 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame('user-my', $page['users']->items()[0]['user_id']);
         $this->assertSame('Malaysia', $page['users']->items()[0]['country_label']);
         $this->assertSame(1, $page['overview']['total_users']);
+    }
+
+    public function test_user_management_page_restores_cached_snapshot_from_local_storage_without_rebuilding_firestore_data(): void
+    {
+        Storage::disk('local')->put('admin-cache/user-management-meta-v1.json', json_encode([
+            'overview' => ['total_users' => 2],
+            'filter_options' => [
+                'countries' => [],
+                'verification_statuses' => [],
+                'identity_types' => [],
+                'attendance_statuses' => [],
+                'email_typo_statuses' => [],
+            ],
+        ]));
+        Storage::disk('local')->put('admin-cache/user-management-directory-v1.json', json_encode([
+            [
+                'user_id' => 'user-my',
+                'full_name' => 'Cherry Thin',
+                'email' => 'cherry@example.test',
+                'country' => 'MY',
+                'country_label' => 'Malaysia',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'attendance_status' => 'not_checked_in',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'ticket_id' => 'ticket-my',
+                'ticket_code' => 'TICKET-MY',
+                'identity_type' => 'passport',
+                'created_at' => '2026-04-02T10:00:00Z',
+            ],
+            [
+                'user_id' => 'user-mm',
+                'full_name' => 'Hein Lin',
+                'email' => 'hein@example.test',
+                'country' => 'MM',
+                'country_label' => 'Myanmar',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'attendance_status' => 'checked_in',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'ticket_id' => 'ticket-mm',
+                'ticket_code' => 'TICKET-MM',
+                'identity_type' => 'passport',
+                'created_at' => '2026-04-02T09:00:00Z',
+            ],
+        ]));
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldNotReceive('paginateUsers');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('allScanLogs');
+        $repository->shouldNotReceive('findScanLogsByUserIds');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+        $page = $service->userManagementPage([
+            'q' => 'cherry',
+            'page' => 1,
+            'per_page' => 10,
+        ]);
+
+        $this->assertSame(1, $page['users']->total());
+        $this->assertSame('user-my', $page['users']->items()[0]['user_id']);
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY));
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY));
     }
 
     public function test_activity_logs_uses_optimized_firestore_pagination_when_text_search_is_empty(): void

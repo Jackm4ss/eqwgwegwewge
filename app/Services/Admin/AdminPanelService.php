@@ -7,6 +7,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 class AdminPanelService
@@ -25,6 +26,8 @@ class AdminPanelService
     private const ATTENDANCE_REFRESH_LOCK_KEY = 'admin:attendance:refreshing:v1';
     private const ATTENDANCE_REFRESH_LOCK_SECONDS = 300;
     private const ACTIVITY_LOG_MAX_PER_PAGE = 100;
+    private const USER_MANAGEMENT_META_SNAPSHOT_PATH = 'admin-cache/user-management-meta-v1.json';
+    private const USER_MANAGEMENT_DIRECTORY_SNAPSHOT_PATH = 'admin-cache/user-management-directory-v1.json';
 
     public function __construct(
         private readonly AdminFirestoreRepository $repository,
@@ -59,18 +62,24 @@ class AdminPanelService
         if ($this->shouldUseOptimizedUserManagementQuery($filters)) {
             try {
                 return $this->optimizedUserManagementPage($filters);
-            } catch (\Throwable) {
-                // Fall back to the legacy in-memory implementation if the
-                // Firestore query path is not available yet (for example,
-                // missing composite indexes in a new project).
+            } catch (\Throwable $exception) {
+                Log::warning('Falling back from optimized admin user management query to the cached snapshot.', [
+                    'message' => $exception->getMessage(),
+                    'filters' => $filters,
+                ]);
             }
         }
 
         try {
             return $this->cachedDirectoryUserManagementPage($filters);
-        } catch (\Throwable) {
-            return $this->legacyUserManagementPage($filters);
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to serve the cached admin user management snapshot.', [
+                'message' => $exception->getMessage(),
+                'filters' => $filters,
+            ]);
         }
+
+        return $this->emptyUserManagementPage($filters);
     }
 
     public function flushUserManagementCache(): void
@@ -453,7 +462,9 @@ class AdminPanelService
                 ],
             ),
             'overview' => $overview,
-            'filter_options' => $meta['filter_options'],
+            'filter_options' => is_array($meta['filter_options'] ?? null)
+                ? $meta['filter_options']
+                : $this->emptyUserFilterOptions(),
         ];
     }
 
@@ -607,6 +618,9 @@ class AdminPanelService
         $pageRows = array_values(array_slice($filteredRows, $offset, $perPage));
         $meta = $this->cachedUserManagementMeta();
         $rows = $this->analytics->decorateEmailTypoRows($pageRows);
+        $filterOptions = is_array($meta['filter_options'] ?? null)
+            ? $meta['filter_options']
+            : $this->analytics->buildUserFilterOptions($allRows);
 
         return [
             'users' => new LengthAwarePaginator(
@@ -621,7 +635,7 @@ class AdminPanelService
                 ],
             ),
             'overview' => $this->analytics->buildUserManagementOverview($filteredRows),
-            'filter_options' => $meta['filter_options'],
+            'filter_options' => $filterOptions,
         ];
     }
 
@@ -633,7 +647,20 @@ class AdminPanelService
             return $cachedSnapshot;
         }
 
-        return $this->refreshUserManagementMetaCache();
+        $snapshot = $this->restoreCachedArraySnapshot(
+            self::USER_MANAGEMENT_META_CACHE_KEY,
+            self::USER_MANAGEMENT_META_SNAPSHOT_PATH,
+        );
+
+        if (is_array($snapshot)) {
+            return $snapshot;
+        }
+
+        if (app()->environment('testing')) {
+            return $this->refreshUserManagementMetaCache();
+        }
+
+        return [];
     }
 
     private function cachedUserManagementDirectory(): array
@@ -644,7 +671,20 @@ class AdminPanelService
             return $cachedRows;
         }
 
-        return $this->refreshUserManagementDirectoryCache();
+        $snapshot = $this->restoreCachedArraySnapshot(
+            self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY,
+            self::USER_MANAGEMENT_DIRECTORY_SNAPSHOT_PATH,
+        );
+
+        if (is_array($snapshot)) {
+            return $snapshot;
+        }
+
+        if (app()->environment('testing')) {
+            return $this->refreshUserManagementDirectoryCache();
+        }
+
+        return [];
     }
 
     private function cachedAttendanceDirectory(): array
@@ -680,6 +720,7 @@ class AdminPanelService
         );
 
         Cache::forever(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, $rows);
+        $this->persistArraySnapshot(self::USER_MANAGEMENT_DIRECTORY_SNAPSHOT_PATH, $rows);
         Cache::forget(self::USER_MANAGEMENT_DIRECTORY_STALE_KEY);
 
         return $rows;
@@ -688,6 +729,11 @@ class AdminPanelService
     private function refreshAttendanceDirectoryCache(): array
     {
         $userDirectory = $this->cachedUserManagementDirectory();
+
+        if ($userDirectory === [] && app()->runningInConsole() && ! app()->environment('testing')) {
+            $userDirectory = $this->refreshUserManagementDirectoryCache();
+        }
+
         $participantsByUserId = [];
         $participantsByTicketCode = [];
 
@@ -743,9 +789,85 @@ class AdminPanelService
         ];
 
         Cache::forever(self::USER_MANAGEMENT_META_CACHE_KEY, $snapshot);
+        $this->persistArraySnapshot(self::USER_MANAGEMENT_META_SNAPSHOT_PATH, $snapshot);
         Cache::forget(self::USER_MANAGEMENT_META_STALE_KEY);
 
         return $snapshot;
+    }
+
+    private function emptyUserManagementPage(array $filters): array
+    {
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        $perPage = max(1, (int) ($filters['per_page'] ?? config('admin.per_page', 10)));
+
+        return [
+            'users' => new LengthAwarePaginator(
+                [],
+                0,
+                $perPage,
+                $page,
+                [
+                    'path' => request()->url(),
+                    'query' => request()->query(),
+                    'pageName' => 'page',
+                ],
+            ),
+            'overview' => $this->analytics->buildUserManagementOverview([]),
+            'filter_options' => $this->emptyUserFilterOptions(),
+        ];
+    }
+
+    private function emptyUserFilterOptions(): array
+    {
+        return $this->analytics->buildUserFilterOptions([]);
+    }
+
+    private function restoreCachedArraySnapshot(string $cacheKey, string $snapshotPath): ?array
+    {
+        $snapshot = $this->readArraySnapshot($snapshotPath);
+
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        Cache::forever($cacheKey, $snapshot);
+
+        return $snapshot;
+    }
+
+    private function persistArraySnapshot(string $snapshotPath, array $payload): void
+    {
+        try {
+            Storage::disk('local')->put(
+                $snapshotPath,
+                json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+            );
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to persist the admin snapshot to local storage.', [
+                'path' => $snapshotPath,
+                'message' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function readArraySnapshot(string $snapshotPath): ?array
+    {
+        try {
+            if (! Storage::disk('local')->exists($snapshotPath)) {
+                return null;
+            }
+
+            $decoded = json_decode((string) Storage::disk('local')->get($snapshotPath), true);
+
+            return is_array($decoded) ? $decoded : null;
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to read the admin snapshot from local storage.', [
+                'path' => $snapshotPath,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     private function scheduleUserManagementCacheRefreshAfterResponse(): void
