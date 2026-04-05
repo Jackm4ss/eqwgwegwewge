@@ -430,13 +430,8 @@ class AdminPanelService
             fn (array $user): string => (string) ($user['ticket_id'] ?? ''),
             $pageResult['items'],
         ));
-        $scanLogs = $this->safeFindScanLogsByUserIds(array_map(
-            fn (array $user): string => (string) ($user['user_id'] ?? ''),
-            $pageResult['items'],
-        ));
-        $rows = $this->analytics->attachAttendanceProgress(
+        $rows = $this->mergeCachedAttendanceProgress(
             $this->analytics->buildUserRows($pageResult['items'], $ticketRows),
-            $scanLogs,
         );
         $meta = $this->cachedUserManagementMeta();
         $overview = $this->optimizedUserManagementOverview(
@@ -529,18 +524,44 @@ class AdminPanelService
         }
     }
 
-    private function safeFindScanLogsByUserIds(array $userIds): array
+    private function mergeCachedAttendanceProgress(array $rows): array
     {
-        try {
-            return $this->repository->findScanLogsByUserIds($userIds);
-        } catch (\Throwable $exception) {
-            Log::warning('Unable to hydrate attendance progress for the admin user management page.', [
-                'message' => $exception->getMessage(),
-                'user_count' => count($userIds),
-            ]);
+        $cachedRows = Cache::get(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
 
-            return [];
+        if (! is_array($cachedRows) || $cachedRows === []) {
+            return $rows;
         }
+
+        $progressFields = [
+            'attendance_days',
+            'attendance_days_count',
+            'attendance_total_days',
+            'attendance_progress_percent',
+        ];
+        $progressByUserId = [];
+
+        foreach ($cachedRows as $cachedRow) {
+            $userId = trim((string) ($cachedRow['user_id'] ?? ''));
+
+            if ($userId === '') {
+                continue;
+            }
+
+            $progressByUserId[$userId] = array_intersect_key(
+                $cachedRow,
+                array_flip($progressFields),
+            );
+        }
+
+        return array_map(function (array $row) use ($progressByUserId): array {
+            $userId = trim((string) ($row['user_id'] ?? ''));
+
+            if ($userId === '' || ! isset($progressByUserId[$userId])) {
+                return $row;
+            }
+
+            return array_merge($row, $progressByUserId[$userId]);
+        }, $rows);
     }
 
     private function cachedAttendanceData(array $filters = []): array
@@ -584,14 +605,8 @@ class AdminPanelService
         $perPage = max(1, (int) ($filters['per_page'] ?? config('admin.per_page', 10)));
         $offset = ($page - 1) * $perPage;
         $pageRows = array_values(array_slice($filteredRows, $offset, $perPage));
-        $scanLogs = $this->safeFindScanLogsByUserIds(array_map(
-            fn (array $row): string => (string) ($row['user_id'] ?? ''),
-            $pageRows,
-        ));
         $meta = $this->cachedUserManagementMeta();
-        $rows = $this->analytics->decorateEmailTypoRows(
-            $this->analytics->attachAttendanceProgress($pageRows, $scanLogs),
-        );
+        $rows = $this->analytics->decorateEmailTypoRows($pageRows);
 
         return [
             'users' => new LengthAwarePaginator(
@@ -656,9 +671,12 @@ class AdminPanelService
 
     private function refreshUserManagementDirectoryCache(): array
     {
-        $rows = $this->analytics->buildUserRows(
-            $this->repository->allUsers(),
-            $this->repository->allTickets(),
+        $rows = $this->analytics->attachAttendanceProgress(
+            $this->analytics->buildUserRows(
+                $this->repository->allUsers(),
+                $this->repository->allTickets(),
+            ),
+            $this->repository->allScanLogs(),
         );
 
         Cache::forever(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, $rows);

@@ -11,7 +11,6 @@ use App\Services\Scanner\ScannerGateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
-use RuntimeException;
 use Tests\TestCase;
 
 class AdminPanelServiceTest extends TestCase
@@ -148,10 +147,7 @@ class AdminPanelServiceTest extends TestCase
             ->once()
             ->with([])
             ->andReturn([]);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with([])
-            ->andReturn([]);
+        $repository->shouldNotReceive('findScanLogsByUserIds');
         $repository->shouldReceive('allUsers')
             ->once()
             ->andReturn([
@@ -162,6 +158,9 @@ class AdminPanelServiceTest extends TestCase
                 ['user_id' => 'user-5', 'identity_type' => 'passport', 'verification_status' => 'unverified', 'account_status' => 'blocked'],
             ]);
         $repository->shouldReceive('allTickets')
+            ->once()
+            ->andReturn([]);
+        $repository->shouldReceive('allScanLogs')
             ->once()
             ->andReturn([]);
         $repository->shouldReceive('countUsers')
@@ -210,10 +209,7 @@ class AdminPanelServiceTest extends TestCase
             ->once()
             ->with([])
             ->andReturn([]);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with([])
-            ->andReturn([]);
+        $repository->shouldNotReceive('findScanLogsByUserIds');
         $repository->shouldReceive('allUsers')
             ->once()
             ->andReturn([
@@ -223,6 +219,9 @@ class AdminPanelServiceTest extends TestCase
                 ['user_id' => 'user-my', 'country' => 'MY', 'identity_type' => 'national_id'],
             ]);
         $repository->shouldReceive('allTickets')
+            ->once()
+            ->andReturn([]);
+        $repository->shouldReceive('allScanLogs')
             ->once()
             ->andReturn([]);
         $repository->shouldReceive('countUsers')
@@ -287,10 +286,7 @@ class AdminPanelServiceTest extends TestCase
             ->once()
             ->with([])
             ->andReturn([]);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with([])
-            ->andReturn([]);
+        $repository->shouldNotReceive('findScanLogsByUserIds');
         $repository->shouldReceive('allUsers')
             ->once()
             ->andReturn([
@@ -298,6 +294,9 @@ class AdminPanelServiceTest extends TestCase
                 ['user_id' => 'user-2', 'country' => 'ID', 'email' => 'good@example.test', 'identity_type' => 'passport'],
             ]);
         $repository->shouldReceive('allTickets')
+            ->once()
+            ->andReturn([]);
+        $repository->shouldReceive('allScanLogs')
             ->once()
             ->andReturn([]);
         $repository->shouldReceive('countUsers')
@@ -344,10 +343,7 @@ class AdminPanelServiceTest extends TestCase
             ->once()
             ->with([])
             ->andReturn([]);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with([])
-            ->andReturn([]);
+        $repository->shouldNotReceive('findScanLogsByUserIds');
         $repository->shouldReceive('allUsers')
             ->once()
             ->andReturn([
@@ -356,6 +352,9 @@ class AdminPanelServiceTest extends TestCase
                 ['user_id' => 'user-3', 'country' => 'TH', 'identity_type' => 'passport', 'verification_status' => 'unverified', 'account_status' => 'blocked'],
             ]);
         $repository->shouldReceive('allTickets')
+            ->once()
+            ->andReturn([]);
+        $repository->shouldReceive('allScanLogs')
             ->once()
             ->andReturn([]);
         $repository->shouldReceive('countUsers')
@@ -431,6 +430,9 @@ class AdminPanelServiceTest extends TestCase
                     'attendance_status' => 'not_checked_in',
                 ],
             ]);
+        $repository->shouldReceive('allScanLogs')
+            ->once()
+            ->andReturn([]);
         $repository->shouldNotReceive('countUsers');
         $repository->shouldNotReceive('countTickets');
 
@@ -486,10 +488,7 @@ class AdminPanelServiceTest extends TestCase
             ->once()
             ->with([])
             ->andReturn([]);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with([])
-            ->andReturn([]);
+        $repository->shouldNotReceive('findScanLogsByUserIds');
         $repository->shouldReceive('countUsers')
             ->once()
             ->with(['verification_status' => 'verified'])
@@ -550,10 +549,7 @@ class AdminPanelServiceTest extends TestCase
             ->once()
             ->with([])
             ->andReturn([]);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with([])
-            ->andReturn([]);
+        $repository->shouldNotReceive('findScanLogsByUserIds');
         $repository->shouldReceive('countUsers')
             ->once()
             ->with([
@@ -638,85 +634,7 @@ class AdminPanelServiceTest extends TestCase
         ];
 
         $repository = Mockery::mock(AdminFirestoreRepository::class);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with(['user-my'])
-            ->andReturn([]);
-        $repository->shouldNotReceive('paginateUsers');
-        $repository->shouldNotReceive('allUsers');
-        $repository->shouldNotReceive('allTickets');
-        $repository->shouldNotReceive('allScanLogs');
-
-        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
-        $notifications->shouldIgnoreMissing();
-
-        $service = $this->makeService($repository, $notifications, ['Gate AB']);
-
-        $page = $service->userManagementPage($filters);
-
-        $this->assertSame(1, $page['users']->total());
-        $this->assertSame('user-my', $page['users']->items()[0]['user_id']);
-    }
-
-    public function test_user_management_search_keeps_cached_results_when_scan_log_hydration_fails(): void
-    {
-        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
-            'overview' => ['total_users' => 2],
-            'filter_options' => [
-                'countries' => [],
-                'verification_statuses' => [],
-                'identity_types' => [],
-                'attendance_statuses' => [],
-            ],
-        ]);
-        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
-            [
-                'user_id' => 'user-my',
-                'full_name' => 'Cherry Thin',
-                'email' => 'cherry@example.test',
-                'country' => 'MY',
-                'country_label' => 'Malaysia',
-                'verification_status' => 'verified',
-                'account_status' => 'active',
-                'traffic_source_label' => 'Not Captured',
-                'traffic_source_caption' => 'Registrant source has not been captured yet',
-                'attendance_status' => 'not_checked_in',
-                'ticket_id' => 'ticket-my',
-                'ticket_code' => 'TICKET-MY',
-                'identity_type' => 'passport',
-                'identity_number' => 'A1234567',
-                'created_at' => '2026-04-02T10:00:00Z',
-            ],
-            [
-                'user_id' => 'user-mm',
-                'full_name' => 'Hein Lin',
-                'email' => 'hein@example.test',
-                'country' => 'MM',
-                'country_label' => 'Myanmar',
-                'verification_status' => 'verified',
-                'account_status' => 'active',
-                'traffic_source_label' => 'Not Captured',
-                'traffic_source_caption' => 'Registrant source has not been captured yet',
-                'attendance_status' => 'checked_in',
-                'ticket_id' => 'ticket-mm',
-                'ticket_code' => 'TICKET-MM',
-                'identity_type' => 'passport',
-                'identity_number' => 'B1234567',
-                'created_at' => '2026-04-02T09:00:00Z',
-            ],
-        ]);
-
-        $filters = [
-            'q' => 'cherry',
-            'page' => 1,
-            'per_page' => 10,
-        ];
-
-        $repository = Mockery::mock(AdminFirestoreRepository::class);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with(['user-my'])
-            ->andThrow(new RuntimeException('scan logs unavailable'));
+        $repository->shouldNotReceive('findScanLogsByUserIds');
         $repository->shouldNotReceive('paginateUsers');
         $repository->shouldNotReceive('allUsers');
         $repository->shouldNotReceive('allTickets');
@@ -788,10 +706,7 @@ class AdminPanelServiceTest extends TestCase
         ];
 
         $repository = Mockery::mock(AdminFirestoreRepository::class);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with(['user-mm'])
-            ->andReturn([]);
+        $repository->shouldNotReceive('findScanLogsByUserIds');
         $repository->shouldNotReceive('paginateUsers');
         $repository->shouldNotReceive('allUsers');
         $repository->shouldNotReceive('allTickets');
@@ -873,10 +788,7 @@ class AdminPanelServiceTest extends TestCase
         ];
 
         $repository = Mockery::mock(AdminFirestoreRepository::class);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with(['user-my'])
-            ->andReturn([]);
+        $repository->shouldNotReceive('findScanLogsByUserIds');
         $repository->shouldNotReceive('paginateUsers');
         $repository->shouldNotReceive('allUsers');
         $repository->shouldNotReceive('allTickets');
@@ -949,10 +861,7 @@ class AdminPanelServiceTest extends TestCase
         ];
 
         $repository = Mockery::mock(AdminFirestoreRepository::class);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with(['user-pending'])
-            ->andReturn([]);
+        $repository->shouldNotReceive('findScanLogsByUserIds');
         $repository->shouldNotReceive('paginateUsers');
         $repository->shouldNotReceive('allUsers');
         $repository->shouldNotReceive('allTickets');
@@ -1032,10 +941,10 @@ class AdminPanelServiceTest extends TestCase
                     'attendance_status' => 'not_checked_in',
                 ],
             ]);
-        $repository->shouldReceive('findScanLogsByUserIds')
+        $repository->shouldReceive('allScanLogs')
             ->once()
-            ->with(['user-my'])
             ->andReturn([]);
+        $repository->shouldNotReceive('findScanLogsByUserIds');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
@@ -1798,10 +1707,7 @@ class AdminPanelServiceTest extends TestCase
                     'user_id' => 'user-123',
                 ],
             ]);
-        $repository->shouldReceive('findScanLogsByUserIds')
-            ->once()
-            ->with(['user-123'])
-            ->andReturn([]);
+        $repository->shouldNotReceive('findScanLogsByUserIds');
         $repository->shouldReceive('countUsers')
             ->once()
             ->with(['verification_status' => 'verified'])
