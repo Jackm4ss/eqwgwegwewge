@@ -426,11 +426,11 @@ class AdminPanelService
         $page = (int) ($filters['page'] ?? 1);
         $perPage = (int) ($filters['per_page'] ?? config('admin.per_page', 10));
         $pageResult = $this->repository->paginateUsers($filters, $page, $perPage);
-        $ticketRows = $this->repository->findTicketsByIds(array_map(
+        $ticketRows = $this->safeFindTicketsByIds(array_map(
             fn (array $user): string => (string) ($user['ticket_id'] ?? ''),
             $pageResult['items'],
         ));
-        $scanLogs = $this->repository->findScanLogsByUserIds(array_map(
+        $scanLogs = $this->safeFindScanLogsByUserIds(array_map(
             fn (array $user): string => (string) ($user['user_id'] ?? ''),
             $pageResult['items'],
         ));
@@ -515,6 +515,34 @@ class AdminPanelService
         return (int) round(($value / $total) * 100);
     }
 
+    private function safeFindTicketsByIds(array $ticketIds): array
+    {
+        try {
+            return $this->repository->findTicketsByIds($ticketIds);
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to hydrate ticket rows for the admin user management page.', [
+                'message' => $exception->getMessage(),
+                'ticket_count' => count($ticketIds),
+            ]);
+
+            return [];
+        }
+    }
+
+    private function safeFindScanLogsByUserIds(array $userIds): array
+    {
+        try {
+            return $this->repository->findScanLogsByUserIds($userIds);
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to hydrate attendance progress for the admin user management page.', [
+                'message' => $exception->getMessage(),
+                'user_count' => count($userIds),
+            ]);
+
+            return [];
+        }
+    }
+
     private function cachedAttendanceData(array $filters = []): array
     {
         $filteredRows = $this->filterCachedAttendanceRows(
@@ -556,7 +584,7 @@ class AdminPanelService
         $perPage = max(1, (int) ($filters['per_page'] ?? config('admin.per_page', 10)));
         $offset = ($page - 1) * $perPage;
         $pageRows = array_values(array_slice($filteredRows, $offset, $perPage));
-        $scanLogs = $this->repository->findScanLogsByUserIds(array_map(
+        $scanLogs = $this->safeFindScanLogsByUserIds(array_map(
             fn (array $row): string => (string) ($row['user_id'] ?? ''),
             $pageRows,
         ));

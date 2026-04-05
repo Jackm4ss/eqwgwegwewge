@@ -11,6 +11,7 @@ use App\Services\Scanner\ScannerGateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class AdminPanelServiceTest extends TestCase
@@ -641,6 +642,81 @@ class AdminPanelServiceTest extends TestCase
             ->once()
             ->with(['user-my'])
             ->andReturn([]);
+        $repository->shouldNotReceive('paginateUsers');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('allScanLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+
+        $page = $service->userManagementPage($filters);
+
+        $this->assertSame(1, $page['users']->total());
+        $this->assertSame('user-my', $page['users']->items()[0]['user_id']);
+    }
+
+    public function test_user_management_search_keeps_cached_results_when_scan_log_hydration_fails(): void
+    {
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 2],
+            'filter_options' => [
+                'countries' => [],
+                'verification_statuses' => [],
+                'identity_types' => [],
+                'attendance_statuses' => [],
+            ],
+        ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-my',
+                'full_name' => 'Cherry Thin',
+                'email' => 'cherry@example.test',
+                'country' => 'MY',
+                'country_label' => 'Malaysia',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'attendance_status' => 'not_checked_in',
+                'ticket_id' => 'ticket-my',
+                'ticket_code' => 'TICKET-MY',
+                'identity_type' => 'passport',
+                'identity_number' => 'A1234567',
+                'created_at' => '2026-04-02T10:00:00Z',
+            ],
+            [
+                'user_id' => 'user-mm',
+                'full_name' => 'Hein Lin',
+                'email' => 'hein@example.test',
+                'country' => 'MM',
+                'country_label' => 'Myanmar',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'traffic_source_label' => 'Not Captured',
+                'traffic_source_caption' => 'Registrant source has not been captured yet',
+                'attendance_status' => 'checked_in',
+                'ticket_id' => 'ticket-mm',
+                'ticket_code' => 'TICKET-MM',
+                'identity_type' => 'passport',
+                'identity_number' => 'B1234567',
+                'created_at' => '2026-04-02T09:00:00Z',
+            ],
+        ]);
+
+        $filters = [
+            'q' => 'cherry',
+            'page' => 1,
+            'per_page' => 10,
+        ];
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findScanLogsByUserIds')
+            ->once()
+            ->with(['user-my'])
+            ->andThrow(new RuntimeException('scan logs unavailable'));
         $repository->shouldNotReceive('paginateUsers');
         $repository->shouldNotReceive('allUsers');
         $repository->shouldNotReceive('allTickets');
