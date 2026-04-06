@@ -31,7 +31,7 @@ class ForgotQrLookupService
             return $this->notFoundResponse();
         }
 
-        $ticket = $this->users->findTicketByUserId((string) $user['user_id']);
+        $ticket = $this->resolveTicket($user);
 
         if (! $ticket || empty($ticket['ticket_id'])) {
             return $this->notFoundResponse();
@@ -81,10 +81,11 @@ class ForgotQrLookupService
         }
 
         if ($phoneCountryCode === '' && $country !== '') {
-            $dialCode = CountryCatalog::dialCodeFor($country);
-
-            if ($dialCode !== '' && str_starts_with($phoneNumber, $dialCode)) {
-                $phoneCountryCode = $dialCode;
+            foreach (CountryCatalog::dialCodesFor($country) as $dialCode) {
+                if (str_starts_with($phoneNumber, (string) $dialCode)) {
+                    $phoneCountryCode = (string) $dialCode;
+                    break;
+                }
             }
         }
 
@@ -108,5 +109,24 @@ class ForgotQrLookupService
         $digits = preg_replace('/\D+/', '', $phoneNumber) ?? '';
 
         return $digits === '' ? '' : '+'.$digits;
+    }
+
+    private function resolveTicket(array $user): ?array
+    {
+        $ticketId = trim((string) ($user['ticket_id'] ?? ''));
+
+        if ($ticketId !== '') {
+            $ticket = $this->users->findTicketById($ticketId);
+
+            if ($ticket !== null) {
+                return $ticket;
+            }
+        }
+
+        $userId = trim((string) ($user['user_id'] ?? ''));
+
+        return $userId !== ''
+            ? $this->users->findTicketByUserId($userId)
+            : null;
     }
 }

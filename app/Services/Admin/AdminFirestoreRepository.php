@@ -56,6 +56,88 @@ class AdminFirestoreRepository
         return $this->listCollectionDocuments($this->adminActivityLogsCollection());
     }
 
+    public function backfillUserPhoneIndex(bool $dryRun = false, int $sampleLimit = 20): array
+    {
+        $users = $this->allUsers();
+        $phoneAssignments = [];
+        $duplicates = [];
+
+        foreach ($users as $user) {
+            if (! is_array($user)) {
+                continue;
+            }
+
+            $userId = trim((string) ($user['user_id'] ?? ''));
+            $phoneNumber = $this->normalizePhoneNumber((string) ($user['phone_number'] ?? ''));
+
+            if ($userId === '' || $phoneNumber === '') {
+                continue;
+            }
+
+            $phoneAssignments[$phoneNumber] ??= [];
+            $phoneAssignments[$phoneNumber][] = $user;
+        }
+
+        $result = [
+            'total_users' => count($users),
+            'users_with_phone' => 0,
+            'indexed' => 0,
+            'skipped_missing_phone' => 0,
+            'duplicate_phone_count' => 0,
+            'duplicate_phone_samples' => [],
+            'dry_run' => $dryRun,
+        ];
+
+        foreach ($users as $user) {
+            if (! is_array($user)) {
+                continue;
+            }
+
+            $phoneNumber = $this->normalizePhoneNumber((string) ($user['phone_number'] ?? ''));
+
+            if ($phoneNumber === '') {
+                $result['skipped_missing_phone']++;
+
+                continue;
+            }
+
+            $result['users_with_phone']++;
+
+            if (count($phoneAssignments[$phoneNumber] ?? []) > 1) {
+                $duplicates[$phoneNumber] = array_map(
+                    fn (array $duplicateUser): string => (string) ($duplicateUser['user_id'] ?? ''),
+                    $phoneAssignments[$phoneNumber],
+                );
+
+                continue;
+            }
+
+            if ($dryRun) {
+                $result['indexed']++;
+
+                continue;
+            }
+
+            $this->setDocument(
+                $this->phoneIndexPath($phoneNumber),
+                $this->buildPhoneIndexPayload($user),
+            );
+            $result['indexed']++;
+        }
+
+        $result['duplicate_phone_count'] = count($duplicates);
+        $result['duplicate_phone_samples'] = array_slice(array_map(
+            fn (array $userIds, string $phoneNumber): array => [
+                'phone_number' => $phoneNumber,
+                'user_ids' => array_values(array_filter($userIds)),
+            ],
+            $duplicates,
+            array_keys($duplicates),
+        ), 0, max(0, $sampleLimit));
+
+        return $result;
+    }
+
     public function paginateAdminActivityLogs(array $filters, int $page, int $perPage): array
     {
         if (! $this->available()) {
@@ -501,6 +583,7 @@ class AdminFirestoreRepository
             $this->scanLogsCollection(),
             $this->adminActivityLogsCollection(),
             $this->emailIndexCollection(),
+            $this->phoneIndexCollection(),
             $this->identityIndexCollection(),
         ];
 
@@ -533,6 +616,9 @@ class AdminFirestoreRepository
             $payload = $this->mergeEditableUserAttributes($existing, $attributes);
 
             $emailPath = $this->emailIndexPath((string) $payload['email']);
+            $phonePath = filled($payload['phone_number'] ?? null)
+                ? $this->phoneIndexPath((string) $payload['phone_number'])
+                : null;
             $identityPath = $this->identityIndexPath(
                 (string) $payload['identity_type'],
                 (string) $payload['identity_country'],
@@ -540,16 +626,20 @@ class AdminFirestoreRepository
             );
 
             $currentEmailPath = $this->emailIndexPath((string) $existing['email']);
+            $currentPhonePath = filled($existing['phone_number'] ?? null)
+                ? $this->phoneIndexPath((string) $existing['phone_number'])
+                : null;
             $currentIdentityPath = $this->identityIndexPath(
                 (string) $existing['identity_type'],
                 (string) $existing['identity_country'],
                 (string) $existing['identity_number'],
             );
 
-            $indexDocuments = $this->restApi->batchGet(array_values(array_unique([
+            $indexDocuments = $this->restApi->batchGet(array_values(array_filter(array_unique([
                 $emailPath,
+                $phonePath,
                 $identityPath,
-            ])), $transaction);
+            ]))), $transaction);
 
             $this->assertIndexIsAvailable(
                 isset($indexDocuments[$emailPath]) && is_array($indexDocuments[$emailPath])
@@ -557,6 +647,13 @@ class AdminFirestoreRepository
                     : null,
                 $userId,
                 'Email already registered.',
+            );
+            $this->assertIndexIsAvailable(
+                $phonePath !== null && isset($indexDocuments[$phonePath]) && is_array($indexDocuments[$phonePath])
+                    ? $this->restApi->decodeDocument($indexDocuments[$phonePath])
+                    : null,
+                $userId,
+                'Phone number already registered.',
             );
             $this->assertIndexIsAvailable(
                 isset($indexDocuments[$identityPath]) && is_array($indexDocuments[$identityPath])
@@ -574,6 +671,12 @@ class AdminFirestoreRepository
                     'created_at' => $existing['created_at'] ?? now()->toISOString(),
                     'updated_at' => now()->toISOString(),
                 ]),
+                ...($phonePath !== null ? [
+                    $this->restApi->makeSetWrite(
+                        $phonePath,
+                        $this->buildPhoneIndexPayload($payload),
+                    ),
+                ] : []),
                 $this->restApi->makeSetWrite($identityPath, [
                     'user_id' => $userId,
                     'identity_type' => $payload['identity_type'],
@@ -591,6 +694,10 @@ class AdminFirestoreRepository
 
             if ($currentEmailPath !== $emailPath) {
                 $writes[] = $this->restApi->makeDeleteWrite($currentEmailPath, true);
+            }
+
+            if ($currentPhonePath !== null && $currentPhonePath !== $phonePath) {
+                $writes[] = $this->restApi->makeDeleteWrite($currentPhonePath, true);
             }
 
             if ($currentIdentityPath !== $identityPath) {
@@ -624,6 +731,9 @@ class AdminFirestoreRepository
             $payload = $this->mergeEditableUserAttributes($existing, $attributes);
 
             $emailReference = $this->documentReference($client, $this->emailIndexPath((string) $payload['email']));
+            $phoneReference = filled($payload['phone_number'] ?? null)
+                ? $this->documentReference($client, $this->phoneIndexPath((string) $payload['phone_number']))
+                : null;
             $identityReference = $this->documentReference($client, $this->identityIndexPath(
                 (string) $payload['identity_type'],
                 (string) $payload['identity_country'],
@@ -631,6 +741,9 @@ class AdminFirestoreRepository
             ));
 
             $currentEmailReference = $this->documentReference($client, $this->emailIndexPath((string) $existing['email']));
+            $currentPhoneReference = filled($existing['phone_number'] ?? null)
+                ? $this->documentReference($client, $this->phoneIndexPath((string) $existing['phone_number']))
+                : null;
             $currentIdentityReference = $this->documentReference($client, $this->identityIndexPath(
                 (string) $existing['identity_type'],
                 (string) $existing['identity_country'],
@@ -641,6 +754,14 @@ class AdminFirestoreRepository
                 $this->snapshotDataOrNull($transaction->snapshot($emailReference)),
                 $userId,
                 'Email already registered.'
+            );
+
+            $this->assertIndexIsAvailable(
+                $phoneReference !== null
+                    ? $this->snapshotDataOrNull($transaction->snapshot($phoneReference))
+                    : null,
+                $userId,
+                'Phone number already registered.'
             );
 
             $this->assertIndexIsAvailable(
@@ -656,6 +777,9 @@ class AdminFirestoreRepository
                 'created_at' => $existing['created_at'] ?? now()->toISOString(),
                 'updated_at' => now()->toISOString(),
             ]);
+            if ($phoneReference !== null) {
+                $transaction->set($phoneReference, $this->buildPhoneIndexPayload($payload));
+            }
             $transaction->set($identityReference, [
                 'user_id' => $userId,
                 'identity_type' => $payload['identity_type'],
@@ -672,6 +796,16 @@ class AdminFirestoreRepository
 
             if ($this->emailIndexPath((string) $existing['email']) !== $this->emailIndexPath((string) $payload['email'])) {
                 $transaction->delete($currentEmailReference);
+            }
+
+            if (
+                $currentPhoneReference !== null
+                && (
+                    ! filled($payload['phone_number'] ?? null)
+                    || $this->phoneIndexPath((string) $existing['phone_number']) !== $this->phoneIndexPath((string) $payload['phone_number'])
+                )
+            ) {
+                $transaction->delete($currentPhoneReference);
             }
 
             if ($this->identityIndexPath(
@@ -710,6 +844,9 @@ class AdminFirestoreRepository
             $ticketId = (string) ($user['ticket_id'] ?? '');
             $ticketPath = $ticketId !== '' ? $this->ticketPath($ticketId) : null;
             $emailPath = $this->emailIndexPath((string) ($user['email'] ?? ''));
+            $phonePath = filled($user['phone_number'] ?? null)
+                ? $this->phoneIndexPath((string) ($user['phone_number'] ?? ''))
+                : null;
             $identityPath = $this->identityIndexPath(
                 (string) ($user['identity_type'] ?? 'passport'),
                 (string) ($user['identity_country'] ?? $user['country'] ?? ''),
@@ -719,6 +856,7 @@ class AdminFirestoreRepository
             $relatedPaths = array_values(array_filter([
                 $ticketPath,
                 $emailPath,
+                $phonePath,
                 $identityPath,
             ]));
             $relatedDocuments = $relatedPaths !== []
@@ -757,6 +895,10 @@ class AdminFirestoreRepository
 
             if (isset($relatedDocuments[$emailPath])) {
                 $writes[] = $this->restApi->makeDeleteWrite($emailPath);
+            }
+
+            if ($phonePath !== null && isset($relatedDocuments[$phonePath])) {
+                $writes[] = $this->restApi->makeDeleteWrite($phonePath);
             }
 
             if (isset($relatedDocuments[$identityPath])) {
@@ -810,6 +952,9 @@ class AdminFirestoreRepository
                 : null;
 
             $emailReference = $this->documentReference($client, $this->emailIndexPath((string) ($user['email'] ?? '')));
+            $phoneReference = filled($user['phone_number'] ?? null)
+                ? $this->documentReference($client, $this->phoneIndexPath((string) ($user['phone_number'] ?? '')))
+                : null;
             $identityReference = $this->documentReference($client, $this->identityIndexPath(
                 (string) ($user['identity_type'] ?? 'passport'),
                 (string) ($user['identity_country'] ?? $user['country'] ?? ''),
@@ -829,6 +974,9 @@ class AdminFirestoreRepository
             }
 
             $transaction->delete($emailReference);
+            if ($phoneReference !== null) {
+                $transaction->delete($phoneReference);
+            }
             $transaction->delete($identityReference);
 
             if ($ticketCodeReference !== null) {
@@ -2541,6 +2689,16 @@ class AdminFirestoreRepository
         ];
     }
 
+    private function buildPhoneIndexPayload(array $user): array
+    {
+        return [
+            'user_id' => (string) ($user['user_id'] ?? ''),
+            'normalized_phone_number' => $this->normalizePhoneNumber((string) ($user['phone_number'] ?? '')),
+            'created_at' => $user['created_at'] ?? now()->toISOString(),
+            'updated_at' => $user['updated_at'] ?? now()->toISOString(),
+        ];
+    }
+
     private function buildScanLogPayload(array $entry): array
     {
         $scannedAt = (string) ($entry['scanned_at'] ?? now()->toISOString());
@@ -2657,6 +2815,11 @@ class AdminFirestoreRepository
         return (string) config('firebase.user_email_index_collection', 'user_email_index');
     }
 
+    private function phoneIndexCollection(): string
+    {
+        return (string) config('firebase.user_phone_index_collection', 'user_phone_index');
+    }
+
     private function identityIndexCollection(): string
     {
         return (string) config('firebase.user_identity_index_collection', 'user_identity_index');
@@ -2763,6 +2926,11 @@ class AdminFirestoreRepository
     private function emailIndexPath(string $email): string
     {
         return $this->emailIndexCollection().'/'.hash('sha256', $this->normalizeEmail($email));
+    }
+
+    private function phoneIndexPath(string $phoneNumber): string
+    {
+        return $this->phoneIndexCollection().'/'.hash('sha256', $this->normalizePhoneNumber($phoneNumber));
     }
 
     private function identityIndexPath(string $identityType, string $country, string $identityNumber): string

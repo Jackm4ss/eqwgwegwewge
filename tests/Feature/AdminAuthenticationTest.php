@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Admin;
 use App\Services\Admin\AdminPanelService;
 use App\Services\Admin\AdminPresenceService;
+use App\Services\Admin\AdminQrManagementLookupService;
 use Database\Seeders\AdminSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -206,6 +207,113 @@ class AdminAuthenticationTest extends TestCase
         $response->assertOk()
             ->assertSee('User Management')
             ->assertSee('Filters');
+    }
+
+    public function test_admin_qr_management_page_renders_for_authenticated_admin(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        $this->mock(AdminQrManagementLookupService::class, function ($mock): void {
+            $mock->shouldReceive('lookup')->never();
+        });
+
+        $this->mock(AdminPanelService::class, function ($mock): void {
+            $mock->shouldReceive('firestoreAvailable')
+                ->once()
+                ->andReturnTrue();
+        });
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.qr-management.index'));
+
+        $response->assertOk()
+            ->assertSee('QR Management')
+            ->assertSee('Participant Lookup')
+            ->assertSee('Search Participant')
+            ->assertSee('Scanner Management')
+            ->assertSee(route('admin.qr-management.index'), false);
+    }
+
+    public function test_admin_qr_management_page_shows_event_day_lookup_result(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        $this->mock(AdminQrManagementLookupService::class, function ($mock): void {
+            $mock->shouldReceive('lookup')
+                ->once()
+                ->with([
+                    'search_type' => 'email',
+                    'email' => 'jokiaja@gmail.com',
+                    'phone_country_code' => null,
+                    'phone_national_number' => null,
+                    'phone_number' => null,
+                    'country' => null,
+                    'identity_type' => null,
+                    'identity_number' => null,
+                ])
+                ->andReturn([
+                    'found' => true,
+                    'participant' => [
+                        'user_id' => 'user-123',
+                        'full_name' => 'Joki',
+                        'email' => 'jokiaja@gmail.com',
+                        'phone_country_code' => '+64',
+                        'phone_national_number' => '8123456789',
+                        'phone_number' => '+648123456789',
+                        'country' => 'NZ',
+                        'country_label' => 'New Zealand',
+                        'identity_type' => 'passport',
+                        'identity_number' => 'A1234567',
+                        'account_status' => 'active',
+                        'verification_status' => 'verified',
+                        'attendance_days_count' => 3,
+                        'attendance_total_days' => 4,
+                        'attendance_progress_percent' => 75,
+                    ],
+                    'ticket' => [
+                        'ticket_id' => 'ticket-123',
+                        'ticket_code' => '01KMHDQB6728DXYQWWCA9T7JKP',
+                        'entry_code' => 'ABCD1234',
+                        'entry_code_display' => '',
+                        'attendance_status' => 'not_checked_in',
+                        'qr_version' => 'v3',
+                        'created_at' => '2026-03-24T20:26:00Z',
+                        'updated_at' => '2026-03-24T20:26:00Z',
+                        'regenerated_at' => '2026-03-25T03:00:00Z',
+                    ],
+                    'ticket_url' => 'https://example.test/ticket/signed',
+                ]);
+        });
+
+        $this->mock(AdminPanelService::class, function ($mock): void {
+            $mock->shouldReceive('firestoreAvailable')
+                ->once()
+                ->andReturnTrue();
+        });
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.qr-management.index', [
+                'search_type' => 'email',
+                'email' => 'jokiaja@gmail.com',
+            ]));
+
+        $response->assertOk()
+            ->assertSee('Support Result')
+            ->assertSee('Joki')
+            ->assertSee('New Zealand')
+            ->assertSee('ABCD-1234')
+            ->assertSee('75%')
+            ->assertSee('Priority Countries')
+            ->assertSee('All Other Countries')
+            ->assertSee('Search country or dial code...', false)
+            ->assertSee('Reset Attendance')
+            ->assertSee('Regenerate QR')
+            ->assertSee('Open Ticket')
+            ->assertSee('fi-nz', false)
+            ->assertDontSee('QR Version')
+            ->assertDontSee('Ticket Code')
+            ->assertSee(route('admin.users.qr.reset', 'user-123'), false)
+            ->assertSee(route('admin.users.qr.regenerate', 'user-123'), false);
     }
 
     public function test_admin_management_menu_and_admin_account_list_render_for_authenticated_admin(): void
@@ -531,7 +639,7 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('Document Type')
             ->assertSee('Malaysia IC (MyKad) (1)')
             ->assertSee('Passport (1)')
-            ->assertSee('Filter participants by country, document type, verification, or check-in status.')
+            ->assertSee('Filter participants by country, document type, verification, check-in status, or suspected email typos.')
             ->assertSee('Search includes name, email, document type, identity number, ticket code, country, and traffic source.')
             ->assertSee('QR Created, 25 Mar 2026, 03:26 AM')
             ->assertSee('QR Regenerated, 25 Mar 2026, 03:26 AM')

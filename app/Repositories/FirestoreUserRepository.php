@@ -24,6 +24,7 @@ class FirestoreUserRepository implements UserRepositoryInterface
     public function create(array $data): array
     {
         $email = $this->normalizeEmail((string) $data['email']);
+        $phoneNumber = $this->normalizePhoneNumber((string) ($data['phone_number'] ?? ''));
         $identityType = $this->normalizeIdentityType((string) $data['identity_type']);
         $identityCountry = $this->normalizeCountry((string) ($data['identity_country'] ?? $data['country'] ?? ''));
         $identityNumber = $this->normalizeIdentityNumber((string) $data['identity_number']);
@@ -32,6 +33,7 @@ class FirestoreUserRepository implements UserRepositoryInterface
         $payload = array_merge($data, [
             'user_id' => $data['user_id'] ?? (string) str()->uuid(),
             'email' => $email,
+            'phone_number' => $phoneNumber,
             'identity_type' => $identityType,
             'identity_country' => $identityCountry,
             'identity_number' => $identityNumber,
@@ -43,21 +45,30 @@ class FirestoreUserRepository implements UserRepositoryInterface
         $client = $this->client();
         $userDocument = $this->userDocument($client, $payload['user_id']);
         $emailIndexDocument = $this->emailIndexDocument($client, $email);
+        $phoneIndexDocument = $phoneNumber !== ''
+            ? $this->phoneIndexDocument($client, $phoneNumber)
+            : null;
         $identityIndexDocument = $this->identityIndexDocument($client, $identityType, $identityCountry, $identityNumber);
 
         $client->runTransaction(function (Transaction $transaction) use (
             $payload,
             $storagePayload,
             $email,
+            $phoneNumber,
             $identityType,
             $identityCountry,
             $identityNumber,
             $userDocument,
             $emailIndexDocument,
+            $phoneIndexDocument,
             $identityIndexDocument,
         ) {
             if ($transaction->snapshot($emailIndexDocument)->exists()) {
                 throw new RegistrationConflictException('email', 'Email already registered.');
+            }
+
+            if ($phoneIndexDocument !== null && $transaction->snapshot($phoneIndexDocument)->exists()) {
+                throw new RegistrationConflictException('phone_number', 'Phone number already registered.');
             }
 
             if ($transaction->snapshot($identityIndexDocument)->exists()) {
@@ -70,6 +81,9 @@ class FirestoreUserRepository implements UserRepositoryInterface
                 'normalized_email' => $email,
                 'created_at' => $storagePayload['created_at'],
             ]);
+            if ($phoneIndexDocument !== null) {
+                $transaction->create($phoneIndexDocument, $this->buildPhoneIndexPayload($payload));
+            }
             $transaction->create($identityIndexDocument, [
                 'user_id' => $payload['user_id'],
                 'identity_type' => $identityType,
@@ -103,6 +117,15 @@ class FirestoreUserRepository implements UserRepositoryInterface
 
         if ($normalizedPhoneNumber === '') {
             return null;
+        }
+
+        $indexSnapshot = $this->phoneIndexDocument(
+            $this->client(),
+            $normalizedPhoneNumber,
+        )->snapshot();
+
+        if ($indexSnapshot->exists()) {
+            return $this->findById((string) $indexSnapshot['user_id']);
         }
 
         $query = $this->client()
@@ -305,6 +328,12 @@ class FirestoreUserRepository implements UserRepositoryInterface
             ->document(hash('sha256', $email));
     }
 
+    private function phoneIndexDocument(FirestoreClient $client, string $phoneNumber): DocumentReference
+    {
+        return $client->collection((string) config('firebase.user_phone_index_collection', 'user_phone_index'))
+            ->document(hash('sha256', $this->normalizePhoneNumber($phoneNumber)));
+    }
+
     private function ticketCodeIndexDocument(FirestoreClient $client, string $ticketCode): DocumentReference
     {
         return $client->collection((string) config('firebase.ticket_code_index_collection', 'ticket_code_index'))
@@ -328,6 +357,18 @@ class FirestoreUserRepository implements UserRepositoryInterface
     {
         return $client->collection((string) config('firebase.user_identity_index_collection', 'user_identity_index'))
             ->document(hash('sha256', $this->identityLookupKey($identityType, $identityCountry, $identityNumber)));
+    }
+
+    private function buildPhoneIndexPayload(array $payload): array
+    {
+        $phoneNumber = $this->normalizePhoneNumber((string) ($payload['phone_number'] ?? ''));
+
+        return [
+            'user_id' => (string) ($payload['user_id'] ?? ''),
+            'normalized_phone_number' => $phoneNumber,
+            'created_at' => $payload['created_at'] ?? now()->toISOString(),
+            'updated_at' => $payload['updated_at'] ?? now()->toISOString(),
+        ];
     }
 
     private function normalizeEmail(string $email): string

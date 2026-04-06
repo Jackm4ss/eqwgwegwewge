@@ -15,6 +15,8 @@ class InMemoryUserRepository implements UserRepositoryInterface
 
     public array $emailIndexes = [];
 
+    public array $phoneIndexes = [];
+
     public array $identityIndexes = [];
 
     public function create(array $data): array
@@ -24,10 +26,16 @@ class InMemoryUserRepository implements UserRepositoryInterface
         $identityCountry = $this->normalizeCountry((string) ($data['identity_country'] ?? $data['country'] ?? ''));
         $identityNumber = $this->normalizeIdentityNumber((string) $data['identity_number']);
         $emailHash = hash('sha256', $email);
+        $phoneNumber = $this->normalizePhoneNumber((string) ($data['phone_number'] ?? ''));
+        $phoneHash = $phoneNumber !== '' ? hash('sha256', $phoneNumber) : null;
         $identityHash = hash('sha256', $this->identityLookupKey($identityType, $identityCountry, $identityNumber));
 
         if (isset($this->emailIndexes[$emailHash])) {
             throw new RegistrationConflictException('email', 'Email already registered.');
+        }
+
+        if ($phoneHash !== null && isset($this->phoneIndexes[$phoneHash])) {
+            throw new RegistrationConflictException('phone_number', 'Phone number already registered.');
         }
 
         if (isset($this->identityIndexes[$identityHash])) {
@@ -37,6 +45,7 @@ class InMemoryUserRepository implements UserRepositoryInterface
         $payload = array_merge($data, [
             'user_id' => $data['user_id'] ?? 'user-'.(count($this->users) + 1),
             'email' => $email,
+            'phone_number' => $phoneNumber,
             'identity_type' => $identityType,
             'identity_country' => $identityCountry,
             'identity_number' => $identityNumber,
@@ -49,6 +58,12 @@ class InMemoryUserRepository implements UserRepositoryInterface
             'user_id' => $payload['user_id'],
             'normalized_email' => $email,
         ];
+        if ($phoneHash !== null) {
+            $this->phoneIndexes[$phoneHash] = [
+                'user_id' => $payload['user_id'],
+                'normalized_phone_number' => $phoneNumber,
+            ];
+        }
         $this->identityIndexes[$identityHash] = [
             'user_id' => $payload['user_id'],
             'identity_type' => $identityType,
@@ -70,12 +85,20 @@ class InMemoryUserRepository implements UserRepositoryInterface
     {
         $normalizedPhoneNumber = $this->normalizePhoneNumber($phoneNumber);
 
-        foreach ($this->users as $user) {
-            if ($this->normalizePhoneNumber((string) ($user['phone_number'] ?? '')) !== $normalizedPhoneNumber) {
-                continue;
-            }
+        if ($normalizedPhoneNumber === '') {
+            return null;
+        }
 
-            return $user;
+        $userId = $this->phoneIndexes[hash('sha256', $normalizedPhoneNumber)]['user_id'] ?? null;
+
+        if ($userId !== null) {
+            return $this->findById($userId);
+        }
+
+        foreach ($this->users as $user) {
+            if ($this->normalizePhoneNumber((string) ($user['phone_number'] ?? '')) === $normalizedPhoneNumber) {
+                return $user;
+            }
         }
 
         return null;

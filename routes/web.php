@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\CampaignLinkController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExportController;
 use App\Http\Controllers\Admin\PublicReportController;
+use App\Http\Controllers\Admin\QrManagementController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ScannerGateController;
 use App\Http\Controllers\Admin\UserManagementController;
@@ -344,6 +345,9 @@ if ($isSubdomainMode) {
                 Route::get('/attendance', AttendanceController::class)
                     ->name('attendance.index');
 
+                Route::get('/qr-management', [QrManagementController::class, 'index'])
+                    ->name('qr-management.index');
+
                 Route::get('/gates', [ScannerGateController::class, 'index'])
                     ->name('gates.index');
                 Route::post('/gates', [ScannerGateController::class, 'store'])
@@ -451,6 +455,9 @@ if ($isSubdomainMode) {
 
                 Route::get('/attendance', AttendanceController::class)
                     ->name('attendance.index');
+
+                Route::get('/qr-management', [QrManagementController::class, 'index'])
+                    ->name('qr-management.index');
 
                 Route::get('/gates', [ScannerGateController::class, 'index'])
                     ->name('gates.index');

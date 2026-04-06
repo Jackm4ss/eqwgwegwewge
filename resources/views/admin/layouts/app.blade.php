@@ -59,7 +59,8 @@
           $adminManagementOpen = request()->routeIs('admin.logs.*') || request()->routeIs('admin.admin-users.*');
           $scannerManagementOpen = request()->routeIs('admin.scanner-users.*')
             || request()->routeIs('admin.attendance.*')
-            || request()->routeIs('admin.gates.*');
+            || request()->routeIs('admin.gates.*')
+            || request()->routeIs('admin.qr-management.*');
           $reportManagementOpen = request()->routeIs('admin.reports.*') || request()->routeIs('admin.public-reports.*');
         @endphp
 
@@ -109,6 +110,11 @@
               <li class="menu-item {{ request()->routeIs('admin.attendance.*') ? 'active' : '' }}">
                 <a href="{{ route('admin.attendance.index') }}" class="menu-link">
                   <div>Monitoring Attendance</div>
+                </a>
+              </li>
+              <li class="menu-item {{ request()->routeIs('admin.qr-management.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.qr-management.index') }}" class="menu-link">
+                  <div>QR Management</div>
                 </a>
               </li>
               <li class="menu-item {{ request()->routeIs('admin.gates.*') ? 'active' : '' }}">

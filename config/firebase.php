@@ -16,6 +16,7 @@ return [
     'ticket_code_index_collection' => $resolveCollection('FIREBASE_TICKET_CODE_INDEX_COLLECTION', 'ticket_code_index'),
     'ticket_entry_code_index_collection' => $resolveCollection('FIREBASE_TICKET_ENTRY_CODE_INDEX_COLLECTION', 'ticket_entry_code_index'),
     'user_email_index_collection' => $resolveCollection('FIREBASE_USER_EMAIL_INDEX_COLLECTION', 'user_email_index'),
+    'user_phone_index_collection' => $resolveCollection('FIREBASE_USER_PHONE_INDEX_COLLECTION', 'user_phone_index'),
     'user_identity_index_collection' => $resolveCollection('FIREBASE_USER_IDENTITY_INDEX_COLLECTION', 'user_identity_index'),
     'attendance_daily_collection' => $resolveCollection('FIREBASE_ATTENDANCE_DAILY_COLLECTION', 'attendance_daily'),
     'scan_logs_collection' => $resolveCollection('FIREBASE_SCAN_LOGS_COLLECTION', 'scan_logs'),

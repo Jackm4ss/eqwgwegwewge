@@ -23,6 +23,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
     public function create(array $data): array
     {
         $email = $this->normalizeEmail((string) $data['email']);
+        $phoneNumber = $this->normalizePhoneNumber((string) ($data['phone_number'] ?? ''));
         $identityType = $this->normalizeIdentityType((string) $data['identity_type']);
         $identityCountry = $this->normalizeCountry((string) ($data['identity_country'] ?? $data['country'] ?? ''));
         $identityNumber = $this->normalizeIdentityNumber((string) $data['identity_number']);
@@ -31,6 +32,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
         $payload = array_merge($data, [
             'user_id' => $data['user_id'] ?? (string) str()->uuid(),
             'email' => $email,
+            'phone_number' => $phoneNumber,
             'identity_type' => $identityType,
             'identity_country' => $identityCountry,
             'identity_number' => $identityNumber,
@@ -45,22 +47,28 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
 
             try {
                 $emailIndexPath = $this->emailIndexPath($email);
+                $phoneIndexPath = $phoneNumber !== '' ? $this->phoneIndexPath($phoneNumber) : null;
                 $identityIndexPath = $this->identityIndexPath($identityType, $identityCountry, $identityNumber);
 
-                $documents = $this->api()->batchGet([
+                $documents = $this->api()->batchGet(array_values(array_filter([
                     $emailIndexPath,
+                    $phoneIndexPath,
                     $identityIndexPath,
-                ], $transaction);
+                ])), $transaction);
 
                 if ($documents[$emailIndexPath] !== null) {
                     throw new RegistrationConflictException('email', 'Email already registered.');
+                }
+
+                if ($phoneIndexPath !== null && ($documents[$phoneIndexPath] ?? null) !== null) {
+                    throw new RegistrationConflictException('phone_number', 'Phone number already registered.');
                 }
 
                 if ($documents[$identityIndexPath] !== null) {
                     throw new RegistrationConflictException('identity_number', 'This identity document is already registered.');
                 }
 
-                $this->api()->commit([
+                $writes = [
                     $this->api()->makeSetWrite($this->userPath($payload['user_id']), $storagePayload, false),
                     $this->api()->makeSetWrite($emailIndexPath, [
                         'user_id' => $payload['user_id'],
@@ -75,7 +83,17 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
                         'normalized_identity_key' => $this->identityLookupKey($identityType, $identityCountry, $identityNumber),
                         'created_at' => $storagePayload['created_at'],
                     ], false),
-                ], $transaction);
+                ];
+
+                if ($phoneIndexPath !== null) {
+                    $writes[] = $this->api()->makeSetWrite(
+                        $phoneIndexPath,
+                        $this->buildPhoneIndexPayload($payload),
+                        false,
+                    );
+                }
+
+                $this->api()->commit($writes, $transaction);
 
                 $committed = true;
 
@@ -88,7 +106,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
                     continue;
                 }
 
-                $this->throwConflictIfIndexesExist($email, $identityType, $identityCountry, $identityNumber, $exception);
+                $this->throwConflictIfIndexesExist($email, $phoneNumber, $identityType, $identityCountry, $identityNumber, $exception);
                 throw $exception;
             } finally {
                 if (! $committed) {
@@ -121,6 +139,16 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
 
         if ($normalizedPhoneNumber === '') {
             return null;
+        }
+
+        $indexDocument = $this->api()->getDocument(
+            $this->phoneIndexPath($normalizedPhoneNumber)
+        );
+
+        if ($indexDocument !== null) {
+            $index = $this->api()->decodeDocument($indexDocument);
+
+            return $this->findById((string) $index['user_id']);
         }
 
         $documents = $this->api()->runQuery([
@@ -353,6 +381,7 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
 
     private function throwConflictIfIndexesExist(
         string $email,
+        string $phoneNumber,
         string $identityType,
         string $identityCountry,
         string $identityNumber,
@@ -361,6 +390,10 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
         try {
             if ($this->api()->getDocument($this->emailIndexPath($email)) !== null) {
                 throw new RegistrationConflictException('email', 'Email already registered.');
+            }
+
+            if ($phoneNumber !== '' && $this->api()->getDocument($this->phoneIndexPath($phoneNumber)) !== null) {
+                throw new RegistrationConflictException('phone_number', 'Phone number already registered.');
             }
 
             if ($this->api()->getDocument($this->identityIndexPath($identityType, $identityCountry, $identityNumber)) !== null) {
@@ -387,6 +420,12 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
     {
         return (string) config('firebase.user_email_index_collection', 'user_email_index')
             .'/'.hash('sha256', $email);
+    }
+
+    private function phoneIndexPath(string $phoneNumber): string
+    {
+        return (string) config('firebase.user_phone_index_collection', 'user_phone_index')
+            .'/'.hash('sha256', $this->normalizePhoneNumber($phoneNumber));
     }
 
     private function ticketCodeIndexPath(string $ticketCode): string
@@ -443,6 +482,18 @@ class FirestoreRestUserRepository implements UserRepositoryInterface
             $this->normalizeCountry($identityCountry),
             $this->normalizeIdentityNumber($identityNumber),
         ]);
+    }
+
+    private function buildPhoneIndexPayload(array $payload): array
+    {
+        $phoneNumber = $this->normalizePhoneNumber((string) ($payload['phone_number'] ?? ''));
+
+        return [
+            'user_id' => (string) ($payload['user_id'] ?? ''),
+            'normalized_phone_number' => $phoneNumber,
+            'created_at' => $payload['created_at'] ?? now()->toISOString(),
+            'updated_at' => $payload['updated_at'] ?? now()->toISOString(),
+        ];
     }
 
     private function buildTicketPayload(array $user, array $ticketData, string $existingTicketId): array
