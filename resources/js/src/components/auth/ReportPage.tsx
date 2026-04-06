@@ -18,11 +18,12 @@ import {
   authSelectClass,
 } from './AuthShared';
 import { getSpaUrl } from '../../lib/spaRouting';
+import { CountryDropdown, CountryFlag } from '../ui/CountryDropdown';
+import { type PhoneDropdownOption } from '../ui/PhoneInput';
 import {
   Select,
   SelectContent,
   SelectItem,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '../ui/Select';
@@ -37,13 +38,14 @@ import {
 } from '../ui/Dialog';
 import { Button } from '../ui/Button';
 import {
-  OTHER_PHONE_OPTIONS,
+  OTHER_SEARCHABLE_PHONE_OPTIONS,
   PHONE_DIAL_CODES,
-  PHONE_OPTIONS,
-  PRIORITY_PHONE_OPTIONS,
+  PRIORITY_SEARCHABLE_PHONE_OPTIONS,
+  findPrimarySearchablePhoneOption,
+  resolveSearchablePhoneOption,
 } from '@/lib/countryCatalog';
 
-type ReportType = 'incident_security' | 'lost_item' | 'lost_locker_card' | 'medical_attention' | 'others';
+type ReportType = 'incident_security' | 'lost_item' | 'lost_locker_card' | 'medical_attention' | 'ticket_registration' | 'others';
 type IdentityType = 'national_id' | 'passport' | '';
 
 type FormData = {
@@ -85,6 +87,7 @@ const REPORT_OPTIONS: Array<{
   { value: 'lost_item', title: 'Lost Item' },
   { value: 'lost_locker_card', title: 'Lost Locker Card' },
   { value: 'medical_attention', title: 'Medical Attention' },
+  { value: 'ticket_registration', title: 'Ticket and Registration' },
   { value: 'others', title: 'Others' },
 ];
 
@@ -119,6 +122,31 @@ const INCIDENT_DAY_OPTIONS = Array.from({ length: 31 }, (_, index) => {
 });
 
 const INCIDENT_YEAR_OPTIONS = ['2026'] as const;
+
+const PHONE_DROPDOWN_OPTIONS: PhoneDropdownOption[] = [
+  ...PRIORITY_SEARCHABLE_PHONE_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.countryName,
+    flagCode: option.country,
+    secondaryLabel: option.dialCode,
+    keywords: [option.country, option.countryName, option.dialCode],
+    countryCode: option.country,
+    dialCode: option.dialCode,
+    emoji: option.emoji,
+    group: 'priority',
+  })),
+  ...OTHER_SEARCHABLE_PHONE_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.countryName,
+    flagCode: option.country,
+    secondaryLabel: option.dialCode,
+    keywords: [option.country, option.countryName, option.dialCode],
+    countryCode: option.country,
+    dialCode: option.dialCode,
+    emoji: option.emoji,
+    group: 'other',
+  })),
+];
 
 type Grecaptcha = {
   ready: (callback: () => void) => void;
@@ -249,6 +277,9 @@ export function ReportPage() {
   const [submitted, setSubmitted] = useState<SubmittedState | null>(null);
   const [isRecaptchaReady, setIsRecaptchaReady] = useState(!recaptchaEnabled);
   const [isIncidentTimePickerOpen, setIsIncidentTimePickerOpen] = useState(false);
+  const [selectedPhoneOptionValue, setSelectedPhoneOptionValue] = useState(
+    () => findPrimarySearchablePhoneOption('MY')?.value ?? '',
+  );
 
   const {
     control,
@@ -286,7 +317,12 @@ export function ReportPage() {
   const selectedIncidentDay = watch('incident_day');
   const selectedIncidentMonth = watch('incident_month');
   const selectedIncidentYear = watch('incident_year');
-  const selectedPhoneOption = PHONE_OPTIONS.find((item) => item.dialCode === selectedPhoneCountryCode);
+  const selectedPhoneOption = resolveSearchablePhoneOption(
+    selectedPhoneOptionValue,
+    selectedPhoneCountryCode,
+    undefined,
+    'MY',
+  );
   const inputClass = (field: keyof FormData, withIcon = true) => authInputClass(Boolean(errors[field]), { withIcon });
   const selectClass = (field: keyof FormData, extraClassName?: string) => authSelectClass(Boolean(errors[field]), extraClassName);
   const incidentDateSelectClass = authSelectClass(Boolean(errors.incident_date), 'px-3');
@@ -305,6 +341,19 @@ export function ReportPage() {
     : selectedIdentityType === 'passport'
       ? 'Use a valid passport number that matches your travel document.'
       : 'Choose whether this report uses Malaysia IC (MyKad) or Passport first.';
+
+  useEffect(() => {
+    const resolvedPhoneOption = resolveSearchablePhoneOption(
+      selectedPhoneOptionValue,
+      selectedPhoneCountryCode,
+      undefined,
+      'MY',
+    );
+
+    if (resolvedPhoneOption && resolvedPhoneOption.value !== selectedPhoneOptionValue) {
+      setSelectedPhoneOptionValue(resolvedPhoneOption.value);
+    }
+  }, [selectedPhoneCountryCode, selectedPhoneOptionValue]);
 
   useEffect(() => {
     if (!recaptchaEnabled) {
@@ -620,48 +669,33 @@ export function ReportPage() {
                       <label htmlFor="phone_country_code" className="mb-1.5 block text-sm font-semibold text-slate-700">
                         Phone Number <span className="text-red-500">*</span>
                       </label>
-                      <div className="grid grid-cols-[116px_minmax(0,1fr)] gap-2">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[190px_minmax(0,1fr)]">
                         <Controller
                           control={control}
                           name="phone_country_code"
                           render={({ field }) => (
-                            <Select value={field.value} onValueChange={(value) => field.onChange(normalizePhoneCountryCode(value))}>
-                              <SelectTrigger
+                            <CountryDropdown
                                 id="phone_country_code"
-                                className={selectClass('phone_country_code', 'px-3')}
-                                aria-invalid={errors.phone_country_code ? 'true' : 'false'}
-                              >
-                                {selectedPhoneOption ? (
-                                  <span className="flex items-center gap-1.5 truncate">
-                                    <span className={`${selectedPhoneOption.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" />
-                                    <span className="truncate text-sm font-medium">{selectedPhoneOption.dialCode}</span>
+                                value={selectedPhoneOption?.value}
+                                onChange={(value, option) => {
+                                  const phoneOption = option as PhoneDropdownOption;
+
+                                  setSelectedPhoneOptionValue(value);
+                                  field.onChange(normalizePhoneCountryCode(phoneOption.dialCode));
+                                  field.onBlur();
+                                }}
+                                options={PHONE_DROPDOWN_OPTIONS}
+                                placeholder="Code"
+                                searchPlaceholder="Search country or dial code..."
+                                emptyMessage="No country code found."
+                                className={selectClass('phone_country_code')}
+                                renderSelectedContent={(option) => (
+                                  <span className="flex min-w-0 items-center gap-2.5 truncate">
+                                    <CountryFlag flagCode={option.flagCode} emoji={option.emoji} className="h-4 w-[22px]" />
+                                    <span className="truncate text-base font-medium">{(option as PhoneDropdownOption).dialCode}</span>
                                   </span>
-                                ) : (
-                                  <SelectValue placeholder="Code" />
                                 )}
-                              </SelectTrigger>
-                              <SelectContent className="rounded-xl border-sky-100">
-                                {PRIORITY_PHONE_OPTIONS.map((option) => (
-                                  <SelectItem key={`${option.country}-${option.dialCode}`} value={option.dialCode}>
-                                    <span className="flex items-center gap-2.5">
-                                      <span className={`${option.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" />
-                                      <span>{option.countryName}</span>
-                                      <span className="text-slate-500">{option.dialCode}</span>
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                                {OTHER_PHONE_OPTIONS.length > 0 && <SelectSeparator className="my-1 bg-sky-100" />}
-                                {OTHER_PHONE_OPTIONS.map((option) => (
-                                  <SelectItem key={`${option.country}-${option.dialCode}`} value={option.dialCode}>
-                                    <span className="flex items-center gap-2.5">
-                                      <span className={`${option.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" />
-                                      <span>{option.countryName}</span>
-                                      <span className="text-slate-500">{option.dialCode}</span>
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              />
                           )}
                         />
                         <div className="relative">

@@ -68,6 +68,32 @@ class PublicReportSubmissionTest extends TestCase
         ]);
     }
 
+    public function test_public_report_submission_accepts_ticket_and_registration_type(): void
+    {
+        Mail::fake();
+
+        $this->postJson('/api/report', [
+            'report_type' => 'ticket_registration',
+            'name' => 'Bang Raymond',
+            'phone' => '+60123456789',
+            'identity_type' => 'passport',
+            'identity_number' => 'A12345678',
+            'email' => 'raymond@example.test',
+            'incident_date' => '2026-04-01',
+            'incident_time' => '18:30',
+            'chronology' => 'Need help with ticket and registration details at the entrance booth.',
+            'staff_name' => 'Mina',
+        ])->assertCreated()
+            ->assertJsonPath('reference', fn ($reference) => is_string($reference) && preg_match('/^TR\d{3}$/', $reference) === 1);
+
+        Mail::assertNothingSent();
+
+        $this->assertDatabaseHas('public_reports', [
+            'report_type' => 'ticket_registration',
+            'case_prefix' => 'TR',
+        ]);
+    }
+
     public function test_public_report_submission_requires_essential_fields(): void
     {
         $this->postJson('/api/report', [

@@ -41,11 +41,10 @@ import {
   PRIORITY_SORTED_COUNTRIES,
   SORTED_COUNTRIES,
   findPrimarySearchablePhoneOption,
-  findSearchablePhoneOptionByDialCode,
-  findSearchablePhoneOptionByValue,
   OTHER_SEARCHABLE_PHONE_OPTIONS,
   OTHER_SORTED_COUNTRIES,
   PRIORITY_SEARCHABLE_PHONE_OPTIONS,
+  resolveSearchablePhoneOption,
 } from '@/lib/countryCatalog';
 
 interface FormData {
@@ -419,24 +418,6 @@ function validatePhoneNumber(phoneCountryCode: string, phoneNationalNumber: stri
   }
 
   return true;
-}
-
-function resolveSelectedPhoneOption(
-  selectedValue: string,
-  phoneCountryCode: string,
-  countryHint: string,
-) {
-  const selectedOption = findSearchablePhoneOptionByValue(selectedValue);
-
-  if (selectedOption && selectedOption.dialCode === normalizePhoneCountryCode(phoneCountryCode)) {
-    return selectedOption;
-  }
-
-  return (
-    findSearchablePhoneOptionByDialCode(phoneCountryCode, countryHint)
-    ?? findPrimarySearchablePhoneOption(countryHint)
-    ?? findPrimarySearchablePhoneOption('MY')
-  );
 }
 
 type SweetAlertResult = {
@@ -1068,7 +1049,7 @@ export function RegisterPage() {
   const identityNumberVal = watch('identity_number');
 
   useEffect(() => {
-    const resolvedPhoneOption = resolveSelectedPhoneOption(
+    const resolvedPhoneOption = resolveSearchablePhoneOption(
       selectedPhoneOptionValue,
       phoneCountryCodeVal,
       countryVal,
@@ -1370,7 +1351,7 @@ export function RegisterPage() {
         : isMalaysianRegistrant
           ? 'For Malaysia, document type is fixed to Malaysia IC (MyKad).'
           : 'Select the document you will use for registration.';
-  const selectedPhoneOption = resolveSelectedPhoneOption(
+  const selectedPhoneOption = resolveSearchablePhoneOption(
     selectedPhoneOptionValue,
     phoneCountryCodeVal,
     countryVal,

@@ -114,6 +114,7 @@ class PublicReportService
             'lost_item' => $rows->where('report_type', 'lost_item')->count(),
             'lost_locker_card' => $rows->where('report_type', 'lost_locker_card')->count(),
             'medical_attention' => $rows->where('report_type', 'medical_attention')->count(),
+            'ticket_registration' => $rows->where('report_type', 'ticket_registration')->count(),
             'others' => $rows->where('report_type', 'others')->count(),
         ];
     }
@@ -157,6 +158,7 @@ class PublicReportService
             'lost_item' => 'Lost Item',
             'lost_locker_card' => 'Lost Locker Card',
             'medical_attention' => 'Medical Attention',
+            'ticket_registration' => 'Ticket and Registration',
             default => 'Others',
         };
     }
@@ -189,6 +191,7 @@ class PublicReportService
             ['value' => 'lost_item', 'label' => 'Lost Item'],
             ['value' => 'lost_locker_card', 'label' => 'Lost Locker Card'],
             ['value' => 'medical_attention', 'label' => 'Medical Attention'],
+            ['value' => 'ticket_registration', 'label' => 'Ticket and Registration'],
             ['value' => 'others', 'label' => 'Others'],
         ];
     }
@@ -295,6 +298,7 @@ class PublicReportService
             'lost_item' => 'LI',
             'lost_locker_card' => 'LC',
             'medical_attention' => 'M',
+            'ticket_registration' => 'TR',
             default => 'O',
         };
     }

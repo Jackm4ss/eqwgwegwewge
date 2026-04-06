@@ -170,6 +170,27 @@ export function findPrimarySearchablePhoneOption(countryCode: string) {
   return SEARCHABLE_PHONE_OPTIONS.find((option) => option.country === normalizedCountryCode) ?? null;
 }
 
+export function resolveSearchablePhoneOption(
+  selectedValue: string,
+  phoneCountryCode: string,
+  countryHint?: string,
+  fallbackCountryCode = 'MY',
+) {
+  const selectedOption = findSearchablePhoneOptionByValue(selectedValue);
+  const normalizedPhoneCountryCode = normalizeDialCode(phoneCountryCode);
+
+  if (selectedOption && selectedOption.dialCode === normalizedPhoneCountryCode) {
+    return selectedOption;
+  }
+
+  return (
+    findSearchablePhoneOptionByDialCode(phoneCountryCode, countryHint)
+    ?? findPrimarySearchablePhoneOption(countryHint ?? '')
+    ?? findPrimarySearchablePhoneOption(fallbackCountryCode)
+    ?? null
+  );
+}
+
 export function humanizeCountry(code: string) {
   const normalizedCode = code.trim().toUpperCase();
   const country = findCountryByCode(normalizedCode);

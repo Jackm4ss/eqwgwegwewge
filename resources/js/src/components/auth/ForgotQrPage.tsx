@@ -27,23 +27,18 @@ import {
   authSelectClass,
 } from './AuthShared';
 import { Button } from '../ui/Button';
+import { CountryDropdown, CountryFlag, type CountryDropdownOption } from '../ui/CountryDropdown';
+import { type PhoneDropdownOption } from '../ui/PhoneInput';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/Select';
-import {
-  OTHER_PHONE_OPTIONS,
   OTHER_SORTED_COUNTRIES,
   PHONE_DIAL_CODES,
-  PHONE_OPTIONS,
-  PRIORITY_PHONE_OPTIONS,
+  OTHER_SEARCHABLE_PHONE_OPTIONS,
   PRIORITY_SORTED_COUNTRIES,
+  PRIORITY_SEARCHABLE_PHONE_OPTIONS,
   SORTED_COUNTRIES,
+  findPrimarySearchablePhoneOption,
   humanizeCountry,
+  resolveSearchablePhoneOption,
 } from '@/lib/countryCatalog';
 
 type SearchType = 'email' | 'phone' | 'passport' | 'ic';
@@ -112,6 +107,48 @@ const SEARCH_OPTIONS: Array<{ value: SearchType; title: string; desc: string; ic
   { value: 'phone', title: 'Phone Number', desc: 'Use country code and the exact mobile number.', icon: Phone },
   { value: 'passport', title: 'Passport', desc: 'Match country and passport number exactly.', icon: QrCode },
   { value: 'ic', title: 'IC / MyKad', desc: 'Lookup with the registered Malaysia IC number.', icon: IdCard },
+];
+
+const COUNTRY_DROPDOWN_OPTIONS: CountryDropdownOption[] = [
+  ...PRIORITY_SORTED_COUNTRIES.map((country) => ({
+    value: country.code,
+    label: country.name,
+    flagCode: country.code,
+    keywords: [country.code, country.alpha3, country.name],
+    group: 'priority',
+  })),
+  ...OTHER_SORTED_COUNTRIES.map((country) => ({
+    value: country.code,
+    label: country.name,
+    flagCode: country.code,
+    keywords: [country.code, country.alpha3, country.name],
+    group: 'other',
+  })),
+];
+
+const PHONE_DROPDOWN_OPTIONS: PhoneDropdownOption[] = [
+  ...PRIORITY_SEARCHABLE_PHONE_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.countryName,
+    flagCode: option.country,
+    secondaryLabel: option.dialCode,
+    keywords: [option.country, option.countryName, option.dialCode],
+    countryCode: option.country,
+    dialCode: option.dialCode,
+    emoji: option.emoji,
+    group: 'priority',
+  })),
+  ...OTHER_SEARCHABLE_PHONE_OPTIONS.map((option) => ({
+    value: option.value,
+    label: option.countryName,
+    flagCode: option.country,
+    secondaryLabel: option.dialCode,
+    keywords: [option.country, option.countryName, option.dialCode],
+    countryCode: option.country,
+    dialCode: option.dialCode,
+    emoji: option.emoji,
+    group: 'other',
+  })),
 ];
 
 let recaptchaLoader: Promise<Grecaptcha | null> | null = null;
@@ -221,6 +258,9 @@ export function ForgotQrPage() {
   const [isRecaptchaReady, setIsRecaptchaReady] = useState(!recaptchaEnabled);
   const [result, setResult] = useState<{ participant: Participant; ticketUrl: string; ticketCode: string } | null>(null);
   const [notFoundMessage, setNotFoundMessage] = useState('');
+  const [selectedPhoneOptionValue, setSelectedPhoneOptionValue] = useState(
+    () => findPrimarySearchablePhoneOption('MY')?.value ?? '',
+  );
 
   const {
     control,
@@ -248,9 +288,24 @@ export function ForgotQrPage() {
   const searchType = watch('search_type');
   const selectedCountry = watch('country');
   const selectedPhoneCountryCode = watch('phone_country_code');
-  const selectedPhoneOption = PHONE_OPTIONS.find((item) => item.dialCode === selectedPhoneCountryCode);
-  const selectedCountryOption = SORTED_COUNTRIES.find((item) => item.code === selectedCountry);
+  const selectedPhoneOption = resolveSearchablePhoneOption(
+    selectedPhoneOptionValue,
+    selectedPhoneCountryCode,
+    selectedCountry,
+  );
   const resultCountryOption = result ? SORTED_COUNTRIES.find((item) => item.code === result.participant.country) : null;
+
+  useEffect(() => {
+    const resolvedPhoneOption = resolveSearchablePhoneOption(
+      selectedPhoneOptionValue,
+      selectedPhoneCountryCode,
+      selectedCountry,
+    );
+
+    if (resolvedPhoneOption && resolvedPhoneOption.value !== selectedPhoneOptionValue) {
+      setSelectedPhoneOptionValue(resolvedPhoneOption.value);
+    }
+  }, [selectedCountry, selectedPhoneCountryCode, selectedPhoneOptionValue]);
 
   useEffect(() => {
     if (!recaptchaEnabled) {
@@ -530,39 +585,28 @@ export function ForgotQrPage() {
                               control={control}
                               name="phone_country_code"
                               render={({ field }) => (
-                                <Select value={field.value} onValueChange={(value) => field.onChange(normalizePhoneCountryCode(value))}>
-                                  <SelectTrigger id="phone_country_code" className={selectClass('phone_country_code')} aria-invalid={errors.phone_country_code ? 'true' : 'false'}>
-                                    {selectedPhoneOption ? (
-                                      <span className="flex items-center gap-2.5 truncate">
-                                        <span className={`${selectedPhoneOption.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" />
-                                        <span className="truncate text-base font-medium">{selectedPhoneOption.dialCode}</span>
-                                      </span>
-                                    ) : (
-                                      <SelectValue placeholder="Code" />
-                                    )}
-                                  </SelectTrigger>
-                                  <SelectContent className="rounded-xl border-sky-100">
-                                    {PRIORITY_PHONE_OPTIONS.map((option) => (
-                                      <SelectItem key={`${option.country}-${option.dialCode}`} value={option.dialCode}>
-                                        <span className="flex items-center gap-2.5">
-                                          <span className={`${option.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" />
-                                          <span>{option.countryName}</span>
-                                          <span className="text-slate-500">{option.dialCode}</span>
-                                        </span>
-                                      </SelectItem>
-                                    ))}
-                                    {OTHER_PHONE_OPTIONS.length > 0 && <SelectSeparator className="my-1 bg-sky-100" />}
-                                    {OTHER_PHONE_OPTIONS.map((option) => (
-                                      <SelectItem key={`${option.country}-${option.dialCode}`} value={option.dialCode}>
-                                        <span className="flex items-center gap-2.5">
-                                          <span className={`${option.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" />
-                                          <span>{option.countryName}</span>
-                                          <span className="text-slate-500">{option.dialCode}</span>
-                                        </span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <CountryDropdown
+                                  id="phone_country_code"
+                                  value={selectedPhoneOption?.value}
+                                  onChange={(value, option) => {
+                                    const phoneOption = option as PhoneDropdownOption;
+
+                                    setSelectedPhoneOptionValue(value);
+                                    field.onChange(normalizePhoneCountryCode(phoneOption.dialCode));
+                                    field.onBlur();
+                                  }}
+                                  options={PHONE_DROPDOWN_OPTIONS}
+                                  placeholder="Code"
+                                  searchPlaceholder="Search country or dial code..."
+                                  emptyMessage="No country code found."
+                                  className={selectClass('phone_country_code')}
+                                  renderSelectedContent={(option) => (
+                                    <span className="flex min-w-0 items-center gap-2.5 truncate">
+                                      <CountryFlag flagCode={option.flagCode} emoji={option.emoji} className="h-4 w-[22px]" />
+                                      <span className="truncate text-base font-medium">{(option as PhoneDropdownOption).dialCode}</span>
+                                    </span>
+                                  )}
+                                />
                               )}
                             />
                             <div className="relative">
@@ -601,37 +645,19 @@ export function ForgotQrPage() {
                                 control={control}
                                 name="country"
                                 render={({ field }) => (
-                                  <Select value={field.value} onValueChange={field.onChange}>
-                                    <SelectTrigger id="country" className={selectClass('country')} aria-invalid={errors.country ? 'true' : 'false'}>
-                                      {selectedCountryOption ? (
-                                        <span className="flex items-center gap-2.5 truncate">
-                                          <span className={`fi fi-${selectedCountryOption.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" />
-                                          <span className="truncate">{selectedCountryOption.name}</span>
-                                        </span>
-                                      ) : (
-                                        <SelectValue placeholder="Select country" />
-                                      )}
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border-sky-100">
-                                      {PRIORITY_SORTED_COUNTRIES.map((country) => (
-                                        <SelectItem key={country.code} value={country.code}>
-                                          <span className="flex items-center gap-2.5">
-                                            <span className={`fi fi-${country.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" />
-                                            <span>{country.name}</span>
-                                          </span>
-                                        </SelectItem>
-                                      ))}
-                                      {OTHER_SORTED_COUNTRIES.length > 0 && <SelectSeparator className="my-1 bg-sky-100" />}
-                                      {OTHER_SORTED_COUNTRIES.map((country) => (
-                                        <SelectItem key={country.code} value={country.code}>
-                                          <span className="flex items-center gap-2.5">
-                                            <span className={`fi fi-${country.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`} aria-hidden="true" />
-                                            <span>{country.name}</span>
-                                          </span>
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
+                                  <CountryDropdown
+                                    id="country"
+                                    value={field.value}
+                                    onChange={(value) => {
+                                      field.onChange(value);
+                                      field.onBlur();
+                                    }}
+                                    options={COUNTRY_DROPDOWN_OPTIONS}
+                                    placeholder="Select country"
+                                    searchPlaceholder="Search country..."
+                                    emptyMessage="No country found."
+                                    className={selectClass('country')}
+                                  />
                                 )}
                               />
                             ) : (

@@ -19,7 +19,7 @@ class PublicReportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'report_type' => ['required', 'in:incident_security,lost_item,lost_locker_card,medical_attention,others'],
+            'report_type' => ['required', 'in:incident_security,lost_item,lost_locker_card,medical_attention,ticket_registration,others'],
             'name' => ['required', 'string', 'max:120'],
             'phone' => ['required', 'string', 'max:30'],
             'identity_type' => ['required', 'in:national_id,passport'],
