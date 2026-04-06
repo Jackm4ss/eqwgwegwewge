@@ -3,9 +3,10 @@ import { Controller, useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster, toast } from 'sonner';
 import emailSpellChecker from '@zootools/email-spell-checker';
+import parsePhoneNumberFromString from 'libphonenumber-js';
 import {
-  User, Mail, Phone, Globe, MapPin, IdCard,
-  Calendar, Music2, ChevronDown, CheckCircle2,
+  User, Mail, MapPin, IdCard,
+  Music2, ChevronDown, CheckCircle2,
   Loader2,
   Droplets, Star, Waves, Sparkles, X, Lock
 } from 'lucide-react';
@@ -28,27 +29,23 @@ import {
   DialogTitle,
 } from '../ui/Dialog';
 import { Button } from '../ui/Button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/Select';
+import { CountryDropdown } from '../ui/CountryDropdown';
+import { PhoneInput, type PhoneDropdownOption } from '../ui/PhoneInput';
 import {
   captureTrafficAttribution,
   type TrafficAttributionPayload,
 } from '@/lib/trafficAttribution';
 import { getSpaUrl } from '@/lib/spaRouting';
 import {
-  OTHER_PHONE_OPTIONS as OTHER_PHONE_COUNTRY_CODES,
-  OTHER_SORTED_COUNTRIES,
   PHONE_DIAL_CODES,
-  PHONE_OPTIONS as PHONE_COUNTRY_CODES,
-  PRIORITY_PHONE_OPTIONS as PRIORITY_PHONE_COUNTRY_CODES,
   PRIORITY_SORTED_COUNTRIES,
   SORTED_COUNTRIES,
+  findPrimarySearchablePhoneOption,
+  findSearchablePhoneOptionByDialCode,
+  findSearchablePhoneOptionByValue,
+  OTHER_SEARCHABLE_PHONE_OPTIONS,
+  OTHER_SORTED_COUNTRIES,
+  PRIORITY_SEARCHABLE_PHONE_OPTIONS,
 } from '@/lib/countryCatalog';
 
 interface FormData {
@@ -135,6 +132,49 @@ const ENABLE_LEGACY_SUCCESS_SCREEN = true;
 const TICKET_HEADER_FONT_FAMILY = '"Tilt Warp", sans-serif';
 const PUBLIC_HOME_URL = getSpaUrl('publicHome', '/');
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const REGISTER_EXCLUDED_COUNTRY_CODES = new Set(['IL']);
+
+const NATIONALITY_OPTIONS = [
+  ...PRIORITY_SORTED_COUNTRIES.filter((country) => !REGISTER_EXCLUDED_COUNTRY_CODES.has(country.code)).map((country) => ({
+    value: country.code,
+    label: country.name,
+    flagCode: country.code,
+    keywords: [country.code, country.alpha3, country.name],
+    group: 'priority',
+  })),
+  ...OTHER_SORTED_COUNTRIES.filter((country) => !REGISTER_EXCLUDED_COUNTRY_CODES.has(country.code)).map((country) => ({
+    value: country.code,
+    label: country.name,
+    flagCode: country.code,
+    keywords: [country.code, country.alpha3, country.name],
+    group: 'other',
+  })),
+];
+
+const PHONE_DROPDOWN_OPTIONS: PhoneDropdownOption[] = [
+  ...PRIORITY_SEARCHABLE_PHONE_OPTIONS.filter((option) => !REGISTER_EXCLUDED_COUNTRY_CODES.has(option.country)).map((option) => ({
+    value: option.value,
+    label: option.countryName,
+    flagCode: option.country,
+    secondaryLabel: option.dialCode,
+    keywords: [option.country, option.countryName, option.dialCode],
+    countryCode: option.country,
+    dialCode: option.dialCode,
+    emoji: option.emoji,
+    group: 'priority',
+  })),
+  ...OTHER_SEARCHABLE_PHONE_OPTIONS.filter((option) => !REGISTER_EXCLUDED_COUNTRY_CODES.has(option.country)).map((option) => ({
+    value: option.value,
+    label: option.countryName,
+    flagCode: option.country,
+    secondaryLabel: option.dialCode,
+    keywords: [option.country, option.countryName, option.dialCode],
+    countryCode: option.country,
+    dialCode: option.dialCode,
+    emoji: option.emoji,
+    group: 'other',
+  })),
+];
 // Myanmar registration hold popup kept here for quick re-enable if needed.
 // const MYANMAR_COUNTRY_CODE = 'MM';
 // const MYANMAR_REGISTRATION_HOLD_COPY = 'Myanmar registrations are temporarily on hold until further notice.';
@@ -159,7 +199,7 @@ function getEmailTypoSuggestion(email: string) {
 }
 
 function buildEmailTypoMessage(suggestedEmail: string) {
-  return `Please double-check your email address. Did you mean ${suggestedEmail}? Update it before submit.`;
+  return `Did you mean ${suggestedEmail}? You can't submit if typo.`;
 }
 
 function MapsPinIcon() {
@@ -363,6 +403,40 @@ function validateIdentityNumber(value: string, identityType: FormData['identity_
 
 function buildPhoneNumber(phoneCountryCode: string, phoneNationalNumber: string) {
   return `${normalizePhoneCountryCode(phoneCountryCode)}${normalizePhoneNationalNumber(phoneNationalNumber)}`;
+}
+
+function validatePhoneNumber(phoneCountryCode: string, phoneNationalNumber: string) {
+  const fullPhoneNumber = buildPhoneNumber(phoneCountryCode, phoneNationalNumber);
+
+  if (fullPhoneNumber === '') {
+    return 'Phone number is required.';
+  }
+
+  const parsedPhoneNumber = parsePhoneNumberFromString(fullPhoneNumber);
+
+  if (!parsedPhoneNumber || !parsedPhoneNumber.isPossible()) {
+    return 'Invalid phone number.';
+  }
+
+  return true;
+}
+
+function resolveSelectedPhoneOption(
+  selectedValue: string,
+  phoneCountryCode: string,
+  countryHint: string,
+) {
+  const selectedOption = findSearchablePhoneOptionByValue(selectedValue);
+
+  if (selectedOption && selectedOption.dialCode === normalizePhoneCountryCode(phoneCountryCode)) {
+    return selectedOption;
+  }
+
+  return (
+    findSearchablePhoneOptionByDialCode(phoneCountryCode, countryHint)
+    ?? findPrimarySearchablePhoneOption(countryHint)
+    ?? findPrimarySearchablePhoneOption('MY')
+  );
 }
 
 type SweetAlertResult = {
@@ -837,6 +911,9 @@ export function RegisterPage() {
     fullName: '',
     identityNumber: '',
   });
+  const [selectedPhoneOptionValue, setSelectedPhoneOptionValue] = useState(
+    () => findPrimarySearchablePhoneOption('MY')?.value ?? '',
+  );
   const [ticketEmailSent, setTicketEmailSent] = useState(true);
   const [ticketDeliveryStatus, setTicketDeliveryStatus] = useState<DeliveryStatus>('sent');
   const [trafficAttribution, setTrafficAttribution] = useState<TrafficAttributionPayload | null>(null);
@@ -852,6 +929,7 @@ export function RegisterPage() {
     clearErrors,
     watch,
     reset,
+    trigger,
     formState: { errors, dirtyFields },
   } = useForm<FormData>({
     mode: 'onTouched',
@@ -990,20 +1068,36 @@ export function RegisterPage() {
   const identityNumberVal = watch('identity_number');
 
   useEffect(() => {
+    const resolvedPhoneOption = resolveSelectedPhoneOption(
+      selectedPhoneOptionValue,
+      phoneCountryCodeVal,
+      countryVal,
+    );
+
+    if (resolvedPhoneOption && resolvedPhoneOption.value !== selectedPhoneOptionValue) {
+      setSelectedPhoneOptionValue(resolvedPhoneOption.value);
+    }
+  }, [countryVal, phoneCountryCodeVal, selectedPhoneOptionValue]);
+
+  useEffect(() => {
     if (dirtyFields.phone_country_code) {
       return;
     }
 
-    const suggestedDialCode = PHONE_COUNTRY_CODES.find(option => option.country === countryVal)?.dialCode ?? '';
+    const suggestedPhoneOption = findPrimarySearchablePhoneOption(countryVal);
 
-    if (suggestedDialCode !== '') {
-      setValue('phone_country_code', suggestedDialCode, {
+    if (suggestedPhoneOption) {
+      setValue('phone_country_code', suggestedPhoneOption.dialCode, {
         shouldDirty: false,
         shouldTouch: false,
         shouldValidate: false,
       });
+
+      if (suggestedPhoneOption.value !== selectedPhoneOptionValue) {
+        setSelectedPhoneOptionValue(suggestedPhoneOption.value);
+      }
     }
-  }, [countryVal, dirtyFields.phone_country_code, setValue]);
+  }, [countryVal, dirtyFields.phone_country_code, selectedPhoneOptionValue, setValue]);
 
   useEffect(() => {
     const previousCountry = previousCountryRef.current;
@@ -1073,6 +1167,7 @@ export function RegisterPage() {
       fullName: '',
       identityNumber: '',
     });
+    setSelectedPhoneOptionValue(findPrimarySearchablePhoneOption('MY')?.value ?? '');
     setTicketEmailSent(true);
     setTicketDeliveryStatus('sent');
     reset(); // Clear form values
@@ -1241,7 +1336,6 @@ export function RegisterPage() {
 
   const countrySelectClass = authSelectClass(Boolean(errors.country));
 
-  const selectedCountryOption = SORTED_COUNTRIES.find(c => c.code === countryVal);
   const isMalaysianRegistrant = countryVal === 'MY';
   const isForeignRegistrant = countryVal !== '' && countryVal !== 'MY';
   const hasDirectTicketUrl = registeredTicketUrl.trim() !== '';
@@ -1276,12 +1370,20 @@ export function RegisterPage() {
         : isMalaysianRegistrant
           ? 'For Malaysia, document type is fixed to Malaysia IC (MyKad).'
           : 'Select the document you will use for registration.';
-  const phoneCountryOption = PHONE_COUNTRY_CODES.find(option => option.dialCode === phoneCountryCodeVal);
+  const selectedPhoneOption = resolveSelectedPhoneOption(
+    selectedPhoneOptionValue,
+    phoneCountryCodeVal,
+    countryVal,
+  );
   const activeLegalDialog = legalDialog ? LEGAL_DIALOG_CONTENT[legalDialog] : null;
+  const phoneCountryCodeField = register('phone_country_code', {
+    required: 'Country code is required.',
+    validate: (value) => /^\+\d{1,4}$/.test(normalizePhoneCountryCode(value)) || 'Invalid country code.',
+  });
   const phoneNationalNumberField = register('phone_national_number', {
     required: 'Phone number is required.',
     setValueAs: (value: string) => normalizePhoneNationalNumber(value),
-    pattern: { value: /^\d{4,20}$/, message: 'Invalid phone number.' },
+    validate: (value: string) => validatePhoneNumber(phoneCountryCodeVal, value),
     onChange: (event) => {
       event.target.value = normalizePhoneNationalNumber(event.target.value);
     },
@@ -1584,82 +1686,37 @@ export function RegisterPage() {
                       <label htmlFor="phone_country_code" className="block text-slate-700 text-sm font-semibold mb-1.5">
                         Phone Number <span className="text-red-500" aria-hidden="true">*</span>
                       </label>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-                        <Controller
-                          control={control}
-                          name="phone_country_code"
-                          rules={{
-                            required: 'Country code is required.',
-                            validate: (value) => /^\+\d{1,4}$/.test(normalizePhoneCountryCode(value)) || 'Invalid country code.',
-                          }}
-                          render={({ field }) => (
-                            <Select
-                              value={field.value}
-                              onValueChange={(value) => field.onChange(normalizePhoneCountryCode(value))}
-                            >
-                              <SelectTrigger
-                                id="phone_country_code"
-                                className={phoneSelectClass}
-                                aria-invalid={errors.phone_country_code ? 'true' : 'false'}
-                              >
-                                {phoneCountryOption ? (
-                                  <span className="flex items-center gap-2.5 truncate">
-                                    <span
-                                      className={`${phoneCountryOption.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`}
-                                      aria-hidden="true"
-                                    />
-                                    <span className="truncate text-base font-medium">{phoneCountryOption.dialCode}</span>
-                                  </span>
-                                ) : (
-                                  <SelectValue placeholder="Code" />
-                                )}
-                              </SelectTrigger>
-                              <SelectContent className="rounded-xl border-sky-100">
-                                {PRIORITY_PHONE_COUNTRY_CODES.map(option => (
-                                  <SelectItem key={`${option.country}-${option.dialCode}`} value={option.dialCode}>
-                                    <span className="flex items-center gap-2.5">
-                                      <span
-                                        className={`${option.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`}
-                                        aria-hidden="true"
-                                      />
-                                      <span>{option.countryName}</span>
-                                      <span className="text-slate-500">{option.dialCode}</span>
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                                {OTHER_PHONE_COUNTRY_CODES.length > 0 && (
-                                  <SelectSeparator className="my-1 bg-sky-100" />
-                                )}
-                                {OTHER_PHONE_COUNTRY_CODES.map(option => (
-                                  <SelectItem key={`${option.country}-${option.dialCode}`} value={option.dialCode}>
-                                    <span className="flex items-center gap-2.5">
-                                      <span
-                                        className={`${option.flagClassName} h-4 w-[22px] rounded-[2px] shadow-sm`}
-                                        aria-hidden="true"
-                                      />
-                                      <span>{option.countryName}</span>
-                                      <span className="text-slate-500">{option.dialCode}</span>
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                        <input
-                          id="phone_national_number"
-                          type="tel"
-                          autoComplete="tel-national"
-                          placeholder="123456789"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          maxLength={20}
-                          className={phoneNumberInputClass}
-                          {...phoneNationalNumberField}
-                        />
-                      </div>
+                      <PhoneInput
+                        codeId="phone_country_code"
+                        inputId="phone_national_number"
+                        codeOptions={PHONE_DROPDOWN_OPTIONS}
+                        codeValue={selectedPhoneOption?.value}
+                        numberValue={phoneNationalNumberVal}
+                        codeClassName={phoneSelectClass}
+                        inputClassName={phoneNumberInputClass}
+                        onCodeChange={(value, option) => {
+                          setSelectedPhoneOptionValue(value);
+                          setValue('phone_country_code', normalizePhoneCountryCode(option.dialCode), {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                        onNumberChange={(value) => {
+                          setValue('phone_national_number', normalizePhoneNationalNumber(value), {
+                            shouldDirty: true,
+                            shouldTouch: false,
+                            shouldValidate: false,
+                          });
+                        }}
+                        onBlur={() => {
+                          void trigger('phone_national_number');
+                        }}
+                      />
+                      <input type="hidden" value={phoneCountryCodeVal} readOnly {...phoneCountryCodeField} />
+                      <input type="hidden" value={phoneNationalNumberVal} readOnly {...phoneNationalNumberField} />
                       <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-                        Choose country code then enter the number.
+                        Search by country name or dial code, then enter the number without the leading zero.
                       </p>
                       <AnimatePresence>
                         <AuthInlineError id="err-phone_country_code" message={errors.phone_country_code?.message} />
@@ -1680,61 +1737,16 @@ export function RegisterPage() {
                           required: 'Nationality is required.',
                         }}
                         render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger
-                              id="country"
-                              className={countrySelectClass}
-                              aria-invalid={errors.country ? 'true' : 'false'}
-                            >
-                              {selectedCountryOption ? (
-                                <span className="flex items-center gap-2.5 truncate">
-                                  <span
-                                    className={`fi fi-${selectedCountryOption.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
-                                    aria-hidden="true"
-                                  />
-                                  <span className="truncate text-base font-medium">{selectedCountryOption.name}</span>
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-2.5 text-slate-400">
-                                  <Globe className="h-4 w-4 text-sky-400" aria-hidden="true" />
-                                  <SelectValue placeholder="Select your nationality" />
-                                </span>
-                              )}
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-sky-100">
-                              {PRIORITY_SORTED_COUNTRIES.map(c => (
-                                <SelectItem
-                                  key={c.code}
-                                  value={c.code}
-                                >
-                                  <span className="flex items-center gap-2.5">
-                                    <span
-                                      className={`fi fi-${c.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
-                                      aria-hidden="true"
-                                    />
-                                    <span>{c.name}</span>
-                                  </span>
-                                </SelectItem>
-                              ))}
-                              {OTHER_SORTED_COUNTRIES.length > 0 && (
-                                <SelectSeparator className="my-1 bg-sky-100" />
-                              )}
-                              {OTHER_SORTED_COUNTRIES.map(c => (
-                                <SelectItem
-                                  key={c.code}
-                                  value={c.code}
-                                >
-                                  <span className="flex items-center gap-2.5">
-                                    <span
-                                      className={`fi fi-${c.code.toLowerCase()} h-4 w-[22px] rounded-[2px] shadow-sm`}
-                                      aria-hidden="true"
-                                    />
-                                    <span>{c.name}</span>
-                                  </span>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <CountryDropdown
+                            id="country"
+                            value={field.value}
+                            onChange={(value) => field.onChange(value)}
+                            options={NATIONALITY_OPTIONS}
+                            placeholder="Select your nationality"
+                            searchPlaceholder="Search nationality..."
+                            emptyMessage="No nationality found."
+                            className={countrySelectClass}
+                          />
                         )}
                       />
                       <AnimatePresence>
