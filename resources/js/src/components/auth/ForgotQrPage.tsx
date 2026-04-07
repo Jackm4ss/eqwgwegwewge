@@ -528,7 +528,7 @@ export function ForgotQrPage() {
                             className={`rounded-2xl border px-4 py-4 text-left transition-all ${active
                               ? 'border-sky-500 bg-sky-50 shadow-[0_10px_30px_rgba(14,165,233,0.16)]'
                               : 'border-sky-100 bg-white hover:border-sky-300 hover:bg-sky-50/60'
-                            }`}
+                              }`}
                           >
                             <div className="mb-3 flex items-center gap-3">
                               <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${active ? 'bg-sky-500 text-white' : 'bg-sky-100 text-sky-700'}`}>
@@ -804,7 +804,7 @@ export function ForgotQrPage() {
                   </div>
                 </div>
                 <div className="space-y-6 px-6 py-6">
-                  <AuthCodeBadge code={result.participant.entry_code_display} label="Fallback Entry Code" className="w-full sm:w-auto" />
+                  <AuthCodeBadge code={result.participant.entry_code_display} label="Entry Code" className="w-full sm:w-auto" />
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Email</p><p className="mt-2 break-words text-sm font-semibold text-slate-900">{result.participant.email || '-'}</p></div>
                     <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">Phone Number</p><div className="mt-2 flex items-center gap-2"><Phone className="h-4 w-4 text-sky-500" aria-hidden="true" /><p className="break-words text-sm font-semibold text-slate-900">{result.participant.phone_number || buildPhoneNumber(result.participant.phone_country_code, result.participant.phone_national_number) || '-'}</p></div></div>
