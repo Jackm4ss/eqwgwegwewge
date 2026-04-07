@@ -19,11 +19,11 @@
   data-sync-degraded-after="{{ (int) ($syncStatus['degraded_after_seconds'] ?? 60) }}"
   data-sync-fallback-after="{{ (int) ($syncStatus['fallback_after_seconds'] ?? 300) }}">
   <span class="badge rounded-pill {{ $badgeMeta['class'] }} d-inline-flex align-items-center gap-2 px-3 py-2"
-    title="{{ $syncStatus['last_synced_label'] ?? 'Last sync time unavailable' }}" data-sync-badge>
+    title="{{ $syncStatus['last_synced_label'] ?? 'Last update time unavailable' }}" data-sync-badge>
     <i class="icon-base ti {{ $badgeMeta['icon'] }}" data-sync-icon></i>
-    <span data-sync-relative>{{ $syncStatus['relative_label'] ?? 'Showing last available data' }}</span>
+    <span data-sync-relative>{{ $syncStatus['relative_label'] ?? 'Refresh now' }}</span>
   </span>
-  <small class="text-muted d-block mt-2" data-sync-absolute>
-    {{ $syncStatus['last_synced_label'] ?? 'Last sync time unavailable' }}
+  <small class="text-muted d-block mt-2" data-sync-helper>
+    {{ $syncStatus['helper_label'] ?? 'Refresh browser now to see the latest data.' }}
   </small>
 </div>

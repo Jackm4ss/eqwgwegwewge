@@ -326,7 +326,7 @@
   <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-6">
     <div>
       <h4 class="mb-1">User Management</h4>
-      <p class="text-muted mb-0">Near realtime by manual refresh without interrupting ongoing admin activity.</p>
+      <p class="text-muted mb-0">If you just scanned or edited data, wait for the timer, then refresh this page.</p>
     </div>
     @include('admin.users.partials.sync-badge', [
       'syncStatus' => $syncStatus ?? null,

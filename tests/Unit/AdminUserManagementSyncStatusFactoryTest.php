@@ -15,7 +15,7 @@ class AdminUserManagementSyncStatusFactoryTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_make_builds_malaysia_time_labels_and_relative_sync_text(): void
+    public function test_make_builds_countdown_labels_and_refresh_guidance(): void
     {
         CarbonImmutable::setTestNow('2026-04-07 06:23:15 UTC');
         config([
@@ -30,8 +30,10 @@ class AdminUserManagementSyncStatusFactoryTest extends TestCase
 
         $this->assertSame('fresh', $payload['state']);
         $this->assertSame('read_model', $payload['source']);
-        $this->assertSame('Data synced 3s ago', $payload['relative_label']);
-        $this->assertSame('Last synced at 14:23:12 Malaysia Time', $payload['last_synced_label']);
+        $this->assertSame('Refresh in 12s', $payload['relative_label']);
+        $this->assertSame('After the timer ends, refresh browser to see the latest data.', $payload['helper_label']);
+        $this->assertSame(12, $payload['refresh_countdown_seconds']);
+        $this->assertSame('Updated at 14:23:12 Malaysia time', $payload['last_synced_label']);
         $this->assertSame('2026-04-07T14:23:12+08:00', $payload['last_synced_at_myt']);
     }
 
@@ -52,12 +54,18 @@ class AdminUserManagementSyncStatusFactoryTest extends TestCase
         $fallback = $factory->make('2026-04-07T06:19:30Z');
 
         $this->assertSame('fresh', $stillFresh['state']);
-        $this->assertSame('Data synced 50s ago', $stillFresh['relative_label']);
+        $this->assertSame('Refresh now', $stillFresh['relative_label']);
+        $this->assertSame('Refresh browser now to see the latest data.', $stillFresh['helper_label']);
 
         $this->assertSame('degraded', $degraded['state']);
-        $this->assertSame('Data delayed', $degraded['relative_label']);
+        $this->assertSame('Refresh now', $degraded['relative_label']);
+        $this->assertSame('Refresh browser now to see the latest data.', $degraded['helper_label']);
 
         $this->assertSame('fallback', $fallback['state']);
-        $this->assertSame('Showing last available data', $fallback['relative_label']);
+        $this->assertSame('Refresh now', $fallback['relative_label']);
+        $this->assertSame(
+            'Refresh browser now. If it still looks old, wait a moment and try again.',
+            $fallback['helper_label'],
+        );
     }
 }
