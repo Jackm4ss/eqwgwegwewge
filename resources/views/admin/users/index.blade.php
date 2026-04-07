@@ -7,6 +7,10 @@
 @push('vendor-styles')
   <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/fonts/flag-icons.css') }}" />
   <style>
+    .user-sync-status {
+      min-width: min(100%, 22rem);
+    }
+
     .user-management-search {
       min-width: min(100%, 320px);
     }
@@ -316,6 +320,20 @@
     $eventTotalDays = max(1, $eventStartDate->diffInDays($eventEndDate) + 1);
     $exportQuery = request()->except('page');
   @endphp
+
+  @include('admin.users.partials.sync-badge-script')
+
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-6">
+    <div>
+      <h4 class="mb-1">User Management</h4>
+      <p class="text-muted mb-0">Near realtime by manual refresh without interrupting ongoing admin activity.</p>
+    </div>
+    @include('admin.users.partials.sync-badge', [
+      'syncStatus' => $syncStatus ?? null,
+      'syncBadgeId' => 'user-management-sync-status',
+      'syncBadgeClass' => 'ms-lg-auto',
+    ])
+  </div>
 
   <div class="row g-6 mb-6">
     <div class="col-sm-6 col-xl-3">
@@ -717,6 +735,13 @@
               <span class="badge rounded-pill bg-label-primary px-3 py-2 mb-3">Participant Overview</span>
               <h4 class="mb-1" id="userOverviewModalLabel">Participant Details</h4>
               <p class="text-muted mb-0">Summary of key participant information</p>
+            </div>
+            <div class="d-flex flex-column align-items-end gap-3">
+              @include('admin.users.partials.sync-badge', [
+                'syncStatus' => $syncStatus ?? null,
+                'syncBadgeId' => 'user-management-modal-sync-status',
+                'syncBadgeClass' => 'text-end',
+              ])
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>

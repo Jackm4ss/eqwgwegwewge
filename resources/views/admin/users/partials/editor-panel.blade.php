@@ -19,6 +19,11 @@
         text-align: center;
       }
 
+      .user-editor-heading .user-sync-status {
+        max-width: 22rem;
+        margin: 1rem auto 0;
+      }
+
       .user-editor-section,
       .user-editor-sidebar-card,
       .user-editor-profile {
@@ -832,6 +837,8 @@
   };
 @endphp
 
+@include('admin.users.partials.sync-badge-script')
+
 <div class="user-editor-shell {{ $isReadonly ? 'user-editor-readonly' : '' }}" data-user-editor-shell
   data-user-editor-mode="{{ $mode }}">
   <div class="user-editor-heading">
@@ -843,6 +850,11 @@
     <p class="text-muted mb-0" data-user-editor-subtitle>
       {{ $isReadonly ? 'Review participant, ticket, and attendance details without changing Firestore data.' : 'Changes will update the participant data immediately.' }}
     </p>
+    @include('admin.users.partials.sync-badge', [
+      'syncStatus' => $syncStatus ?? null,
+      'syncBadgeId' => $fieldIdPrefix . '-sync-status',
+      'syncBadgeClass' => 'justify-content-center',
+    ])
   </div>
 
   <div class="row g-4 align-items-start">

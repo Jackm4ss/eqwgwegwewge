@@ -9,6 +9,7 @@
     <div class="col-12 col-xxl-10">
       @include('admin.users.partials.editor-panel', [
         'user' => $user,
+        'syncStatus' => $syncStatus ?? null,
         'mode' => 'edit',
         'isModal' => false,
         'oldInputEnabled' => true,

@@ -29,4 +29,22 @@ return [
         'register' => env('REGISTER_APP_URL'),
         'staff' => env('STAFF_APP_URL'),
     ],
+    'user_management' => [
+        'read_model' => [
+            'enabled' => env('ADMIN_USER_MANAGEMENT_READ_MODEL_ENABLED', false),
+            'fresh_within_seconds' => max(5, (int) env('ADMIN_USER_MANAGEMENT_SYNC_SLA_SECONDS', 15)),
+            'degraded_after_seconds' => max(
+                (int) env('ADMIN_USER_MANAGEMENT_SYNC_SLA_SECONDS', 15) + 1,
+                (int) env('ADMIN_USER_MANAGEMENT_DEGRADED_AFTER_SECONDS', 60),
+            ),
+            'fallback_after_seconds' => max(
+                (int) env('ADMIN_USER_MANAGEMENT_DEGRADED_AFTER_SECONDS', 60) + 1,
+                (int) env('ADMIN_USER_MANAGEMENT_FALLBACK_AFTER_SECONDS', 300),
+            ),
+            'queue_connection' => env('ADMIN_USER_MANAGEMENT_QUEUE_CONNECTION', env('QUEUE_CONNECTION', 'sync')),
+            'sync_queue' => env('ADMIN_USER_MANAGEMENT_SYNC_QUEUE', 'admin-sync-high'),
+            'rebuild_queue' => env('ADMIN_USER_MANAGEMENT_REBUILD_QUEUE', 'admin-sync-low'),
+            'reconcile_minutes' => max(5, (int) env('ADMIN_USER_MANAGEMENT_RECONCILE_MINUTES', 15)),
+        ],
+    ],
 ];

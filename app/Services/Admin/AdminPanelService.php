@@ -34,6 +34,9 @@ class AdminPanelService
         private readonly AdminAnalyticsService $analytics,
         private readonly AdminParticipantNotificationService $participantNotifications,
         private readonly ScannerGateService $scannerGates,
+        private readonly ?AdminUserManagementReadModel $userManagementReadModel = null,
+        private readonly ?AdminUserManagementReadModelDispatcher $userManagementReadModelDispatcher = null,
+        private readonly ?AdminUserManagementSyncStatusFactory $userManagementSyncStatusFactory = null,
     ) {}
 
     public function firestoreAvailable(): bool
@@ -59,9 +62,35 @@ class AdminPanelService
 
     public function userManagementPage(array $filters = []): array
     {
+        $readModelFallback = false;
+
+        if ($this->userManagementReadModelEnabled()) {
+            try {
+                $readModelPage = $this->userManagementReadModel()->page($filters);
+
+                if (is_array($readModelPage)) {
+                    return $readModelPage;
+                }
+
+                $readModelFallback = true;
+                $this->userManagementReadModelDispatcher()->requestRebuild('page_miss');
+            } catch (\Throwable $exception) {
+                $readModelFallback = true;
+
+                Log::warning('Falling back from the admin user management read model to the legacy path.', [
+                    'message' => $exception->getMessage(),
+                    'filters' => $filters,
+                ]);
+            }
+        }
+
         if ($this->shouldUseOptimizedUserManagementQuery($filters)) {
             try {
-                return $this->optimizedUserManagementPage($filters);
+                return $this->withUserManagementSyncStatus(
+                    $this->optimizedUserManagementPage($filters),
+                    $readModelFallback ? 'legacy_fallback' : 'legacy_request',
+                    $readModelFallback ? 'fallback' : null,
+                );
             } catch (\Throwable $exception) {
                 Log::warning('Falling back from optimized admin user management query to the cached snapshot.', [
                     'message' => $exception->getMessage(),
@@ -71,7 +100,11 @@ class AdminPanelService
         }
 
         try {
-            return $this->cachedDirectoryUserManagementPage($filters);
+            return $this->withUserManagementSyncStatus(
+                $this->cachedDirectoryUserManagementPage($filters),
+                $readModelFallback ? 'legacy_fallback' : 'legacy_cache',
+                $readModelFallback ? 'fallback' : null,
+            );
         } catch (\Throwable $exception) {
             Log::warning('Unable to serve the cached admin user management snapshot.', [
                 'message' => $exception->getMessage(),
@@ -79,7 +112,11 @@ class AdminPanelService
             ]);
         }
 
-        return $this->emptyUserManagementPage($filters);
+        return $this->withUserManagementSyncStatus(
+            $this->emptyUserManagementPage($filters),
+            $readModelFallback ? 'legacy_fallback' : 'legacy_cache',
+            $readModelFallback ? 'fallback' : 'fresh',
+        );
     }
 
     public function flushUserManagementCache(): void
@@ -89,6 +126,10 @@ class AdminPanelService
         Cache::forget(self::USER_MANAGEMENT_REFRESH_LOCK_KEY);
         Cache::forget(self::USER_MANAGEMENT_META_CACHE_KEY);
         Cache::forget(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
+
+        if ($this->userManagementReadModelEnabled()) {
+            $this->userManagementReadModel()->flush();
+        }
     }
 
     public function markUserManagementCacheStale(): void
@@ -99,7 +140,13 @@ class AdminPanelService
 
     public function warmUserManagementCache(): array
     {
-        return $this->refreshUserManagementCaches();
+        $payload = $this->refreshUserManagementCaches();
+
+        if ($this->userManagementReadModelEnabled()) {
+            $payload['read_model'] = $this->userManagementReadModel()->rebuild();
+        }
+
+        return $payload;
     }
 
     public function flushAttendanceMonitoringCache(): void
@@ -135,7 +182,27 @@ class AdminPanelService
             return null;
         }
 
-        return $this->hydrateUser($user);
+        $hydratedUser = $this->hydrateUser($user);
+        if (! $this->userManagementReadModelEnabled()) {
+            return $hydratedUser;
+        }
+
+        $readModelRow = $this->userManagementReadModel()->rowForUser($userId);
+
+        if (! is_array($readModelRow)) {
+            return $hydratedUser;
+        }
+
+        return array_merge($hydratedUser, array_intersect_key($readModelRow, array_flip([
+            'attendance_days',
+            'attendance_days_count',
+            'attendance_total_days',
+            'attendance_progress_percent',
+            'email_typo_status',
+            'email_typo_suspected',
+            'email_typo_suggestion',
+            'email_typo_reason',
+        ])));
     }
 
     public function updateUserByAdmin(string $userId, array $attributes): array
@@ -162,6 +229,10 @@ class AdminPanelService
         // expensive snapshot out of band while overview cards stay live.
         $this->markUserManagementCacheStale();
 
+        if ($this->userManagementReadModelEnabled()) {
+            $this->userManagementReadModelDispatcher()->syncUser($userId, 'admin_update');
+        }
+
         return $user;
     }
 
@@ -175,6 +246,10 @@ class AdminPanelService
         $this->markUserManagementCacheStale();
         $this->flushDashboardCache();
 
+        if ($this->userManagementReadModelEnabled()) {
+            $this->userManagementReadModelDispatcher()->removeUser($userId, 'admin_delete');
+        }
+
         return $result;
     }
 
@@ -182,6 +257,10 @@ class AdminPanelService
     {
         $result = $this->repository->resetQrCode($userId);
         $this->markUserManagementCacheStale();
+
+        if ($this->userManagementReadModelEnabled()) {
+            $this->userManagementReadModelDispatcher()->syncUser($userId, 'qr_reset');
+        }
 
         return $result;
     }
@@ -198,6 +277,10 @@ class AdminPanelService
             is_array($result['ticket'] ?? null) ? $result['ticket'] : [],
         );
         $this->markUserManagementCacheStale();
+
+        if ($this->userManagementReadModelEnabled()) {
+            $this->userManagementReadModelDispatcher()->syncUser($userId, 'qr_regenerate');
+        }
 
         return $result;
     }
@@ -443,6 +526,7 @@ class AdminPanelService
             $this->analytics->buildUserRows($pageResult['items'], $ticketRows),
         );
         $meta = $this->cachedUserManagementMeta();
+        $directoryRows = $this->availableUserManagementDirectorySnapshot();
         $overview = $this->optimizedUserManagementOverview(
             $filters,
             (int) ($pageResult['total'] ?? 0),
@@ -464,7 +548,7 @@ class AdminPanelService
             'overview' => $overview,
             'filter_options' => is_array($meta['filter_options'] ?? null)
                 ? $meta['filter_options']
-                : $this->emptyUserFilterOptions(),
+                : $this->analytics->buildUserFilterOptions($directoryRows),
         ];
     }
 
@@ -685,6 +769,25 @@ class AdminPanelService
         }
 
         return [];
+    }
+
+    private function availableUserManagementDirectorySnapshot(): array
+    {
+        $cachedRows = Cache::get(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
+
+        if (is_array($cachedRows)) {
+            return $cachedRows;
+        }
+
+        $snapshot = $this->readArraySnapshot(self::USER_MANAGEMENT_DIRECTORY_SNAPSHOT_PATH);
+
+        if (! is_array($snapshot)) {
+            return [];
+        }
+
+        Cache::forever(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, $snapshot);
+
+        return $snapshot;
     }
 
     private function cachedAttendanceDirectory(): array
@@ -1567,5 +1670,39 @@ class AdminPanelService
         $nationalNumber = preg_replace('/\s+/', '', trim((string) ($user['phone_national_number'] ?? ''))) ?? '';
 
         return trim($countryCode.$nationalNumber);
+    }
+
+    private function userManagementReadModel(): AdminUserManagementReadModel
+    {
+        return $this->userManagementReadModel ?? app(AdminUserManagementReadModel::class);
+    }
+
+    private function userManagementReadModelEnabled(): bool
+    {
+        return (bool) config('admin.user_management.read_model.enabled', false);
+    }
+
+    private function userManagementReadModelDispatcher(): AdminUserManagementReadModelDispatcher
+    {
+        return $this->userManagementReadModelDispatcher ?? app(AdminUserManagementReadModelDispatcher::class);
+    }
+
+    private function userManagementSyncStatusFactory(): AdminUserManagementSyncStatusFactory
+    {
+        return $this->userManagementSyncStatusFactory ?? app(AdminUserManagementSyncStatusFactory::class);
+    }
+
+    private function withUserManagementSyncStatus(
+        array $payload,
+        string $source,
+        ?string $state = null,
+    ): array {
+        $payload['sync_status'] ??= $this->userManagementSyncStatusFactory()->make(
+            now('UTC')->toIso8601String(),
+            $source,
+            $state,
+        );
+
+        return $payload;
     }
 }

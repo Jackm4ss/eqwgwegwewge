@@ -636,6 +636,8 @@ class AdminAuthenticationTest extends TestCase
         $response->assertOk()
             ->assertSee('fi fis fi-nz user-country-flag', false)
             ->assertSee('data-flag="jp"', false)
+            ->assertSee('Data synced')
+            ->assertSee('Malaysia Time')
             ->assertSee('Document Type')
             ->assertSee('Malaysia IC (MyKad) (1)')
             ->assertSee('Passport (1)')
@@ -697,6 +699,8 @@ class AdminAuthenticationTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Edit Participant')
+            ->assertSee('Data synced')
+            ->assertSee('Malaysia Time')
             ->assertSee('Phone Number / WhatsApp')
             ->assertSee('Document Type')
             ->assertSee('Malaysia IC (MyKad)')

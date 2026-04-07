@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AdminUpdateUserRequest;
 use App\Services\Admin\AdminAuditLogger;
 use App\Services\Admin\AdminPanelService;
+use App\Services\Admin\AdminUserManagementSyncStatusFactory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,6 +39,9 @@ class UserManagementController extends Controller
             'overview' => $pageData['overview'],
             'filterOptions' => $pageData['filter_options'],
             'filters' => $filters,
+            'syncStatus' => is_array($pageData['sync_status'] ?? null)
+                ? $pageData['sync_status']
+                : app(AdminUserManagementSyncStatusFactory::class)->live('legacy_request'),
             'firestoreAvailable' => $this->adminPanel->firestoreAvailable(),
         ]);
     }
@@ -52,6 +56,7 @@ class UserManagementController extends Controller
 
         return view('admin.users.edit', [
             'user' => $user,
+            'syncStatus' => app(AdminUserManagementSyncStatusFactory::class)->live('live_document'),
             'firestoreAvailable' => $this->adminPanel->firestoreAvailable(),
         ]);
     }

@@ -22,6 +22,7 @@
 !/storage/framework/views/.gitignore
 /storage/app/local_firestore_users.json
 /storage/app/private/admin-backups/*
+/storage/app/private/admin-cache/*
 /storage/app/private/test-admin-backups/*
 /database/*.sqlite
 /public/database/*.sqlite

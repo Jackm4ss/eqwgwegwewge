@@ -262,6 +262,105 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(3, $page['filter_options']['identity_types'][1]['count']);
     }
 
+    public function test_optimized_user_management_page_uses_cached_directory_filter_counts_when_meta_snapshot_is_missing(): void
+    {
+        Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-1',
+                'full_name' => 'Alya Putri',
+                'email' => 'alya@example.test',
+                'country' => 'MY',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'identity_type' => 'national_id',
+                'attendance_status' => 'checked_in',
+                'created_at' => '2026-04-05T08:00:00Z',
+            ],
+            [
+                'user_id' => 'user-2',
+                'full_name' => 'Joki',
+                'email' => 'joki@example.test',
+                'country' => 'ID',
+                'verification_status' => 'unverified',
+                'account_status' => 'pending_verification',
+                'identity_type' => 'passport',
+                'attendance_status' => 'not_checked_in',
+                'created_at' => '2026-04-04T08:00:00Z',
+            ],
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('paginateUsers')
+            ->once()
+            ->with([], 1, 10)
+            ->andReturn([
+                'items' => [
+                    [
+                        'user_id' => 'user-1',
+                        'full_name' => 'Alya Putri',
+                        'email' => 'alya@example.test',
+                        'country' => 'MY',
+                        'verification_status' => 'verified',
+                        'account_status' => 'active',
+                        'identity_type' => 'national_id',
+                        'ticket_id' => 'ticket-1',
+                        'created_at' => '2026-04-05T08:00:00Z',
+                    ],
+                ],
+                'total' => 2,
+            ]);
+        $repository->shouldReceive('findTicketsByIds')
+            ->once()
+            ->with(['ticket-1'])
+            ->andReturn([
+                [
+                    'ticket_id' => 'ticket-1',
+                    'ticket_code' => 'TICKET-1',
+                    'user_id' => 'user-1',
+                    'attendance_status' => 'checked_in',
+                ],
+            ]);
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+        $repository->shouldNotReceive('allScanLogs');
+        $repository->shouldReceive('countUsers')
+            ->once()
+            ->with(['verification_status' => 'verified'])
+            ->andReturn(1);
+        $repository->shouldReceive('countUsers')
+            ->once()
+            ->with([
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+            ])
+            ->andReturn(1);
+        $repository->shouldReceive('countTickets')
+            ->once()
+            ->with(['attendance_status' => 'checked_in'])
+            ->andReturn(1);
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+        $page = $service->userManagementPage([]);
+
+        $countries = collect($page['filter_options']['countries'])->keyBy('value');
+        $identityTypes = collect($page['filter_options']['identity_types'])->keyBy('value');
+        $verificationStatuses = collect($page['filter_options']['verification_statuses'])->keyBy('value');
+        $attendanceStatuses = collect($page['filter_options']['attendance_statuses'])->keyBy('value');
+
+        $this->assertSame(1, $countries['MY']['count'] ?? null);
+        $this->assertSame(1, $countries['ID']['count'] ?? null);
+        $this->assertSame(1, $identityTypes['national_id']['count'] ?? null);
+        $this->assertSame(1, $identityTypes['passport']['count'] ?? null);
+        $this->assertSame(1, $verificationStatuses['verified']['count'] ?? null);
+        $this->assertSame(1, $verificationStatuses['pending_verification']['count'] ?? null);
+        $this->assertSame(1, $attendanceStatuses['checked_in']['count'] ?? null);
+        $this->assertSame(1, $attendanceStatuses['not_checked_in']['count'] ?? null);
+    }
+
     public function test_optimized_user_management_meta_includes_email_typo_counts(): void
     {
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);

@@ -5,6 +5,7 @@ namespace App\Services\Staff;
 use App\Models\Admin;
 use App\Services\Admin\AdminAnalyticsService;
 use App\Services\Admin\AdminFirestoreRepository;
+use App\Services\Admin\AdminUserManagementReadModelDispatcher;
 use App\Services\Tickets\TicketQrCodeService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -20,6 +21,7 @@ class StaffScannerService
         private readonly AdminFirestoreRepository $repository,
         private readonly AdminAnalyticsService $analytics,
         private readonly TicketQrCodeService $ticketQrCodeService,
+        private readonly ?AdminUserManagementReadModelDispatcher $userManagementReadModelDispatcher = null,
     ) {}
 
     public function scan(Admin $operator, string $scannerPost, string $payload, ?string $ipAddress = null): array
@@ -68,6 +70,7 @@ class StaffScannerService
                 'participant_snapshot' => $this->participantSummary($user, $ticket),
             ], $ipAddress),
         );
+        $this->syncUserManagementReadModelAfterAttendance($record, $user);
 
         return $this->buildScanResponse(
             (string) ($record['result'] ?? 'invalid'),
@@ -161,6 +164,7 @@ class StaffScannerService
                 'participant_snapshot' => $this->participantSummary($user, $ticket),
             ], $ipAddress),
         );
+        $this->syncUserManagementReadModelAfterAttendance($record, $user);
 
         return $this->buildScanResponse(
             (string) ($record['result'] ?? 'invalid'),
@@ -671,5 +675,23 @@ class StaffScannerService
             'email' => '',
             'role' => 'scanner',
         ]);
+    }
+
+    private function syncUserManagementReadModelAfterAttendance(array $record, array $user): void
+    {
+        if (strtolower(trim((string) ($record['result'] ?? 'invalid'))) !== 'success') {
+            return;
+        }
+
+        if (! (bool) config('admin.user_management.read_model.enabled', false)) {
+            return;
+        }
+
+        $this->userManagementReadModelDispatcher()->syncUser((string) ($user['user_id'] ?? ''), 'attendance_success');
+    }
+
+    private function userManagementReadModelDispatcher(): AdminUserManagementReadModelDispatcher
+    {
+        return $this->userManagementReadModelDispatcher ?? app(AdminUserManagementReadModelDispatcher::class);
     }
 }

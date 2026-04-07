@@ -5,6 +5,7 @@ namespace App\Services\Auth;
 use App\Contracts\UserRepositoryInterface;
 use App\Exceptions\RegistrationConflictException;
 use App\Services\Admin\AdminPanelService;
+use App\Services\Admin\AdminUserManagementReadModelDispatcher;
 use App\Mail\VerifyRegistrationMail;
 use App\Services\Tickets\TicketQrCodeService;
 use Illuminate\Support\Facades\Cache;
@@ -18,6 +19,7 @@ class RegistrationService
         private readonly UserRepositoryInterface $users,
         private readonly TicketDeliveryService $ticketDelivery,
         private readonly TicketQrCodeService $ticketQrCodeService,
+        private readonly ?AdminUserManagementReadModelDispatcher $userManagementReadModelDispatcher = null,
     ) {}
 
     public function register(array $data, string $ip): array
@@ -84,6 +86,10 @@ class RegistrationService
         $result['delivery'] = $delivery['delivery'];
         Cache::forever(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY, true);
         Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY, true);
+
+        if ((bool) config('admin.user_management.read_model.enabled', false)) {
+            $this->userManagementReadModelDispatcher()->syncUser((string) ($result['user']['user_id'] ?? ''), 'registration');
+        }
 
         return $result;
     }
@@ -248,5 +254,10 @@ class RegistrationService
                 'phone_number' => ['Phone number already registered.'],
             ]);
         }
+    }
+
+    private function userManagementReadModelDispatcher(): AdminUserManagementReadModelDispatcher
+    {
+        return $this->userManagementReadModelDispatcher ?? app(AdminUserManagementReadModelDispatcher::class);
     }
 }
