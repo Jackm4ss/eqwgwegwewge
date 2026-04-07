@@ -154,7 +154,7 @@ class AdminQrManagementLookupService
         $userId = trim((string) ($user['user_id'] ?? ''));
 
         if ($userId !== '') {
-            $attendanceRow = $this->resolveAttendanceRowFromScanLogs($userId, $ticket);
+            $attendanceRow = $this->resolveAttendanceRowFromAttendanceDaily($userId, $ticket);
 
             if ($attendanceRow !== []) {
                 return [
@@ -183,11 +183,11 @@ class AdminQrManagementLookupService
         ];
     }
 
-    private function resolveAttendanceRowFromScanLogs(string $userId, array $ticket): array
+    private function resolveAttendanceRowFromAttendanceDaily(string $userId, array $ticket): array
     {
-        $scanLogs = $this->repository->findScanLogsByUserIds([$userId]);
+        $attendanceRows = $this->repository->findAttendanceDailyByUserIds([$userId]);
 
-        if ($scanLogs === []) {
+        if ($attendanceRows === []) {
             return [];
         }
 
@@ -195,7 +195,7 @@ class AdminQrManagementLookupService
             'user_id' => $userId,
             'ticket_id' => (string) ($ticket['ticket_id'] ?? ''),
             'ticket_code' => (string) ($ticket['ticket_code'] ?? ''),
-        ]], $scanLogs);
+        ]], $attendanceRows);
 
         return is_array($attendanceRows[0] ?? null) ? $attendanceRows[0] : [];
     }

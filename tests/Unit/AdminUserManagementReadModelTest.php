@@ -83,7 +83,7 @@ class AdminUserManagementReadModelTest extends TestCase
                     'status' => 'active',
                 ],
             ]);
-        $repository->shouldReceive('allScanLogs')
+        $repository->shouldReceive('allAttendanceDaily')
             ->once()
             ->andReturn([
                 [
@@ -119,9 +119,9 @@ class AdminUserManagementReadModelTest extends TestCase
         $this->assertSame(1, $page['overview']['checked_in_users']);
         $this->assertSame('fresh', $page['sync_status']['state']);
 
-        $this->assertNotNull($filteredPage);
-        $this->assertSame(1, $filteredPage['users']->total());
-        $this->assertSame('user-2', $filteredPage['users']->items()[0]['user_id']);
+        $this->assertNull($filteredPage);
+        $this->assertTrue($readModel->supportsFilters([]));
+        $this->assertFalse($readModel->supportsFilters(['q' => 'joki']));
     }
 
     public function test_remove_user_updates_cached_projection_without_reloading_firestore(): void
@@ -182,7 +182,7 @@ class AdminUserManagementReadModelTest extends TestCase
                     'status' => 'active',
                 ],
             ]);
-        $repository->shouldReceive('allScanLogs')
+        $repository->shouldReceive('allAttendanceDaily')
             ->once()
             ->andReturn([]);
 

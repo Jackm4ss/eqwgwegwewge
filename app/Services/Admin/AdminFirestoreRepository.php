@@ -51,6 +51,11 @@ class AdminFirestoreRepository
         return $this->listCollectionDocuments($this->scanLogsCollection());
     }
 
+    public function allAttendanceDaily(): array
+    {
+        return $this->listCollectionDocuments($this->attendanceDailyCollection());
+    }
+
     public function allAdminActivityLogs(): array
     {
         return $this->listCollectionDocuments($this->adminActivityLogsCollection());
@@ -487,6 +492,22 @@ class AdminFirestoreRepository
         return $this->usingRest()
             ? $this->findScanLogsByUserIdsUsingRest($userIds)
             : $this->findScanLogsByUserIdsUsingGrpc($userIds);
+    }
+
+    public function findAttendanceDailyByUserIds(array $userIds): array
+    {
+        $userIds = array_values(array_unique(array_filter(array_map(
+            fn (mixed $userId): string => trim((string) $userId),
+            $userIds,
+        ))));
+
+        if ($userIds === [] || ! $this->available()) {
+            return [];
+        }
+
+        return $this->usingRest()
+            ? $this->findAttendanceDailyByUserIdsUsingRest($userIds)
+            : $this->findAttendanceDailyByUserIdsUsingGrpc($userIds);
     }
 
     public function updateUserByAdmin(string $userId, array $attributes): array
@@ -1524,6 +1545,97 @@ class AdminFirestoreRepository
                 }
 
                 $path = $this->scanLogsCollection().'/'.$documentSnapshot->id();
+
+                if (isset($seenPaths[$path])) {
+                    continue;
+                }
+
+                $seenPaths[$path] = true;
+
+                $decoded = $this->timestamps->normalizeFromStorage($documentSnapshot->data());
+                $decoded['__id'] = $documentSnapshot->id();
+                $decoded['__path'] = $path;
+                $rows[] = $decoded;
+            }
+        }
+
+        return $rows;
+    }
+
+    private function findAttendanceDailyByUserIdsUsingRest(array $userIds): array
+    {
+        $rows = [];
+        $seenPaths = [];
+
+        foreach (array_chunk($userIds, 10) as $userIdChunk) {
+            $where = count($userIdChunk) === 1
+                ? [
+                    'fieldFilter' => [
+                        'field' => ['fieldPath' => 'user_id'],
+                        'op' => 'EQUAL',
+                        'value' => ['stringValue' => $userIdChunk[0]],
+                    ],
+                ]
+                : [
+                    'fieldFilter' => [
+                        'field' => ['fieldPath' => 'user_id'],
+                        'op' => 'IN',
+                        'value' => [
+                            'arrayValue' => [
+                                'values' => array_map(
+                                    fn (string $userId): array => ['stringValue' => $userId],
+                                    $userIdChunk,
+                                ),
+                            ],
+                        ],
+                    ],
+                ];
+
+            $documents = $this->restApi->runQuery([
+                'from' => [
+                    ['collectionId' => $this->attendanceDailyCollection()],
+                ],
+                'where' => $where,
+            ]);
+
+            foreach ($documents as $document) {
+                $path = $this->documentPathFromName((string) ($document['name'] ?? ''));
+
+                if ($path === '' || isset($seenPaths[$path])) {
+                    continue;
+                }
+
+                $seenPaths[$path] = true;
+
+                $decoded = $this->timestamps->normalizeFromStorage(
+                    $this->restApi->decodeDocument($document)
+                );
+                $decoded['__id'] = $this->documentIdFromName((string) ($document['name'] ?? ''));
+                $decoded['__path'] = $path;
+                $rows[] = $decoded;
+            }
+        }
+
+        return $rows;
+    }
+
+    private function findAttendanceDailyByUserIdsUsingGrpc(array $userIds): array
+    {
+        $rows = [];
+        $seenPaths = [];
+
+        foreach (array_chunk($userIds, 10) as $userIdChunk) {
+            $query = $this->client()->collection($this->attendanceDailyCollection());
+            $query = count($userIdChunk) === 1
+                ? $query->where('user_id', '=', $userIdChunk[0])
+                : $query->where('user_id', 'in', $userIdChunk);
+
+            foreach ($query->documents() as $documentSnapshot) {
+                if (! $documentSnapshot->exists()) {
+                    continue;
+                }
+
+                $path = $this->attendanceDailyCollection().'/'.$documentSnapshot->id();
 
                 if (isset($seenPaths[$path])) {
                     continue;

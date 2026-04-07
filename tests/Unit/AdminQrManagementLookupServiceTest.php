@@ -19,7 +19,7 @@ class AdminQrManagementLookupServiceTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_lookup_builds_attendance_progress_from_participant_scan_logs(): void
+    public function test_lookup_builds_attendance_progress_from_active_attendance_days(): void
     {
         config()->set('admin.event.start_date', '2026-04-09');
         config()->set('admin.event.end_date', '2026-04-19');
@@ -48,7 +48,7 @@ class AdminQrManagementLookupServiceTest extends TestCase
             ]);
 
         $repository = Mockery::mock(AdminFirestoreRepository::class);
-        $repository->shouldReceive('findScanLogsByUserIds')
+        $repository->shouldReceive('findAttendanceDailyByUserIds')
             ->once()
             ->with(['user-123'])
             ->andReturn([
@@ -57,21 +57,12 @@ class AdminQrManagementLookupServiceTest extends TestCase
                     'ticket_id' => 'ticket-123',
                     'ticket_code' => 'TICKET-123',
                     'scan_date' => '2026-04-09',
-                    'result' => 'success',
                 ],
                 [
                     'user_id' => 'user-123',
                     'ticket_id' => 'ticket-123',
                     'ticket_code' => 'TICKET-123',
                     'scan_date' => '2026-04-10',
-                    'result' => 'success',
-                ],
-                [
-                    'user_id' => 'user-123',
-                    'ticket_id' => 'ticket-123',
-                    'ticket_code' => 'TICKET-123',
-                    'scan_date' => '2026-04-10',
-                    'result' => 'duplicate',
                 ],
             ]);
 
@@ -99,7 +90,7 @@ class AdminQrManagementLookupServiceTest extends TestCase
         $this->assertSame(18, $result['participant']['attendance_progress_percent']);
     }
 
-    public function test_lookup_defaults_attendance_total_days_to_event_window_when_scan_logs_are_empty(): void
+    public function test_lookup_defaults_attendance_total_days_to_event_window_when_attendance_daily_is_empty(): void
     {
         config()->set('admin.event.start_date', '2026-04-09');
         config()->set('admin.event.end_date', '2026-04-19');
@@ -128,7 +119,7 @@ class AdminQrManagementLookupServiceTest extends TestCase
             ]);
 
         $repository = Mockery::mock(AdminFirestoreRepository::class);
-        $repository->shouldReceive('findScanLogsByUserIds')
+        $repository->shouldReceive('findAttendanceDailyByUserIds')
             ->once()
             ->with(['user-123'])
             ->andReturn([]);

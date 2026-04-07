@@ -29,9 +29,18 @@ class AdminUserManagementReadModel
         return (bool) config('admin.user_management.read_model.enabled', false);
     }
 
+    public function supportsFilters(array $filters = []): bool
+    {
+        return $this->canUseIndexedPagination($filters);
+    }
+
     public function page(array $filters = []): ?array
     {
         if (! $this->enabled()) {
+            return null;
+        }
+
+        if (! $this->supportsFilters($filters)) {
             return null;
         }
 
@@ -45,40 +54,13 @@ class AdminUserManagementReadModel
         $perPage = max(1, (int) ($filters['per_page'] ?? config('admin.per_page', 10)));
         $syncStatus = $this->syncStatus();
 
-        if ($this->canUseIndexedPagination($filters)) {
-            $rows = $this->pageRows($page, $perPage);
-            $total = (int) data_get($meta, 'overview.total_users', count($rows));
-
-            return [
-                'users' => new LengthAwarePaginator(
-                    $rows,
-                    $total,
-                    $perPage,
-                    $page,
-                    [
-                        'path' => request()->url(),
-                        'query' => request()->query(),
-                        'pageName' => 'page',
-                    ],
-                ),
-                'overview' => is_array($meta['overview'] ?? null)
-                    ? $meta['overview']
-                    : $this->analytics->buildUserManagementOverview($rows),
-                'filter_options' => is_array($meta['filter_options'] ?? null)
-                    ? $meta['filter_options']
-                    : $this->analytics->buildUserFilterOptions([]),
-                'sync_status' => $syncStatus,
-            ];
-        }
-
-        $allRows = $this->allRows();
-        $filteredRows = $this->analytics->filterUserRows($allRows, $filters);
-        $offset = ($page - 1) * $perPage;
+        $rows = $this->pageRows($page, $perPage);
+        $total = (int) data_get($meta, 'overview.total_users', count($rows));
 
         return [
             'users' => new LengthAwarePaginator(
-                array_values(array_slice($filteredRows, $offset, $perPage)),
-                count($filteredRows),
+                $rows,
+                $total,
                 $perPage,
                 $page,
                 [
@@ -87,10 +69,12 @@ class AdminUserManagementReadModel
                     'pageName' => 'page',
                 ],
             ),
-            'overview' => $this->analytics->buildUserManagementOverview($filteredRows),
+            'overview' => is_array($meta['overview'] ?? null)
+                ? $meta['overview']
+                : $this->analytics->buildUserManagementOverview($rows),
             'filter_options' => is_array($meta['filter_options'] ?? null)
                 ? $meta['filter_options']
-                : $this->analytics->buildUserFilterOptions($allRows),
+                : $this->analytics->buildUserFilterOptions([]),
             'sync_status' => $syncStatus,
         ];
     }
@@ -120,7 +104,7 @@ class AdminUserManagementReadModel
                     $this->repository->allUsers(),
                     $this->repository->allTickets(),
                 ),
-                $this->repository->allScanLogs(),
+                $this->repository->allAttendanceDaily(),
             );
 
             $rowsByUserId = $this->rowsByUserId($rows);
@@ -265,7 +249,7 @@ class AdminUserManagementReadModel
 
         $rows = $this->analytics->attachAttendanceProgress(
             $this->analytics->buildUserRows([$user], is_array($ticket) ? [$ticket] : []),
-            $this->repository->findScanLogsByUserIds([$userId]),
+            $this->repository->findAttendanceDailyByUserIds([$userId]),
         );
 
         return $rows[0] ?? null;

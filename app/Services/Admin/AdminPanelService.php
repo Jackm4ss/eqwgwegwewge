@@ -64,7 +64,7 @@ class AdminPanelService
     {
         $readModelFallback = false;
 
-        if ($this->userManagementReadModelEnabled()) {
+        if ($this->userManagementReadModelEnabled() && $this->userManagementReadModel()->supportsFilters($filters)) {
             try {
                 $readModelPage = $this->userManagementReadModel()->page($filters);
 
@@ -506,7 +506,7 @@ class AdminPanelService
         );
         $allRows = $this->analytics->attachAttendanceProgress(
             $allRows,
-            $this->repository->allScanLogs(),
+            $this->repository->allAttendanceDaily(),
         );
         $filteredRows = $this->analytics->filterUserRows($allRows, $filters);
 
@@ -944,7 +944,7 @@ class AdminPanelService
                 $this->repository->allUsers(),
                 $this->repository->allTickets(),
             ),
-            $this->repository->allScanLogs(),
+            $this->repository->allAttendanceDaily(),
         );
 
         Cache::forever(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, $rows);

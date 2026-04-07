@@ -163,7 +163,7 @@ class AdminPanelServiceTest extends TestCase
         $repository->shouldReceive('allTickets')
             ->once()
             ->andReturn([]);
-        $repository->shouldReceive('allScanLogs')
+        $repository->shouldReceive('allAttendanceDaily')
             ->once()
             ->andReturn([]);
         $repository->shouldReceive('countUsers')
@@ -224,7 +224,7 @@ class AdminPanelServiceTest extends TestCase
         $repository->shouldReceive('allTickets')
             ->once()
             ->andReturn([]);
-        $repository->shouldReceive('allScanLogs')
+        $repository->shouldReceive('allAttendanceDaily')
             ->once()
             ->andReturn([]);
         $repository->shouldReceive('countUsers')
@@ -398,7 +398,7 @@ class AdminPanelServiceTest extends TestCase
         $repository->shouldReceive('allTickets')
             ->once()
             ->andReturn([]);
-        $repository->shouldReceive('allScanLogs')
+        $repository->shouldReceive('allAttendanceDaily')
             ->once()
             ->andReturn([]);
         $repository->shouldReceive('countUsers')
@@ -456,7 +456,7 @@ class AdminPanelServiceTest extends TestCase
         $repository->shouldReceive('allTickets')
             ->once()
             ->andReturn([]);
-        $repository->shouldReceive('allScanLogs')
+        $repository->shouldReceive('allAttendanceDaily')
             ->once()
             ->andReturn([]);
         $repository->shouldReceive('countUsers')
@@ -532,7 +532,7 @@ class AdminPanelServiceTest extends TestCase
                     'attendance_status' => 'not_checked_in',
                 ],
             ]);
-        $repository->shouldReceive('allScanLogs')
+        $repository->shouldReceive('allAttendanceDaily')
             ->once()
             ->andReturn([]);
         $repository->shouldNotReceive('countUsers');
