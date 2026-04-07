@@ -121,9 +121,11 @@ class AdminUserManagementReadModelTest extends TestCase
         $this->assertSame(1, $page['overview']['checked_in_users']);
         $this->assertSame('fresh', $page['sync_status']['state']);
 
-        $this->assertNull($filteredPage);
+        $this->assertNotNull($filteredPage);
+        $this->assertSame(1, $filteredPage['users']->total());
+        $this->assertSame('user-2', $filteredPage['users']->items()[0]['user_id']);
         $this->assertTrue($readModel->supportsFilters([]));
-        $this->assertFalse($readModel->supportsFilters(['q' => 'joki']));
+        $this->assertTrue($readModel->supportsFilters(['q' => 'joki']));
     }
 
     public function test_remove_user_updates_cached_projection_without_reloading_firestore(): void
@@ -202,6 +204,279 @@ class AdminUserManagementReadModelTest extends TestCase
         $this->assertSame(1, $page['users']->total());
         $this->assertSame('user-2', $page['users']->items()[0]['user_id']);
         $this->assertSame(1, $page['overview']['total_users']);
+    }
+
+    public function test_page_can_filter_by_attendance_status_using_projection_rows(): void
+    {
+        CarbonImmutable::setTestNow('2026-04-10 09:00:00 UTC');
+        config([
+            'cache.default' => 'array',
+            'admin.event.timezone' => 'Asia/Kuala_Lumpur',
+            'admin.event.start_date' => '2026-04-09',
+            'admin.event.end_date' => '2026-04-19',
+            'admin.user_management.read_model.enabled' => true,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allUsers')
+            ->once()
+            ->andReturn([
+                [
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'full_name' => 'Alya Putri',
+                    'email' => 'alya@example.test',
+                    'country' => 'MY',
+                    'identity_type' => 'national_id',
+                    'identity_number' => '901231101234',
+                    'account_status' => 'active',
+                    'verification_status' => 'verified',
+                    'created_at' => '2026-04-10T08:00:00Z',
+                ],
+                [
+                    'user_id' => 'user-2',
+                    'ticket_id' => 'ticket-2',
+                    'full_name' => 'Joki',
+                    'email' => 'joki@example.test',
+                    'country' => 'ID',
+                    'identity_type' => 'passport',
+                    'identity_number' => 'A1234567',
+                    'account_status' => 'active',
+                    'verification_status' => 'verified',
+                    'created_at' => '2026-04-09T08:00:00Z',
+                ],
+            ]);
+        $repository->shouldReceive('allTickets')
+            ->once()
+            ->andReturn([
+                [
+                    'ticket_id' => 'ticket-1',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-001',
+                    'attendance_status' => 'checked_in',
+                    'status' => 'active',
+                ],
+                [
+                    'ticket_id' => 'ticket-2',
+                    'user_id' => 'user-2',
+                    'ticket_code' => 'TICKET-002',
+                    'attendance_status' => 'not_checked_in',
+                    'status' => 'active',
+                ],
+            ]);
+        $repository->shouldReceive('allAttendanceDaily')
+            ->once()
+            ->andReturn([]);
+
+        $readModel = new AdminUserManagementReadModel(
+            $repository,
+            new AdminAnalyticsService,
+            new AdminUserManagementSyncStatusFactory,
+        );
+
+        $readModel->rebuild();
+        $page = $readModel->page(['attendance_status' => 'checked_in']);
+
+        $this->assertTrue($readModel->supportsFilters(['attendance_status' => 'checked_in']));
+        $this->assertNotNull($page);
+        $this->assertSame(1, $page['users']->total());
+        $this->assertSame('user-1', $page['users']->items()[0]['user_id']);
+        $this->assertSame(1, $page['overview']['checked_in_users']);
+        $this->assertSame(1, $page['filter_options']['attendance_statuses'][0]['count']);
+        $this->assertSame(1, $page['filter_options']['attendance_statuses'][1]['count']);
+    }
+
+    public function test_page_can_filter_by_search_query_using_projection_rows(): void
+    {
+        CarbonImmutable::setTestNow('2026-04-10 09:00:00 UTC');
+        config([
+            'cache.default' => 'array',
+            'admin.event.timezone' => 'Asia/Kuala_Lumpur',
+            'admin.event.start_date' => '2026-04-09',
+            'admin.event.end_date' => '2026-04-19',
+            'admin.user_management.read_model.enabled' => true,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allUsers')
+            ->once()
+            ->andReturn([
+                [
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'full_name' => 'Alya Putri',
+                    'email' => 'alya@example.test',
+                    'country' => 'MY',
+                    'identity_type' => 'national_id',
+                    'identity_number' => '901231101234',
+                    'account_status' => 'active',
+                    'verification_status' => 'verified',
+                    'created_at' => '2026-04-10T08:00:00Z',
+                ],
+                [
+                    'user_id' => 'user-2',
+                    'ticket_id' => 'ticket-2',
+                    'full_name' => 'Joki',
+                    'email' => 'joki@example.test',
+                    'country' => 'ID',
+                    'identity_type' => 'passport',
+                    'identity_number' => 'A1234567',
+                    'account_status' => 'active',
+                    'verification_status' => 'verified',
+                    'created_at' => '2026-04-09T08:00:00Z',
+                ],
+            ]);
+        $repository->shouldReceive('allTickets')
+            ->once()
+            ->andReturn([
+                [
+                    'ticket_id' => 'ticket-1',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-001',
+                    'attendance_status' => 'checked_in',
+                    'status' => 'active',
+                ],
+                [
+                    'ticket_id' => 'ticket-2',
+                    'user_id' => 'user-2',
+                    'ticket_code' => 'TICKET-002',
+                    'attendance_status' => 'not_checked_in',
+                    'status' => 'active',
+                ],
+            ]);
+        $repository->shouldReceive('allAttendanceDaily')
+            ->once()
+            ->andReturn([]);
+
+        $readModel = new AdminUserManagementReadModel(
+            $repository,
+            new AdminAnalyticsService,
+            new AdminUserManagementSyncStatusFactory,
+        );
+
+        $readModel->rebuild();
+        $page = $readModel->page(['q' => 'joki']);
+
+        $this->assertTrue($readModel->supportsFilters(['q' => 'joki']));
+        $this->assertNotNull($page);
+        $this->assertSame(1, $page['users']->total());
+        $this->assertSame('user-2', $page['users']->items()[0]['user_id']);
+    }
+
+    public function test_refresh_meta_from_projection_updates_large_projection_overview_without_full_rebuild(): void
+    {
+        CarbonImmutable::setTestNow('2026-04-10 09:00:00 UTC');
+        config([
+            'cache.default' => 'array',
+            'admin.event.timezone' => 'Asia/Kuala_Lumpur',
+            'admin.event.start_date' => '2026-04-09',
+            'admin.event.end_date' => '2026-04-19',
+            'admin.user_management.read_model.enabled' => true,
+            'admin.user_management.inline_meta_sync_max_rows' => 1,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allUsers')
+            ->once()
+            ->andReturn([
+                [
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'full_name' => 'Alya Putri',
+                    'email' => 'alya@example.test',
+                    'country' => 'MY',
+                    'identity_type' => 'national_id',
+                    'identity_number' => '901231101234',
+                    'account_status' => 'active',
+                    'verification_status' => 'verified',
+                    'created_at' => '2026-04-10T08:00:00Z',
+                ],
+                [
+                    'user_id' => 'user-2',
+                    'ticket_id' => 'ticket-2',
+                    'full_name' => 'Joki',
+                    'email' => 'joki@example.test',
+                    'country' => 'ID',
+                    'identity_type' => 'passport',
+                    'identity_number' => 'A1234567',
+                    'account_status' => 'active',
+                    'verification_status' => 'verified',
+                    'created_at' => '2026-04-09T08:00:00Z',
+                ],
+            ]);
+        $repository->shouldReceive('allTickets')
+            ->once()
+            ->andReturn([
+                [
+                    'ticket_id' => 'ticket-1',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-001',
+                    'attendance_status' => 'not_checked_in',
+                    'status' => 'active',
+                ],
+                [
+                    'ticket_id' => 'ticket-2',
+                    'user_id' => 'user-2',
+                    'ticket_code' => 'TICKET-002',
+                    'attendance_status' => 'not_checked_in',
+                    'status' => 'active',
+                ],
+            ]);
+        $repository->shouldReceive('allAttendanceDaily')
+            ->once()
+            ->andReturn([]);
+        $repository->shouldReceive('findUser')
+            ->once()
+            ->with('user-1')
+            ->andReturn([
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-1',
+                'full_name' => 'Alya Putri',
+                'email' => 'alya@example.test',
+                'country' => 'MY',
+                'identity_type' => 'national_id',
+                'identity_number' => '901231101234',
+                'account_status' => 'active',
+                'verification_status' => 'verified',
+                'created_at' => '2026-04-10T08:00:00Z',
+            ]);
+        $repository->shouldReceive('findTicket')
+            ->once()
+            ->with('ticket-1')
+            ->andReturn([
+                'ticket_id' => 'ticket-1',
+                'user_id' => 'user-1',
+                'ticket_code' => 'TICKET-001',
+                'attendance_status' => 'checked_in',
+                'status' => 'active',
+            ]);
+        $repository->shouldReceive('findAttendanceDailyByUserIds')
+            ->once()
+            ->with(['user-1'])
+            ->andReturn([
+                [
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'ticket_code' => 'TICKET-001',
+                    'result' => 'success',
+                    'scan_date' => '2026-04-10',
+                ],
+            ]);
+
+        $readModel = new AdminUserManagementReadModel(
+            $repository,
+            new AdminAnalyticsService,
+            new AdminUserManagementSyncStatusFactory,
+        );
+
+        $readModel->rebuild();
+        $this->assertSame(0, $readModel->page([])['overview']['checked_in_users']);
+
+        $readModel->syncUser('user-1');
+        $this->assertSame(0, $readModel->page([])['overview']['checked_in_users']);
+
+        $readModel->refreshMetaFromProjection();
+        $this->assertSame(1, $readModel->page([])['overview']['checked_in_users']);
     }
 
     public function test_sync_user_skips_inline_meta_refresh_for_large_redis_projection(): void

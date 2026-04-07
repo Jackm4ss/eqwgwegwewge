@@ -232,6 +232,7 @@ class AdminPanelService
 
         if ($this->userManagementReadModelEnabled()) {
             $this->userManagementReadModelDispatcher()->syncUser($userId, 'admin_update');
+            $this->userManagementReadModelDispatcher()->requestMetaRefresh('admin_update');
         }
 
         return $user;
@@ -250,6 +251,7 @@ class AdminPanelService
 
         if ($this->userManagementReadModelEnabled()) {
             $this->userManagementReadModelDispatcher()->removeUser($userId, 'admin_delete');
+            $this->userManagementReadModelDispatcher()->requestMetaRefresh('admin_delete');
         }
 
         return $result;
@@ -266,6 +268,7 @@ class AdminPanelService
 
         if ($this->userManagementReadModelEnabled()) {
             $this->userManagementReadModelDispatcher()->syncUser($userId, 'qr_reset');
+            $this->userManagementReadModelDispatcher()->requestMetaRefresh('qr_reset');
         }
 
         return $result;
@@ -290,6 +293,7 @@ class AdminPanelService
 
         if ($this->userManagementReadModelEnabled()) {
             $this->userManagementReadModelDispatcher()->syncUser($userId, 'qr_regenerate');
+            $this->userManagementReadModelDispatcher()->requestMetaRefresh('qr_regenerate');
         }
 
         return $result;

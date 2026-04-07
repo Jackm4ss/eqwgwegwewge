@@ -6,9 +6,12 @@ use App\Services\Admin\AdminAnalyticsService;
 use App\Services\Admin\AdminFirestoreRepository;
 use App\Services\Admin\AdminPanelService;
 use App\Services\Admin\AdminParticipantNotificationService;
+use App\Services\Admin\AdminUserManagementReadModelDispatcher;
+use App\Services\Admin\AdminUserManagementReadModel;
 use App\Support\EmailTypoInspector;
 use App\Services\Scanner\ScannerGateService;
 use Carbon\CarbonImmutable;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
@@ -194,6 +197,53 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(5, $page['filter_options']['attendance_statuses'][1]['count']);
         $this->assertSame(0, $page['filter_options']['identity_types'][0]['count']);
         $this->assertSame(5, $page['filter_options']['identity_types'][1]['count']);
+    }
+
+    public function test_user_management_page_uses_read_model_for_attendance_status_filters(): void
+    {
+        config([
+            'admin.user_management.read_model.enabled' => true,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldNotReceive('paginateUsers');
+        $repository->shouldNotReceive('allUsers');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $scannerGates = Mockery::mock(ScannerGateService::class);
+        $scannerGates->shouldReceive('names')->andReturn(['Gate A']);
+
+        $readModel = Mockery::mock(AdminUserManagementReadModel::class);
+        $readModel->shouldReceive('supportsFilters')
+            ->once()
+            ->with(['attendance_status' => 'checked_in'])
+            ->andReturn(true);
+        $readModel->shouldReceive('page')
+            ->once()
+            ->with(['attendance_status' => 'checked_in'])
+            ->andReturn([
+                'users' => new LengthAwarePaginator([], 1, 10, 1),
+                'overview' => ['checked_in_users' => 1],
+                'filter_options' => ['attendance_statuses' => []],
+                'sync_status' => ['state' => 'fresh'],
+            ]);
+
+        $service = new AdminPanelService(
+            $repository,
+            new AdminAnalyticsService,
+            $notifications,
+            $scannerGates,
+            $readModel,
+        );
+
+        $page = $service->userManagementPage([
+            'attendance_status' => 'checked_in',
+        ]);
+
+        $this->assertSame(1, $page['overview']['checked_in_users']);
+        $this->assertSame('fresh', $page['sync_status']['state']);
     }
 
     public function test_optimized_user_management_meta_builds_country_filters_from_actual_users(): void
@@ -1797,6 +1847,85 @@ class AdminPanelServiceTest extends TestCase
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY));
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY));
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY));
+    }
+
+    public function test_update_user_by_admin_dispatches_read_model_sync_and_meta_refresh_without_inline_rebuild(): void
+    {
+        config([
+            'admin.user_management.read_model.enabled' => true,
+        ]);
+
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 16016],
+            'filter_options' => [],
+        ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, []);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findUser')
+            ->once()
+            ->with('user-123')
+            ->andReturn([
+                'user_id' => 'user-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'ticket_id' => 'ticket-123',
+                'account_status' => 'pending_verification',
+                'verification_status' => 'unverified',
+            ]);
+        $repository->shouldReceive('findTicket')
+            ->times(2)
+            ->with('ticket-123')
+            ->andReturn([
+                'ticket_id' => 'ticket-123',
+                'ticket_code' => 'TICKET-123',
+                'user_id' => 'user-123',
+                'attendance_status' => 'not_checked_in',
+                'status' => 'active',
+            ]);
+        $repository->shouldReceive('updateUserByAdmin')
+            ->once()
+            ->with('user-123', ['account_status' => 'active'])
+            ->andReturn([
+                'user_id' => 'user-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'ticket_id' => 'ticket-123',
+                'account_status' => 'active',
+                'verification_status' => 'verified',
+            ]);
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldReceive('sendProfileUpdated')->once();
+
+        $scannerGates = Mockery::mock(ScannerGateService::class);
+        $scannerGates->shouldReceive('names')->andReturn(['Gate A']);
+
+        $dispatcher = Mockery::mock(AdminUserManagementReadModelDispatcher::class);
+        $dispatcher->shouldReceive('syncUser')
+            ->once()
+            ->with('user-123', 'admin_update');
+        $dispatcher->shouldReceive('requestMetaRefresh')
+            ->once()
+            ->with('admin_update');
+
+        $service = new AdminPanelService(
+            $repository,
+            new AdminAnalyticsService,
+            $notifications,
+            $scannerGates,
+            null,
+            $dispatcher,
+        );
+
+        $service->updateUserByAdmin('user-123', [
+            'account_status' => 'active',
+        ]);
+
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY));
     }
 

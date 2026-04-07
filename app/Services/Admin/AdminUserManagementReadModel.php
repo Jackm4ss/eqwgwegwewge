@@ -31,7 +31,8 @@ class AdminUserManagementReadModel
 
     public function supportsFilters(array $filters = []): bool
     {
-        return $this->canUseIndexedPagination($filters);
+        return $this->canUseIndexedPagination($filters)
+            || $this->canUseProjectionFiltering($filters);
     }
 
     public function page(array $filters = []): ?array
@@ -54,12 +55,45 @@ class AdminUserManagementReadModel
         $perPage = max(1, (int) ($filters['per_page'] ?? config('admin.per_page', 10)));
         $syncStatus = $this->syncStatus();
 
-        $rows = $this->pageRows($page, $perPage);
-        $total = (int) data_get($meta, 'overview.total_users', count($rows));
+        if ($this->canUseIndexedPagination($filters)) {
+            $rows = $this->pageRows($page, $perPage);
+            $total = (int) data_get($meta, 'overview.total_users', count($rows));
+
+            return [
+                'users' => new LengthAwarePaginator(
+                    $rows,
+                    $total,
+                    $perPage,
+                    $page,
+                    [
+                        'path' => request()->url(),
+                        'query' => request()->query(),
+                        'pageName' => 'page',
+                    ],
+                ),
+                'overview' => is_array($meta['overview'] ?? null)
+                    ? $meta['overview']
+                    : $this->analytics->buildUserManagementOverview($rows),
+                'filter_options' => is_array($meta['filter_options'] ?? null)
+                    ? $meta['filter_options']
+                    : $this->analytics->buildUserFilterOptions([]),
+                'sync_status' => $syncStatus,
+            ];
+        }
+
+        $allRows = $this->allRows();
+
+        if ($allRows === [] && $meta === null) {
+            return null;
+        }
+
+        $filteredRows = $this->analytics->filterUserRows($allRows, $filters);
+        $total = count($filteredRows);
+        $pageRows = array_values(array_slice($filteredRows, ($page - 1) * $perPage, $perPage));
 
         return [
             'users' => new LengthAwarePaginator(
-                $rows,
+                $pageRows,
                 $total,
                 $perPage,
                 $page,
@@ -69,12 +103,8 @@ class AdminUserManagementReadModel
                     'pageName' => 'page',
                 ],
             ),
-            'overview' => is_array($meta['overview'] ?? null)
-                ? $meta['overview']
-                : $this->analytics->buildUserManagementOverview($rows),
-            'filter_options' => is_array($meta['filter_options'] ?? null)
-                ? $meta['filter_options']
-                : $this->analytics->buildUserFilterOptions([]),
+            'overview' => $this->analytics->buildUserManagementOverview($filteredRows),
+            'filter_options' => $this->analytics->buildUserFilterOptions($allRows),
             'sync_status' => $syncStatus,
         ];
     }
@@ -223,6 +253,27 @@ class AdminUserManagementReadModel
         );
     }
 
+    public function refreshMetaFromProjection(): array
+    {
+        if (! $this->enabled()) {
+            return [];
+        }
+
+        $meta = $this->cachedMeta();
+        $storedRowCount = $this->storedRowCount();
+
+        if ($meta === null && ($storedRowCount ?? 0) === 0) {
+            return [];
+        }
+
+        $this->refreshMetaFromStoredRows();
+
+        return [
+            'meta' => $this->cachedMeta() ?? [],
+            'sync_status' => $this->syncStatus(),
+        ];
+    }
+
     private function refreshMetaFromStoredRows(): void
     {
         $rows = $this->allRows();
@@ -274,6 +325,24 @@ class AdminUserManagementReadModel
             && trim((string) ($filters['verification_status'] ?? '')) === ''
             && trim((string) ($filters['attendance_status'] ?? '')) === ''
             && trim((string) ($filters['email_typo'] ?? '')) === '';
+    }
+
+    private function canUseProjectionFiltering(array $filters): bool
+    {
+        foreach ([
+            'q',
+            'country',
+            'identity_type',
+            'verification_status',
+            'attendance_status',
+            'email_typo',
+        ] as $filterKey) {
+            if (trim((string) ($filters[$filterKey] ?? '')) !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function buildMeta(array $rows): array

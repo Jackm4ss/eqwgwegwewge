@@ -46,6 +46,7 @@ return [
             'queue_connection' => env('ADMIN_USER_MANAGEMENT_QUEUE_CONNECTION', env('QUEUE_CONNECTION', 'sync')),
             'sync_queue' => env('ADMIN_USER_MANAGEMENT_SYNC_QUEUE', 'admin-sync-high'),
             'rebuild_queue' => env('ADMIN_USER_MANAGEMENT_REBUILD_QUEUE', 'admin-sync-low'),
+            'meta_refresh_minutes' => max(1, (int) env('ADMIN_USER_MANAGEMENT_META_REFRESH_MINUTES', 3)),
             'reconcile_minutes' => max(5, (int) env('ADMIN_USER_MANAGEMENT_RECONCILE_MINUTES', 15)),
         ],
     ],

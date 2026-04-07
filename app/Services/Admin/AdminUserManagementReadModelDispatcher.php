@@ -2,6 +2,7 @@
 
 namespace App\Services\Admin;
 
+use App\Jobs\RefreshUserManagementReadModelMetaJob;
 use App\Jobs\RebuildUserManagementReadModelJob;
 use App\Jobs\SyncUserManagementReadModelJob;
 use Illuminate\Support\Facades\Log;
@@ -66,6 +67,24 @@ class AdminUserManagementReadModelDispatcher
             $this->readModel->markFailed();
 
             Log::warning('Unable to dispatch the user management read model rebuild job.', [
+                'trigger' => $trigger,
+                'message' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    public function requestMetaRefresh(string $trigger = 'meta_refresh'): void
+    {
+        if (! $this->readModel->enabled()) {
+            return;
+        }
+
+        try {
+            RefreshUserManagementReadModelMetaJob::dispatch($trigger)
+                ->onConnection((string) config('admin.user_management.read_model.queue_connection', config('queue.default', 'sync')))
+                ->onQueue((string) config('admin.user_management.read_model.rebuild_queue', 'admin-sync-low'));
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to dispatch the user management read model meta refresh job.', [
                 'trigger' => $trigger,
                 'message' => $exception->getMessage(),
             ]);
