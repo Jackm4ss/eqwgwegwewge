@@ -228,6 +228,7 @@ class AdminPanelService
         // Keep request writes lightweight; the scheduler refreshes the
         // expensive snapshot out of band while overview cards stay live.
         $this->markUserManagementCacheStale();
+        $this->syncCachedUserManagementRow($user, $ticket);
 
         if ($this->userManagementReadModelEnabled()) {
             $this->userManagementReadModelDispatcher()->syncUser($userId, 'admin_update');
@@ -244,6 +245,7 @@ class AdminPanelService
             is_array($result['ticket'] ?? null) ? $result['ticket'] : null,
         );
         $this->markUserManagementCacheStale();
+        $this->removeCachedUserManagementRow($userId);
         $this->flushDashboardCache();
 
         if ($this->userManagementReadModelEnabled()) {
@@ -257,6 +259,10 @@ class AdminPanelService
     {
         $result = $this->repository->resetQrCode($userId);
         $this->markUserManagementCacheStale();
+        $this->syncCachedUserManagementRow(
+            is_array($result['user'] ?? null) ? $result['user'] : [],
+            is_array($result['ticket'] ?? null) ? $result['ticket'] : null,
+        );
 
         if ($this->userManagementReadModelEnabled()) {
             $this->userManagementReadModelDispatcher()->syncUser($userId, 'qr_reset');
@@ -277,6 +283,10 @@ class AdminPanelService
             is_array($result['ticket'] ?? null) ? $result['ticket'] : [],
         );
         $this->markUserManagementCacheStale();
+        $this->syncCachedUserManagementRow(
+            is_array($result['user'] ?? null) ? $result['user'] : [],
+            is_array($result['ticket'] ?? null) ? $result['ticket'] : null,
+        );
 
         if ($this->userManagementReadModelEnabled()) {
             $this->userManagementReadModelDispatcher()->syncUser($userId, 'qr_regenerate');
@@ -769,6 +779,121 @@ class AdminPanelService
         }
 
         return [];
+    }
+
+    private function syncCachedUserManagementRow(array $user, ?array $ticket = null): void
+    {
+        if (! Cache::has(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY)) {
+            return;
+        }
+
+        $userId = trim((string) ($user['user_id'] ?? ''));
+
+        if ($userId === '') {
+            return;
+        }
+
+        $cachedRows = Cache::get(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
+
+        if (! is_array($cachedRows)) {
+            return;
+        }
+
+        $existingRowIndex = null;
+        $existingRow = null;
+
+        foreach ($cachedRows as $index => $cachedRow) {
+            if (trim((string) ($cachedRow['user_id'] ?? '')) !== $userId) {
+                continue;
+            }
+
+            $existingRowIndex = $index;
+            $existingRow = $cachedRow;
+
+            break;
+        }
+
+        $row = $this->buildCachedUserManagementRow($user, $ticket, $existingRow);
+
+        if ($row === null) {
+            return;
+        }
+
+        if ($existingRowIndex === null) {
+            $cachedRows[] = $row;
+        } else {
+            $cachedRows[$existingRowIndex] = $row;
+        }
+
+        usort($cachedRows, fn (array $left, array $right): int => strcmp(
+            (string) ($right['created_at'] ?? ''),
+            (string) ($left['created_at'] ?? ''),
+        ));
+
+        Cache::forever(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, array_values($cachedRows));
+        Cache::forever(self::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => $this->analytics->buildUserManagementOverview($cachedRows),
+            'filter_options' => $this->analytics->buildUserFilterOptions($cachedRows),
+        ]);
+    }
+
+    private function removeCachedUserManagementRow(string $userId): void
+    {
+        if (! Cache::has(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY)) {
+            return;
+        }
+
+        $userId = trim($userId);
+
+        if ($userId === '') {
+            return;
+        }
+
+        $cachedRows = Cache::get(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
+
+        if (! is_array($cachedRows)) {
+            return;
+        }
+
+        $updatedRows = array_values(array_filter(
+            $cachedRows,
+            fn (array $row): bool => trim((string) ($row['user_id'] ?? '')) !== $userId,
+        ));
+
+        Cache::forever(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, $updatedRows);
+        Cache::forever(self::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => $this->analytics->buildUserManagementOverview($updatedRows),
+            'filter_options' => $this->analytics->buildUserFilterOptions($updatedRows),
+        ]);
+    }
+
+    private function buildCachedUserManagementRow(
+        array $user,
+        ?array $ticket = null,
+        ?array $existingRow = null,
+    ): ?array {
+        $rows = $this->analytics->buildUserRows(
+            [$user],
+            is_array($ticket) ? [$ticket] : [],
+        );
+        $row = $rows[0] ?? null;
+
+        if (! is_array($row)) {
+            return null;
+        }
+
+        foreach ([
+            'attendance_days',
+            'attendance_days_count',
+            'attendance_total_days',
+            'attendance_progress_percent',
+        ] as $key) {
+            if (array_key_exists($key, $existingRow ?? [])) {
+                $row[$key] = $existingRow[$key];
+            }
+        }
+
+        return $row;
     }
 
     private function availableUserManagementDirectorySnapshot(): array

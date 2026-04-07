@@ -21,6 +21,7 @@ class AdminPanelServiceTest extends TestCase
         parent::setUp();
 
         Storage::fake('local');
+        config(['admin.user_management.read_model.enabled' => false]);
         EmailTypoInspector::clearFakes();
         $this->clearUserManagementMetaCache();
         $this->clearAttendanceCache();
@@ -1902,6 +1903,80 @@ class AdminPanelServiceTest extends TestCase
 
         $this->assertSame(1, $page['overview']['total_users']);
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
+    }
+
+    public function test_update_user_by_admin_updates_cached_directory_search_results_immediately(): void
+    {
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 1],
+            'filter_options' => [],
+        ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-123',
+                'ticket_id' => 'ticket-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'country_label' => 'Indonesia',
+                'account_status' => 'active',
+                'verification_status' => 'verified',
+                'created_at' => '2026-04-05T07:00:00Z',
+            ],
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findUser')
+            ->once()
+            ->with('user-123')
+            ->andReturn([
+                'user_id' => 'user-123',
+                'ticket_id' => 'ticket-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'account_status' => 'active',
+                'verification_status' => 'verified',
+            ]);
+        $repository->shouldReceive('findTicket')
+            ->times(2)
+            ->with('ticket-123')
+            ->andReturn([
+                'ticket_id' => 'ticket-123',
+                'user_id' => 'user-123',
+                'ticket_code' => 'TICKET-123',
+                'status' => 'active',
+                'attendance_status' => 'not_checked_in',
+            ]);
+        $repository->shouldReceive('updateUserByAdmin')
+            ->once()
+            ->with('user-123', ['full_name' => 'Alya Putri'])
+            ->andReturn([
+                'user_id' => 'user-123',
+                'ticket_id' => 'ticket-123',
+                'full_name' => 'Alya Putri',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'account_status' => 'active',
+                'verification_status' => 'verified',
+                'created_at' => '2026-04-05T07:00:00Z',
+            ]);
+        $repository->shouldNotReceive('paginateUsers');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldReceive('sendProfileUpdated')->once();
+
+        $service = $this->makeService($repository, $notifications);
+
+        $service->updateUserByAdmin('user-123', [
+            'full_name' => 'Alya Putri',
+        ]);
+        $page = $service->userManagementPage([
+            'q' => 'putri',
+        ]);
+
+        $this->assertSame(1, $page['users']->total());
+        $this->assertSame('Alya Putri', $page['users']->items()[0]['full_name']);
     }
 
     public function test_update_user_by_admin_ignores_profile_notification_failures(): void
