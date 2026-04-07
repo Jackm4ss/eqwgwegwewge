@@ -85,7 +85,7 @@ class UserManagementController extends Controller
         );
 
         return redirect()
-            ->route('admin.users.index')
+            ->route('admin.users.edit', $userId)
             ->with('status', 'Participant data was updated successfully.');
     }
 

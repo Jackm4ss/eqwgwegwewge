@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Admin;
+use App\Services\Admin\AdminAuditLogger;
 use App\Services\Admin\AdminPanelService;
 use App\Services\Admin\AdminPresenceService;
 use App\Services\Admin\AdminQrManagementLookupService;
@@ -722,6 +723,59 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('Generate QR')
             ->assertDontSee('Reset QR Code')
             ->assertDontSee('Regenerate QR Code');
+    }
+
+    public function test_admin_update_user_from_edit_page_stays_on_edit_screen(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        $this->mock(AdminPanelService::class, function ($mock): void {
+            $mock->shouldReceive('updateUserByAdmin')
+                ->once()
+                ->with('user-123', [
+                    'full_name' => 'Joki Updated',
+                    'email' => 'joki.updated@example.test',
+                    '_skip_phone_index_sync' => true,
+                    'phone_country_code' => '+60',
+                    'phone_national_number' => '123456789',
+                    'phone_number' => '+60123456789',
+                    'country' => 'MY',
+                    'identity_type' => 'national_id',
+                    'identity_number' => '320240002222',
+                    'account_status' => 'active',
+                    'verification_status' => 'verified',
+                ])
+                ->andReturn([
+                    'user_id' => 'user-123',
+                    'email' => 'joki.updated@example.test',
+                    'account_status' => 'active',
+                    'verification_status' => 'verified',
+                ]);
+        });
+
+        $this->mock(AdminAuditLogger::class, function ($mock): void {
+            $mock->shouldReceive('log')
+                ->once();
+        });
+
+        $response = $this->actingAs($admin, 'admin')
+            ->from(route('admin.users.edit', 'user-123'))
+            ->put(route('admin.users.update', 'user-123'), [
+                'full_name' => 'Joki Updated',
+                'email' => 'Joki.Updated@Example.Test',
+                '_skip_phone_index_sync' => '1',
+                'phone_country_code' => '+60',
+                'phone_national_number' => '123456789',
+                'phone_number' => '+60123456789',
+                'country' => 'my',
+                'identity_type' => 'national_id',
+                'identity_number' => '320240002222',
+                'account_status' => 'active',
+                'verification_status' => 'verified',
+            ]);
+
+        $response->assertRedirect(route('admin.users.edit', 'user-123'))
+            ->assertSessionHas('status', 'Participant data was updated successfully.');
     }
 
     public function test_admin_attendance_page_uses_friendly_operational_labels(): void
