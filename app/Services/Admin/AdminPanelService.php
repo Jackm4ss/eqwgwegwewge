@@ -241,10 +241,6 @@ class AdminPanelService
     public function deleteUserByAdmin(string $userId): array
     {
         $result = $this->repository->deleteUserByAdmin($userId);
-        $this->participantNotifications->sendParticipantDeleted(
-            $result['user'] ?? [],
-            is_array($result['ticket'] ?? null) ? $result['ticket'] : null,
-        );
         $this->markUserManagementCacheStale();
         $this->removeCachedUserManagementRow($userId);
         $this->flushDashboardCache();

@@ -2273,7 +2273,7 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame('TICKET-NEW', $result['ticket']['ticket_code']);
     }
 
-    public function test_delete_user_by_admin_sends_deleted_registration_notification(): void
+    public function test_delete_user_by_admin_does_not_send_deleted_registration_notification(): void
     {
         $repository = Mockery::mock(AdminFirestoreRepository::class);
         $repository->shouldReceive('deleteUserByAdmin')
@@ -2293,12 +2293,7 @@ class AdminPanelServiceTest extends TestCase
             ]);
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
-        $notifications->shouldReceive('sendParticipantDeleted')
-            ->once()
-            ->withArgs(function (array $user, ?array $ticket): bool {
-                return ($user['email'] ?? null) === 'alya@example.test'
-                    && ($ticket['ticket_code'] ?? null) === 'TICKET-123';
-            });
+        $notifications->shouldNotReceive('sendParticipantDeleted');
 
         $service = $this->makeService($repository, $notifications);
 
