@@ -57,8 +57,13 @@ class AdminUserManagementReadModel
         $syncStatus = $this->syncStatus();
 
         if ($this->canUseIndexedPagination($filters)) {
+            if ($this->shouldServeLiveOverviewForIndexedPage()) {
+                return $this->filteredPageUsingRedis([], $page, $perPage, $meta, $syncStatus);
+            }
+
             $rows = $this->pageRows($page, $perPage);
-            $total = (int) data_get($meta, 'overview.total_users', count($rows));
+            $total = $this->storedRowCount();
+            $total ??= (int) data_get($meta, 'overview.total_users', count($rows));
 
             return [
                 'users' => new LengthAwarePaginator(
@@ -74,7 +79,7 @@ class AdminUserManagementReadModel
                 ),
                 'overview' => is_array($meta['overview'] ?? null)
                     ? $meta['overview']
-                    : $this->analytics->buildUserManagementOverview($rows),
+                    : $this->analytics->buildUserManagementOverview($this->allRows()),
                 'filter_options' => is_array($meta['filter_options'] ?? null)
                     ? $meta['filter_options']
                     : $this->analytics->buildUserFilterOptions([]),
@@ -569,6 +574,11 @@ class AdminUserManagementReadModel
         }
 
         return $storedRowCount <= $maxRows;
+    }
+
+    private function shouldServeLiveOverviewForIndexedPage(): bool
+    {
+        return $this->usingRedisStorage() && ! $this->canRefreshMetaInline();
     }
 
     private function allRowsUsingRedis(): array
