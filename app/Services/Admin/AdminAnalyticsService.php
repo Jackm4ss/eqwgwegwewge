@@ -324,6 +324,14 @@ class AdminAnalyticsService
             $rows,
         ));
 
+        return array_values(array_filter(
+            $rows,
+            fn (array $row): bool => $this->matchesUserRowFilters($row, $filters),
+        ));
+    }
+
+    public function matchesUserRowFilters(array $row, array $filters = []): bool
+    {
         $query = $this->normalizeText((string) ($filters['q'] ?? ''));
         $country = strtoupper(trim((string) ($filters['country'] ?? '')));
         $identityType = $this->normalizeIdentityType($filters['identity_type'] ?? null, allowEmpty: true);
@@ -331,33 +339,31 @@ class AdminAnalyticsService
         $attendanceStatus = $this->normalizeAttendanceStatus($filters['attendance_status'] ?? null, allowEmpty: true);
         $emailTypo = strtolower(trim((string) ($filters['email_typo'] ?? '')));
 
-        return array_values(array_filter($rows, function (array $row) use ($attendanceStatus, $country, $emailTypo, $identityType, $query, $verificationStatus) {
-            if ($query !== '' && ! str_contains($this->userSearchHaystack($row), $query)) {
-                return false;
-            }
+        if ($query !== '' && ! str_contains($this->userSearchHaystack($row), $query)) {
+            return false;
+        }
 
-            if ($country !== '' && strtoupper((string) ($row['country'] ?? '')) !== $country) {
-                return false;
-            }
+        if ($country !== '' && strtoupper((string) ($row['country'] ?? '')) !== $country) {
+            return false;
+        }
 
-            if ($identityType !== '' && $this->normalizeIdentityType($row['identity_type'] ?? null) !== $identityType) {
-                return false;
-            }
+        if ($identityType !== '' && $this->normalizeIdentityType($row['identity_type'] ?? null) !== $identityType) {
+            return false;
+        }
 
-            if (! $this->rowMatchesVerificationFilter($row, $verificationStatus)) {
-                return false;
-            }
+        if (! $this->rowMatchesVerificationFilter($row, $verificationStatus)) {
+            return false;
+        }
 
-            if ($attendanceStatus !== '' && $this->normalizeAttendanceStatus($row['attendance_status'] ?? null) !== $attendanceStatus) {
-                return false;
-            }
+        if ($attendanceStatus !== '' && $this->normalizeAttendanceStatus($row['attendance_status'] ?? null) !== $attendanceStatus) {
+            return false;
+        }
 
-            if (! $this->rowMatchesEmailTypoFilter($row, $emailTypo)) {
-                return false;
-            }
+        if (! $this->rowMatchesEmailTypoFilter($row, $emailTypo)) {
+            return false;
+        }
 
-            return true;
-        }));
+        return true;
     }
 
     public function buildUserManagementOverview(array $rows): array

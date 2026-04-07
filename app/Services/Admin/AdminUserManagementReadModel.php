@@ -17,6 +17,7 @@ class AdminUserManagementReadModel
     private const ORDER_CACHE_KEY = 'admin:user-management:read-model:order:v1';
     private const USER_SYNC_LOCK_PREFIX = 'admin:user-management:read-model:sync-user:';
     private const USER_SYNC_LOCK_SECONDS = 30;
+    private const FILTER_SCAN_CHUNK_SIZE = 250;
 
     public function __construct(
         private readonly AdminFirestoreRepository $repository,
@@ -81,6 +82,10 @@ class AdminUserManagementReadModel
             ];
         }
 
+        if ($this->usingRedisStorage()) {
+            return $this->filteredPageUsingRedis($filters, $page, $perPage, $meta, $syncStatus);
+        }
+
         $allRows = $this->allRows();
 
         if ($allRows === [] && $meta === null) {
@@ -105,6 +110,74 @@ class AdminUserManagementReadModel
             ),
             'overview' => $this->analytics->buildUserManagementOverview($filteredRows),
             'filter_options' => $this->analytics->buildUserFilterOptions($allRows),
+            'sync_status' => $syncStatus,
+        ];
+    }
+
+    private function filteredPageUsingRedis(
+        array $filters,
+        int $page,
+        int $perPage,
+        array $meta,
+        array $syncStatus,
+    ): array {
+        $offset = ($page - 1) * $perPage;
+        $pageRows = [];
+        $matchedCount = 0;
+        $overview = $this->emptyOverviewAccumulator();
+        $rangeStart = 0;
+        $chunkSize = max(self::FILTER_SCAN_CHUNK_SIZE, $perPage);
+        $redis = $this->redisConnection();
+
+        while (true) {
+            $userIds = $redis->zrevrange(
+                self::ORDER_CACHE_KEY,
+                $rangeStart,
+                $rangeStart + $chunkSize - 1,
+            );
+
+            if (! is_array($userIds) || $userIds === []) {
+                break;
+            }
+
+            $encodedRows = $redis->hmget(self::ROWS_CACHE_KEY, $userIds);
+
+            foreach ($encodedRows as $encodedRow) {
+                $row = is_string($encodedRow) ? json_decode($encodedRow, true) : null;
+
+                if (! is_array($row) || ! $this->analytics->matchesUserRowFilters($row, $filters)) {
+                    continue;
+                }
+
+                $matchedCount++;
+                $this->accumulateOverviewRow($overview, $row);
+
+                if ($matchedCount <= $offset || count($pageRows) >= $perPage) {
+                    continue;
+                }
+
+                $pageRows[] = $row;
+            }
+
+            $rangeStart += $chunkSize;
+        }
+
+        return [
+            'users' => new LengthAwarePaginator(
+                $this->analytics->decorateEmailTypoRows($pageRows),
+                $matchedCount,
+                $perPage,
+                $page,
+                [
+                    'path' => request()->url(),
+                    'query' => request()->query(),
+                    'pageName' => 'page',
+                ],
+            ),
+            'overview' => $this->finalizeOverviewAccumulator($overview),
+            'filter_options' => is_array($meta['filter_options'] ?? null)
+                ? $meta['filter_options']
+                : $this->buildMeta([])['filter_options'],
             'sync_status' => $syncStatus,
         ];
     }
@@ -522,6 +595,61 @@ class AdminUserManagementReadModel
         ));
 
         return $rows;
+    }
+
+    private function emptyOverviewAccumulator(): array
+    {
+        return [
+            'total_users' => 0,
+            'verified_users' => 0,
+            'checked_in_users' => 0,
+            'follow_up_users' => 0,
+            'countries' => [],
+        ];
+    }
+
+    private function accumulateOverviewRow(array &$overview, array $row): void
+    {
+        $overview['total_users']++;
+
+        $country = strtoupper((string) ($row['country'] ?? ''));
+        if ($country !== '') {
+            $overview['countries'][$country] = true;
+        }
+
+        if (strtolower((string) ($row['verification_status'] ?? '')) === 'verified') {
+            $overview['verified_users']++;
+        }
+
+        if (strtolower(trim((string) ($row['attendance_status'] ?? 'not_checked_in'))) === 'checked_in') {
+            $overview['checked_in_users']++;
+        }
+
+        if (
+            strtolower((string) ($row['verification_status'] ?? '')) !== 'verified'
+            || strtolower((string) ($row['account_status'] ?? '')) !== 'active'
+        ) {
+            $overview['follow_up_users']++;
+        }
+    }
+
+    private function finalizeOverviewAccumulator(array $overview): array
+    {
+        $totalUsers = (int) ($overview['total_users'] ?? 0);
+        $verifiedUsers = (int) ($overview['verified_users'] ?? 0);
+        $checkedInUsers = (int) ($overview['checked_in_users'] ?? 0);
+        $followUpUsers = (int) ($overview['follow_up_users'] ?? 0);
+
+        return [
+            'total_users' => $totalUsers,
+            'verified_users' => $verifiedUsers,
+            'checked_in_users' => $checkedInUsers,
+            'follow_up_users' => $followUpUsers,
+            'countries_count' => count($overview['countries'] ?? []),
+            'verified_rate' => $totalUsers > 0 ? (int) round(($verifiedUsers / $totalUsers) * 100) : 0,
+            'checked_in_rate' => $totalUsers > 0 ? (int) round(($checkedInUsers / $totalUsers) * 100) : 0,
+            'follow_up_rate' => $totalUsers > 0 ? (int) round(($followUpUsers / $totalUsers) * 100) : 0,
+        ];
     }
 
     private function storedRowCount(): ?int

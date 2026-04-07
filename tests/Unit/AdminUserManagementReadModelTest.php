@@ -555,4 +555,141 @@ class AdminUserManagementReadModelTest extends TestCase
 
         $readModel->syncUser('user-1');
     }
+
+    public function test_page_filters_redis_projection_without_loading_all_rows_into_memory(): void
+    {
+        CarbonImmutable::setTestNow('2026-04-10 09:00:00 UTC');
+        config([
+            'admin.event.timezone' => 'Asia/Kuala_Lumpur',
+            'admin.event.start_date' => '2026-04-09',
+            'admin.event.end_date' => '2026-04-19',
+            'admin.user_management.read_model.enabled' => true,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+
+        $redisStore = Mockery::mock(RedisStore::class);
+        Cache::shouldReceive('getStore')->zeroOrMoreTimes()->andReturn($redisStore);
+        Cache::shouldReceive('flush')->zeroOrMoreTimes();
+
+        $meta = [
+            'overview' => [
+                'total_users' => 2,
+                'verified_users' => 2,
+                'checked_in_users' => 1,
+                'follow_up_users' => 0,
+                'countries_count' => 2,
+                'verified_rate' => 100,
+                'checked_in_rate' => 50,
+                'follow_up_rate' => 0,
+            ],
+            'filter_options' => [
+                'countries' => [
+                    ['value' => 'ID', 'label' => 'Indonesia', 'count' => 1],
+                    ['value' => 'MY', 'label' => 'Malaysia', 'count' => 1],
+                ],
+                'verification_statuses' => [
+                    ['value' => 'verified', 'label' => 'Verified', 'count' => 2],
+                    ['value' => 'pending_verification', 'label' => 'Pending Verification', 'count' => 0],
+                    ['value' => 'unverified', 'label' => 'Unverified', 'count' => 0],
+                ],
+                'identity_types' => [
+                    ['value' => 'national_id', 'label' => 'Malaysia IC (MyKad)', 'count' => 1],
+                    ['value' => 'passport', 'label' => 'Passport', 'count' => 1],
+                ],
+                'attendance_statuses' => [
+                    ['value' => 'checked_in', 'label' => 'Checked In', 'count' => 1],
+                    ['value' => 'not_checked_in', 'label' => 'Not Checked In', 'count' => 1],
+                ],
+                'email_typo_statuses' => [
+                    ['value' => 'suspected', 'label' => 'Suspected Typo', 'count' => 0],
+                    ['value' => 'clean', 'label' => 'Looks Valid', 'count' => 2],
+                ],
+            ],
+        ];
+        $sync = [
+            'source' => 'read_model',
+            'state' => 'fresh',
+            'last_synced_at_utc' => '2026-04-10T09:00:00Z',
+        ];
+        $rows = [
+            'user-1' => [
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-1',
+                'full_name' => 'Alya Putri',
+                'email' => 'alya@example.test',
+                'country' => 'MY',
+                'country_label' => 'Malaysia',
+                'identity_type' => 'national_id',
+                'identity_number' => '901231101234',
+                'account_status' => 'active',
+                'verification_status' => 'verified',
+                'attendance_status' => 'checked_in',
+                'ticket_code' => 'TICKET-001',
+                'created_at' => '2026-04-10T08:00:00Z',
+                'email_typo_status' => 'clean',
+                'email_typo_suspected' => false,
+                'email_typo_suggestion' => null,
+                'email_typo_reason' => null,
+            ],
+            'user-2' => [
+                'user_id' => 'user-2',
+                'ticket_id' => 'ticket-2',
+                'full_name' => 'Joki',
+                'email' => 'joki@example.test',
+                'country' => 'ID',
+                'country_label' => 'Indonesia',
+                'identity_type' => 'passport',
+                'identity_number' => 'A1234567',
+                'account_status' => 'active',
+                'verification_status' => 'verified',
+                'attendance_status' => 'not_checked_in',
+                'ticket_code' => 'TICKET-002',
+                'created_at' => '2026-04-09T08:00:00Z',
+                'email_typo_status' => 'clean',
+                'email_typo_suspected' => false,
+                'email_typo_suggestion' => null,
+                'email_typo_reason' => null,
+            ],
+        ];
+
+        $redisConnection = Mockery::mock();
+        Redis::shouldReceive('connection')->andReturn($redisConnection);
+        $redisConnection->shouldReceive('get')
+            ->twice()
+            ->andReturn(
+                json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+                json_encode($sync, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+            );
+        $redisConnection->shouldReceive('zrevrange')
+            ->twice()
+            ->andReturn(
+                ['user-1', 'user-2'],
+                [],
+            );
+        $redisConnection->shouldReceive('hmget')
+            ->once()
+            ->with('admin:user-management:read-model:rows:v1', ['user-1', 'user-2'])
+            ->andReturn([
+                json_encode($rows['user-1'], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+                json_encode($rows['user-2'], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+            ]);
+        $redisConnection->shouldNotReceive('hgetall');
+
+        $readModel = new AdminUserManagementReadModel(
+            $repository,
+            new AdminAnalyticsService,
+            new AdminUserManagementSyncStatusFactory,
+        );
+
+        $page = $readModel->page(['q' => 'joki']);
+
+        $this->assertNotNull($page);
+        $this->assertSame(1, $page['users']->total());
+        $this->assertSame('user-2', $page['users']->items()[0]['user_id']);
+        $this->assertSame(1, $page['overview']['total_users']);
+        $this->assertSame('fresh', $page['sync_status']['state']);
+        $this->assertSame(1, $page['filter_options']['attendance_statuses'][0]['count']);
+        $this->assertSame(1, $page['filter_options']['attendance_statuses'][1]['count']);
+    }
 }
