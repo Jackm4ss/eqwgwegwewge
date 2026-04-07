@@ -151,7 +151,7 @@ class AdminUserManagementReadModel
             }
 
             $this->upsertRow($row);
-            $this->refreshMetaFromStoredRows();
+            $this->refreshMetaAfterMutation();
         } finally {
             Cache::forget($lockKey);
         }
@@ -169,7 +169,7 @@ class AdminUserManagementReadModel
             $this->removeRowUsingCache($userId);
         }
 
-        $this->refreshMetaFromStoredRows();
+        $this->refreshMetaAfterMutation();
     }
 
     public function flush(): void
@@ -230,6 +230,17 @@ class AdminUserManagementReadModel
 
         $this->storeMeta($meta);
         $this->storeSync($this->rawSyncPayload('fresh'));
+    }
+
+    private function refreshMetaAfterMutation(): void
+    {
+        if (! $this->canRefreshMetaInline()) {
+            $this->storeSync($this->rawSyncPayload('fresh'));
+
+            return;
+        }
+
+        $this->refreshMetaFromStoredRows();
     }
 
     private function buildProjectedRowForUser(string $userId): ?array
@@ -401,6 +412,23 @@ class AdminUserManagementReadModel
             : $this->allRowsUsingCache();
     }
 
+    private function canRefreshMetaInline(): bool
+    {
+        $maxRows = max(0, (int) config('admin.user_management.inline_meta_sync_max_rows', 2000));
+
+        if ($maxRows === 0) {
+            return false;
+        }
+
+        $storedRowCount = $this->storedRowCount();
+
+        if ($storedRowCount === null) {
+            return false;
+        }
+
+        return $storedRowCount <= $maxRows;
+    }
+
     private function allRowsUsingRedis(): array
     {
         $encodedRows = $this->redisConnection()->hgetall(self::ROWS_CACHE_KEY);
@@ -425,6 +453,25 @@ class AdminUserManagementReadModel
         ));
 
         return $rows;
+    }
+
+    private function storedRowCount(): ?int
+    {
+        if ($this->usingRedisStorage()) {
+            $count = $this->redisConnection()->zcard(self::ORDER_CACHE_KEY);
+
+            return is_numeric($count) ? (int) $count : null;
+        }
+
+        $orderedUserIds = Cache::get(self::ORDER_CACHE_KEY);
+
+        if (is_array($orderedUserIds)) {
+            return count($orderedUserIds);
+        }
+
+        $rowsByUserId = Cache::get(self::ROWS_CACHE_KEY);
+
+        return is_array($rowsByUserId) ? count($rowsByUserId) : null;
     }
 
     private function allRowsUsingCache(): array

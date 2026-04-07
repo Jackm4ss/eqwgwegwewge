@@ -793,6 +793,10 @@ class AdminPanelService
             return;
         }
 
+        if (! $this->canInlineSyncUserManagementSnapshot()) {
+            return;
+        }
+
         $cachedRows = Cache::get(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
 
         if (! is_array($cachedRows)) {
@@ -849,6 +853,10 @@ class AdminPanelService
             return;
         }
 
+        if (! $this->canInlineSyncUserManagementSnapshot()) {
+            return;
+        }
+
         $cachedRows = Cache::get(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY);
 
         if (! is_array($cachedRows)) {
@@ -894,6 +902,25 @@ class AdminPanelService
         }
 
         return $row;
+    }
+
+    private function canInlineSyncUserManagementSnapshot(): bool
+    {
+        $maxRows = max(0, (int) config('admin.user_management.inline_snapshot_sync_max_rows', 2000));
+
+        if ($maxRows === 0) {
+            return false;
+        }
+
+        $meta = Cache::get(self::USER_MANAGEMENT_META_CACHE_KEY);
+
+        if (! is_array($meta)) {
+            return false;
+        }
+
+        $totalUsers = (int) data_get($meta, 'overview.total_users', -1);
+
+        return $totalUsers >= 0 && $totalUsers <= $maxRows;
     }
 
     private function availableUserManagementDirectorySnapshot(): array

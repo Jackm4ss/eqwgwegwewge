@@ -30,6 +30,8 @@ return [
         'staff' => env('STAFF_APP_URL'),
     ],
     'user_management' => [
+        'inline_snapshot_sync_max_rows' => max(0, (int) env('ADMIN_USER_MANAGEMENT_INLINE_SNAPSHOT_SYNC_MAX_ROWS', 2000)),
+        'inline_meta_sync_max_rows' => max(0, (int) env('ADMIN_USER_MANAGEMENT_INLINE_META_SYNC_MAX_ROWS', 2000)),
         'read_model' => [
             'enabled' => env('ADMIN_USER_MANAGEMENT_READ_MODEL_ENABLED', false),
             'fresh_within_seconds' => max(5, (int) env('ADMIN_USER_MANAGEMENT_SYNC_SLA_SECONDS', 15)),

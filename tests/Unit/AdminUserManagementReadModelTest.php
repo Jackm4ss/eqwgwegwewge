@@ -7,7 +7,9 @@ use App\Services\Admin\AdminFirestoreRepository;
 use App\Services\Admin\AdminUserManagementReadModel;
 use App\Services\Admin\AdminUserManagementSyncStatusFactory;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RedisStore;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use Mockery;
 use Tests\TestCase;
 
@@ -200,5 +202,82 @@ class AdminUserManagementReadModelTest extends TestCase
         $this->assertSame(1, $page['users']->total());
         $this->assertSame('user-2', $page['users']->items()[0]['user_id']);
         $this->assertSame(1, $page['overview']['total_users']);
+    }
+
+    public function test_sync_user_skips_inline_meta_refresh_for_large_redis_projection(): void
+    {
+        CarbonImmutable::setTestNow('2026-04-10 09:00:00 UTC');
+        config([
+            'admin.event.timezone' => 'Asia/Kuala_Lumpur',
+            'admin.event.start_date' => '2026-04-09',
+            'admin.event.end_date' => '2026-04-19',
+            'admin.user_management.read_model.enabled' => true,
+            'admin.user_management.inline_meta_sync_max_rows' => 2000,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findUser')
+            ->once()
+            ->with('user-1')
+            ->andReturn([
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-1',
+                'full_name' => 'Alya Putri',
+                'email' => 'alya@example.test',
+                'country' => 'MY',
+                'identity_type' => 'national_id',
+                'identity_number' => '901231101234',
+                'account_status' => 'active',
+                'verification_status' => 'verified',
+                'created_at' => '2026-04-10T08:00:00Z',
+            ]);
+        $repository->shouldReceive('findTicket')
+            ->once()
+            ->with('ticket-1')
+            ->andReturn([
+                'ticket_id' => 'ticket-1',
+                'user_id' => 'user-1',
+                'ticket_code' => 'TICKET-001',
+                'attendance_status' => 'checked_in',
+                'status' => 'active',
+            ]);
+        $repository->shouldReceive('findAttendanceDailyByUserIds')
+            ->once()
+            ->with(['user-1'])
+            ->andReturn([
+                [
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'ticket_code' => 'TICKET-001',
+                    'scan_date' => '2026-04-10',
+                ],
+            ]);
+
+        $redisStore = Mockery::mock(RedisStore::class);
+        Cache::shouldReceive('getStore')->andReturn($redisStore);
+        Cache::shouldReceive('add')->once()->andReturn(true);
+        Cache::shouldReceive('forget')->once();
+        Cache::shouldReceive('flush')->zeroOrMoreTimes();
+
+        $redisConnection = Mockery::mock();
+        Redis::shouldReceive('connection')->andReturn($redisConnection);
+        $redisConnection->shouldReceive('hset')->once();
+        $redisConnection->shouldReceive('zadd')->once();
+        $redisConnection->shouldReceive('zcard')->once()->andReturn(16016);
+        $redisConnection->shouldReceive('set')
+            ->once()
+            ->withArgs(function (string $key, string $value): bool {
+                return str_contains($key, 'admin:user-management:read-model:sync')
+                    && str_contains($value, '"state":"fresh"');
+            });
+        $redisConnection->shouldNotReceive('hgetall');
+
+        $readModel = new AdminUserManagementReadModel(
+            $repository,
+            new AdminAnalyticsService,
+            new AdminUserManagementSyncStatusFactory,
+        );
+
+        $readModel->syncUser('user-1');
     }
 }
