@@ -746,6 +746,23 @@
           return data;
         }
 
+        if (Array.isArray(data.children) && data.children.length > 0) {
+          const matchedChildren = data.children
+            .map(function (child) {
+              return matcher(params, child);
+            })
+            .filter(function (child) {
+              return child !== null;
+            });
+
+          if (matchedChildren.length > 0) {
+            return {
+              ...data,
+              children: matchedChildren,
+            };
+          }
+        }
+
         if (!data.element) {
           return data;
         }

@@ -4,14 +4,6 @@
   $title = 'Edit Participant';
 @endphp
 
-@push('vendor-styles')
-  <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/libs/select2/select2.css') }}" />
-@endpush
-
-@push('vendor-scripts')
-  <script src="{{ asset('assets-vuexy/vendor/libs/select2/select2.js') }}"></script>
-@endpush
-
 @section('content')
   <div class="row justify-content-center">
     <div class="col-12 col-xxl-10">

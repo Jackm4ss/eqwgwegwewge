@@ -17,6 +17,7 @@ class AdminUpdateUserRequest extends FormRequest
         return [
             'full_name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:255'],
+            '_skip_phone_index_sync' => ['nullable', 'boolean'],
             'phone_country_code' => ['nullable', 'string', 'max:10'],
             'phone_national_number' => ['nullable', 'string', 'max:25'],
             'phone_number' => ['nullable', 'string', 'max:30'],
@@ -47,7 +48,6 @@ class AdminUpdateUserRequest extends FormRequest
     {
         $country = strtoupper(trim((string) $this->input('country')));
         $identityType = strtolower(trim((string) $this->input('identity_type')));
-        $simplePhoneMode = filter_var($this->input('_simple_phone_mode'), FILTER_VALIDATE_BOOL);
 
         if ($country !== 'MY') {
             $identityType = 'passport';
@@ -61,8 +61,9 @@ class AdminUpdateUserRequest extends FormRequest
             'country' => $country,
             'identity_type' => $identityType,
             'identity_number' => strtoupper(trim((string) $this->input('identity_number'))),
-            'phone_country_code' => $simplePhoneMode ? '' : trim((string) $this->input('phone_country_code')),
-            'phone_national_number' => $simplePhoneMode ? '' : trim((string) $this->input('phone_national_number')),
+            '_skip_phone_index_sync' => filter_var($this->input('_skip_phone_index_sync'), FILTER_VALIDATE_BOOL),
+            'phone_country_code' => trim((string) $this->input('phone_country_code')),
+            'phone_national_number' => trim((string) $this->input('phone_national_number')),
             'phone_number' => trim((string) $this->input('phone_number')),
         ]);
     }

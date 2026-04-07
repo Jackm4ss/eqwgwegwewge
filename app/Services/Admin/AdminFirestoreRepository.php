@@ -614,9 +614,10 @@ class AdminFirestoreRepository
 
             $existing = $this->timestamps->normalizeFromStorage($this->restApi->decodeDocument($userDocument));
             $payload = $this->mergeEditableUserAttributes($existing, $attributes);
+            $skipPhoneIndexSync = $this->shouldSkipPhoneIndexSync($attributes);
 
             $emailPath = $this->emailIndexPath((string) $payload['email']);
-            $phonePath = filled($payload['phone_number'] ?? null)
+            $phonePath = ! $skipPhoneIndexSync && filled($payload['phone_number'] ?? null)
                 ? $this->phoneIndexPath((string) $payload['phone_number'])
                 : null;
             $identityPath = $this->identityIndexPath(
@@ -626,7 +627,7 @@ class AdminFirestoreRepository
             );
 
             $currentEmailPath = $this->emailIndexPath((string) $existing['email']);
-            $currentPhonePath = filled($existing['phone_number'] ?? null)
+            $currentPhonePath = ! $skipPhoneIndexSync && filled($existing['phone_number'] ?? null)
                 ? $this->phoneIndexPath((string) $existing['phone_number'])
                 : null;
             $currentIdentityPath = $this->identityIndexPath(
@@ -729,9 +730,10 @@ class AdminFirestoreRepository
 
             $existing = $this->timestamps->normalizeFromStorage($userSnapshot->data());
             $payload = $this->mergeEditableUserAttributes($existing, $attributes);
+            $skipPhoneIndexSync = $this->shouldSkipPhoneIndexSync($attributes);
 
             $emailReference = $this->documentReference($client, $this->emailIndexPath((string) $payload['email']));
-            $phoneReference = filled($payload['phone_number'] ?? null)
+            $phoneReference = ! $skipPhoneIndexSync && filled($payload['phone_number'] ?? null)
                 ? $this->documentReference($client, $this->phoneIndexPath((string) $payload['phone_number']))
                 : null;
             $identityReference = $this->documentReference($client, $this->identityIndexPath(
@@ -741,7 +743,7 @@ class AdminFirestoreRepository
             ));
 
             $currentEmailReference = $this->documentReference($client, $this->emailIndexPath((string) $existing['email']));
-            $currentPhoneReference = filled($existing['phone_number'] ?? null)
+            $currentPhoneReference = ! $skipPhoneIndexSync && filled($existing['phone_number'] ?? null)
                 ? $this->documentReference($client, $this->phoneIndexPath((string) $existing['phone_number']))
                 : null;
             $currentIdentityReference = $this->documentReference($client, $this->identityIndexPath(
@@ -2697,6 +2699,11 @@ class AdminFirestoreRepository
             'created_at' => $user['created_at'] ?? now()->toISOString(),
             'updated_at' => $user['updated_at'] ?? now()->toISOString(),
         ];
+    }
+
+    private function shouldSkipPhoneIndexSync(array $attributes): bool
+    {
+        return filter_var($attributes['_skip_phone_index_sync'] ?? false, FILTER_VALIDATE_BOOL);
     }
 
     private function buildScanLogPayload(array $entry): array

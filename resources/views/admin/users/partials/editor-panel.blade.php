@@ -1,6 +1,7 @@
 @once
   @push('vendor-styles')
     <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/fonts/flag-icons.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/libs/select2/select2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/libs/sweetalert2/sweetalert2.css') }}" />
     <style>
       .user-editor-shell {
@@ -107,6 +108,121 @@
         min-height: calc(2.75rem + 2px);
       }
 
+      .user-editor-shell .select2-container {
+        width: 100% !important;
+      }
+
+      .user-editor-shell .select2-container .select2-selection--single {
+        min-height: calc(2.75rem + 2px);
+        border-color: var(--bs-border-color);
+        border-radius: var(--bs-border-radius);
+        display: flex;
+        align-items: center;
+        box-shadow: none;
+      }
+
+      .user-editor-shell .select2-container .select2-selection__rendered {
+        width: 100%;
+        min-height: calc(2.75rem + 2px);
+        padding-left: 0.875rem;
+        padding-right: 2.5rem;
+        display: flex;
+        align-items: center;
+        line-height: 1.2;
+        color: var(--bs-body-color);
+      }
+
+      .user-editor-shell .select2-container .select2-selection__arrow {
+        height: 100%;
+        right: 0.5rem;
+        width: 1.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .user-editor-shell .select2-container .select2-selection__arrow b {
+        margin-top: 0 !important;
+      }
+
+      .user-editor-shell .form-select.is-invalid + .select2-container .select2-selection--single {
+        border-color: var(--bs-form-invalid-border-color);
+      }
+
+      .user-editor-shell .select2-container--disabled .select2-selection--single {
+        background: rgba(67, 89, 113, 0.06);
+      }
+
+      .user-editor-shell .select2-dropdown {
+        border-color: rgba(67, 89, 113, 0.14);
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 1rem 2rem rgba(67, 89, 113, 0.14);
+      }
+
+      .user-editor-shell .select2-search--dropdown {
+        padding: 0.75rem;
+        border-bottom: 1px solid rgba(67, 89, 113, 0.12);
+      }
+
+      .user-editor-shell .select2-search__field {
+        border-radius: 0.75rem !important;
+        border-color: rgba(67, 89, 113, 0.16) !important;
+        min-height: 2.5rem;
+        padding: 0.65rem 0.85rem !important;
+      }
+
+      .user-editor-shell .select2-results__group {
+        padding: 0.6rem 0.9rem;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--bs-secondary-color);
+        border-top: 1px solid rgba(67, 89, 113, 0.08);
+        background: rgba(245, 247, 250, 0.92);
+      }
+
+      .user-editor-shell .select2-results__option--group:first-child .select2-results__group {
+        border-top: 0;
+      }
+
+      .user-editor-shell .select2-results__option {
+        padding: 0.7rem 0.9rem;
+      }
+
+      .user-editor-select-option {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        min-width: 0;
+        width: 100%;
+      }
+
+      .user-editor-select-text {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        width: 100%;
+        flex: 1 1 auto;
+      }
+
+      .user-editor-select-primary {
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .user-editor-select-secondary {
+        color: var(--bs-secondary-color);
+        white-space: nowrap;
+        font-weight: 500;
+        flex: 0 0 auto;
+      }
+
       .user-editor-shell .form-control[readonly],
       .user-editor-shell .form-select:disabled {
         color: var(--bs-heading-color);
@@ -166,32 +282,91 @@
   @endpush
 
   @push('vendor-scripts')
+    <script src="{{ asset('assets-vuexy/vendor/libs/select2/select2.js') }}"></script>
     <script src="{{ asset('assets-vuexy/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
   @endpush
 
   @push('page-scripts')
     <script>
       document.addEventListener('DOMContentLoaded', function () {
-        const bindCountryFlagSelect = function (element) {
+        const escapeHtml = function (value) {
+          return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+        };
+
+        const renderSelectMarkup = function (option, mode) {
+          if (!option.id) {
+            return escapeHtml(option.text || '');
+          }
+
+          const element = option.element;
+          const flag = element?.dataset.flag || 'xx';
+          const label = element?.dataset.label || option.text || '';
+          const secondary = element?.dataset.secondary || '';
+
+          if (mode === 'phone-selection') {
+            return `
+              <span class="user-editor-select-option">
+                <span class="fi fis fi-${escapeHtml(flag)} user-editor-flag"></span>
+                <span class="user-editor-select-secondary">${escapeHtml(secondary || label)}</span>
+              </span>
+            `;
+          }
+
+          return `
+            <span class="user-editor-select-option">
+              <span class="fi fis fi-${escapeHtml(flag)} user-editor-flag"></span>
+              <span class="user-editor-select-text">
+                <span class="user-editor-select-primary">${escapeHtml(label)}</span>
+                ${secondary ? `<span class="user-editor-select-secondary">${escapeHtml(secondary)}</span>` : ''}
+              </span>
+            </span>
+          `;
+        };
+
+        const matcher = function (params, data) {
+          const term = window.jQuery.trim(params.term || '').toLowerCase();
+
+          if (term === '') {
+            return data;
+          }
+
+          if (Array.isArray(data.children) && data.children.length > 0) {
+            const matchedChildren = data.children
+              .map(function (child) {
+                return matcher(params, child);
+              })
+              .filter(function (child) {
+                return child !== null;
+              });
+
+            if (matchedChildren.length > 0) {
+              return {
+                ...data,
+                children: matchedChildren,
+              };
+            }
+          }
+
+          if (!data.element) {
+            return data;
+          }
+
+          const haystack = String(data.element.dataset.search || data.text || '').toLowerCase();
+
+          return haystack.includes(term) ? data : null;
+        };
+
+        const bindEnhancedSelect = function (element) {
           if (!element || typeof window.jQuery === 'undefined' || !window.jQuery.fn.select2) {
             return;
           }
 
           const $select = window.jQuery(element);
-          const renderCountryOption = function (option) {
-            if (!option.id) {
-              return option.text;
-            }
-
-            const flagCode = option.element?.dataset.flag || 'xx';
-
-            return `
-              <span class="d-flex align-items-center gap-2">
-                <span class="fi fis fi-${flagCode} user-editor-flag"></span>
-                <span>${option.text}</span>
-              </span>
-            `;
-          };
 
           if (!$select.parent().hasClass('position-relative')) {
             $select.wrap('<div class="position-relative"></div>');
@@ -204,15 +379,34 @@
           }
 
           const modalParent = $select.closest('.modal');
+          const kind = element.dataset.userSelectKind || 'country';
+          const isPhone = kind === 'phone';
+          const searchPlaceholder = element.dataset.placeholder || (isPhone ? 'Search country or dial code...' : 'Search nationality...');
 
           $select.select2({
+            width: '100%',
             dropdownParent: modalParent.length ? modalParent : $select.parent(),
-            minimumResultsForSearch: 8,
-            templateResult: renderCountryOption,
-            templateSelection: renderCountryOption,
+            matcher,
+            minimumResultsForSearch: 0,
+            placeholder: !element.required ? searchPlaceholder : undefined,
+            allowClear: !element.required,
+            templateResult: function (option) {
+              return renderSelectMarkup(option, isPhone ? 'phone-option' : 'country-option');
+            },
+            templateSelection: function (option) {
+              return renderSelectMarkup(option, isPhone ? 'phone-selection' : 'country-selection');
+            },
             escapeMarkup: function (markup) {
               return markup;
             },
+          });
+
+          $select.on('select2:open.userSearchPlaceholder', function () {
+            const searchField = window.jQuery('.select2-container--open .select2-search__field').last();
+
+            if (searchField.length) {
+              searchField.attr('placeholder', searchPlaceholder);
+            }
           });
         };
 
@@ -301,6 +495,56 @@
           sync();
         };
 
+        const normalizePhoneCountryCode = function (value) {
+          const digits = String(value || '').replace(/\D+/g, '');
+
+          return digits !== '' ? `+${digits}` : '';
+        };
+
+        const normalizePhoneNationalNumber = function (value) {
+          return String(value || '').replace(/\D+/g, '').replace(/^0+/, '');
+        };
+
+        const bindSimplePhoneSubmit = function (shell) {
+          if (!shell || shell.dataset.simplePhoneBound === 'true') {
+            return;
+          }
+
+          const form = shell.querySelector('form');
+          const phoneNumberInput = form?.querySelector('input[name="phone_number"]');
+          const simplePhoneModeInput = form?.querySelector('input[name="_simple_phone_mode"]');
+          const phoneCountryCodeSelect = form?.querySelector('select[name="phone_country_code"]');
+          const phoneNationalNumberInput = form?.querySelector('input[name="phone_national_number"]');
+
+          if (!form || !phoneNumberInput || !simplePhoneModeInput || !phoneCountryCodeSelect || !phoneNationalNumberInput) {
+            return;
+          }
+
+          const syncPhoneNumber = function () {
+            const phoneCountryCode = normalizePhoneCountryCode(phoneCountryCodeSelect.value);
+            const phoneNationalNumber = normalizePhoneNationalNumber(phoneNationalNumberInput.value);
+
+            phoneNumberInput.value = phoneNationalNumber !== ''
+              ? `${phoneCountryCode}${phoneNationalNumber}`
+              : '';
+          };
+
+          phoneCountryCodeSelect.addEventListener('change', syncPhoneNumber);
+          phoneNationalNumberInput.addEventListener('input', syncPhoneNumber);
+
+          if (typeof window.jQuery !== 'undefined') {
+            window.jQuery(phoneCountryCodeSelect).on('select2:select.userPhone select2:clear.userPhone', syncPhoneNumber);
+          }
+
+          form.addEventListener('submit', function () {
+            simplePhoneModeInput.value = '1';
+            syncPhoneNumber();
+          });
+
+          syncPhoneNumber();
+          shell.dataset.simplePhoneBound = 'true';
+        };
+
         window.refreshUserEditorIdentityRules = function (scope) {
           const shells = scope
             ? (scope.matches?.('[data-user-editor-shell]') ? [scope] : scope.querySelectorAll?.('[data-user-editor-shell]') || [])
@@ -308,17 +552,18 @@
 
           Array.from(shells).forEach(function (shell) {
             bindIdentityTypeControl(shell);
+            bindSimplePhoneSubmit(shell);
             shell._syncIdentityTypeControl?.();
           });
         };
 
         window.refreshUserEditorCountrySelects = function (scope) {
           const selects = scope
-            ? (scope.matches?.('[data-user-country-select]') ? [scope] : scope.querySelectorAll?.('[data-user-country-select]') || [])
-            : document.querySelectorAll('[data-user-country-select]');
+            ? (scope.matches?.('[data-user-select-kind]') ? [scope] : scope.querySelectorAll?.('[data-user-select-kind]') || [])
+            : document.querySelectorAll('[data-user-select-kind]');
 
           Array.from(selects).forEach(function (select) {
-            bindCountryFlagSelect(select);
+            bindEnhancedSelect(select);
           });
         };
 
@@ -425,30 +670,12 @@
   $ticketCode = (string) data_get($ticket, 'ticket_code', $user['ticket_code'] ?? '-');
   $identityType = (string) ($user['identity_type'] ?? 'passport');
   $identityTypeLabel = $identityType === 'national_id' ? 'Malaysia IC (MyKad)' : 'Passport';
-  $countryLabel = (string) ($user['country_label'] ?? ($user['country'] ?? '-'));
+  $countryLabel = (string) ($user['country_label'] ?? (\App\Support\CountryCatalog::nameFor($user['country'] ?? null) ?? ($user['country'] ?? '-')));
   $phoneDisplay = (string) ($user['phone_number'] ?? '');
 
   if ($phoneDisplay === '' && filled($user['phone_country_code'] ?? null) && filled($user['phone_national_number'] ?? null)) {
     $phoneDisplay = (string) $user['phone_country_code'] . (string) $user['phone_national_number'];
   }
-
-  $countryOptions = [
-    'AU' => 'Australia',
-    'CN' => 'China',
-    'DE' => 'Germany',
-    'FR' => 'France',
-    'GB' => 'United Kingdom',
-    'ID' => 'Indonesia',
-    'IN' => 'India',
-    'JP' => 'Japan',
-    'KR' => 'South Korea',
-    'MY' => 'Malaysia',
-    'PH' => 'Philippines',
-    'SG' => 'Singapore',
-    'TH' => 'Thailand',
-    'US' => 'United States',
-    'VN' => 'Vietnam',
-  ];
 
   $initials = static function (?string $name): string {
     $parts = preg_split('/\s+/u', trim((string) $name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
@@ -464,13 +691,121 @@
     return $oldInputEnabled ? old($key, data_get($user, $key, $default)) : data_get($user, $key, $default);
   };
 
-  $currentCountry = strtoupper((string) $fieldValue('country', $user['country'] ?? ''));
+  $normalizePhoneNumber = static function (?string $phoneNumber): string {
+    $digits = preg_replace('/\D+/', '', (string) $phoneNumber) ?? '';
 
-  if ($currentCountry !== '' && !array_key_exists($currentCountry, $countryOptions)) {
-    $countryOptions[$currentCountry] = $countryLabel !== '' ? $countryLabel : $currentCountry;
+    return $digits === '' ? '' : '+' . $digits;
+  };
+
+  $currentCountry = strtoupper((string) $fieldValue('country', $user['country'] ?? ''));
+  $countryOptionGroups = \App\Support\CountryCatalog::registrationCountryGroups();
+  $phoneOptionGroups = \App\Support\CountryCatalog::registrationPhoneGroups();
+  $flatPhoneOptions = collect($phoneOptionGroups)
+    ->flatten(1)
+    ->filter(fn (mixed $option): bool => is_array($option))
+    ->sortByDesc(fn (array $option): int => strlen((string) ($option['dial_code'] ?? '')))
+    ->values()
+    ->all();
+
+  $resolvePhoneParts = static function (array $source) use ($normalizePhoneNumber, $flatPhoneOptions): array {
+    $phoneCountryCode = trim((string) ($source['phone_country_code'] ?? ''));
+    $phoneNationalNumber = trim((string) ($source['phone_national_number'] ?? ''));
+    $phoneNumber = $normalizePhoneNumber((string) ($source['phone_number'] ?? ''));
+    $phoneOptionCountry = '';
+
+    if ($phoneNumber === '' && $phoneCountryCode !== '' && $phoneNationalNumber !== '') {
+      $phoneNumber = $phoneCountryCode . $phoneNationalNumber;
+    }
+
+    if ($phoneNumber !== '') {
+      $matchedPhoneOption = collect($flatPhoneOptions)->first(function (array $option) use ($phoneNumber): bool {
+        $dialCode = (string) ($option['dial_code'] ?? '');
+
+        return $dialCode !== '' && str_starts_with($phoneNumber, $dialCode);
+      });
+
+      if (is_array($matchedPhoneOption)) {
+        $phoneOptionCountry = strtoupper((string) ($matchedPhoneOption['country_code'] ?? ''));
+
+        if ($phoneCountryCode === '') {
+          $phoneCountryCode = (string) ($matchedPhoneOption['dial_code'] ?? '');
+        }
+      }
+    }
+
+    if ($phoneNationalNumber === '' && $phoneNumber !== '') {
+      if ($phoneCountryCode !== '' && str_starts_with($phoneNumber, $phoneCountryCode)) {
+        $phoneNationalNumber = ltrim(substr($phoneNumber, strlen($phoneCountryCode)), '0');
+      } else {
+        $phoneNationalNumber = ltrim(ltrim($phoneNumber, '+'), '0');
+      }
+    }
+
+    return [
+      'phone_country_code' => $phoneCountryCode,
+      'phone_national_number' => $phoneNationalNumber,
+      'phone_number' => $phoneNumber,
+      'phone_option_country' => $phoneOptionCountry,
+    ];
+  };
+
+  $currentPhoneParts = $resolvePhoneParts([
+    'phone_country_code' => $fieldValue('phone_country_code', $user['phone_country_code'] ?? ''),
+    'phone_national_number' => $fieldValue('phone_national_number', $user['phone_national_number'] ?? ''),
+    'phone_number' => $fieldValue('phone_number', $phoneDisplay),
+  ]);
+  $selectedPhoneCountryCode = (string) ($currentPhoneParts['phone_country_code'] ?? '');
+  $selectedPhoneNationalNumber = (string) ($currentPhoneParts['phone_national_number'] ?? '');
+  $selectedPhoneOptionCountry = (string) ($currentPhoneParts['phone_option_country'] ?? '');
+
+  $currentCountryExists = collect($countryOptionGroups)
+    ->flatten(1)
+    ->contains(fn (mixed $option): bool => is_array($option) && strtoupper((string) ($option['code'] ?? '')) === $currentCountry);
+
+  if ($currentCountry !== '' && !$currentCountryExists) {
+    $countryOptionGroups['other'][] = [
+      'code' => $currentCountry,
+      'alpha3' => '',
+      'name' => $countryLabel !== '' ? $countryLabel : $currentCountry,
+      'flag' => strtolower($currentCountry),
+      'group' => 'other',
+    ];
+
+    usort($countryOptionGroups['other'], fn (array $left, array $right): int => strcmp((string) ($left['name'] ?? ''), (string) ($right['name'] ?? '')));
   }
 
-  asort($countryOptions);
+  $selectedPhoneOptionExists = collect($phoneOptionGroups)
+    ->flatten(1)
+    ->contains(function (mixed $option) use ($selectedPhoneCountryCode, $selectedPhoneOptionCountry): bool {
+      if (!is_array($option)) {
+        return false;
+      }
+
+      if ((string) ($option['dial_code'] ?? '') !== $selectedPhoneCountryCode) {
+        return false;
+      }
+
+      return $selectedPhoneOptionCountry === ''
+        || strtoupper((string) ($option['country_code'] ?? '')) === $selectedPhoneOptionCountry;
+    });
+
+  if ($selectedPhoneCountryCode !== '' && !$selectedPhoneOptionExists) {
+    $fallbackPhoneCountry = $selectedPhoneOptionCountry !== '' ? $selectedPhoneOptionCountry : $currentCountry;
+    $fallbackPhoneCountryName = \App\Support\CountryCatalog::nameFor($fallbackPhoneCountry) ?? ($countryLabel !== '' ? $countryLabel : $fallbackPhoneCountry);
+
+    $phoneOptionGroups['other'][] = [
+      'value' => $selectedPhoneCountryCode,
+      'key' => ($fallbackPhoneCountry !== '' ? $fallbackPhoneCountry : 'ZZ') . ':' . $selectedPhoneCountryCode,
+      'country_code' => $fallbackPhoneCountry !== '' ? $fallbackPhoneCountry : 'ZZ',
+      'alpha3' => '',
+      'name' => $fallbackPhoneCountryName !== '' ? $fallbackPhoneCountryName : $selectedPhoneCountryCode,
+      'dial_code' => $selectedPhoneCountryCode,
+      'flag' => preg_match('/^[A-Z]{2}$/', $fallbackPhoneCountry) ? strtolower($fallbackPhoneCountry) : 'xx',
+      'group' => 'other',
+    ];
+
+    usort($phoneOptionGroups['other'], fn (array $left, array $right): int => strcmp((string) ($left['name'] ?? ''), (string) ($right['name'] ?? '')));
+  }
 
   $invalidClass = static function (string $key) use ($oldInputEnabled, $viewErrors): string {
     return $oldInputEnabled && $viewErrors->has($key) ? 'is-invalid' : '';
@@ -518,8 +853,8 @@
         <input type="hidden" name="_modal_user_id" value="{{ $user['user_id'] }}" />
         <input type="hidden" name="_modal_mode" value="edit" />
         <input type="hidden" name="_simple_phone_mode" value="1" />
-        <input type="hidden" name="phone_country_code" value="" />
-        <input type="hidden" name="phone_national_number" value="" />
+        <input type="hidden" name="_skip_phone_index_sync" value="1" />
+        <input type="hidden" name="phone_number" value="{{ $currentPhoneParts['phone_number'] ?? '' }}" />
         <input type="hidden" name="identity_type" value="{{ $fieldValue('identity_type', $identityType) }}"
           data-user-identity-hidden />
 
@@ -551,22 +886,71 @@
             </div>
 
             <div class="col-md-6">
-              <label class="form-label" for="{{ $fieldIdPrefix }}-phone-number">Phone Number / WhatsApp</label>
-              <input type="text" class="form-control {{ $invalidClass('phone_number') }}"
-                id="{{ $fieldIdPrefix }}-phone-number" name="phone_number"
-                value="{{ $fieldValue('phone_number', $phoneDisplay) }}" placeholder="+628123456789" {{ $isReadonly ? 'readonly' : '' }} data-user-input />
-              @if ($errorMessage('phone_number'))
-                <div class="invalid-feedback d-block">{{ $errorMessage('phone_number') }}</div>
-              @endif
+              <label class="form-label" for="{{ $fieldIdPrefix }}-phone-national-number">Phone Number / WhatsApp</label>
+              <div class="d-grid gap-3">
+                <div>
+                  <select class="form-select {{ $invalidClass('phone_country_code') }}"
+                    id="{{ $fieldIdPrefix }}-phone-country-code" name="phone_country_code" {{ $isReadonly ? 'disabled' : '' }}
+                    data-user-input data-user-select-kind="phone" data-placeholder="Search country or dial code...">
+                    <option value=""></option>
+                    @php
+                      $selectedPhoneCountryCodeResolved = false;
+                    @endphp
+                    @foreach ($phoneOptionGroups as $group => $groupOptions)
+                      <optgroup label="{{ $group === 'priority' ? 'Priority Countries' : 'All Other Countries' }}">
+                        @foreach ($groupOptions as $option)
+                          @php
+                            $matchesSelectedPhoneOption = !$selectedPhoneCountryCodeResolved
+                              && $selectedPhoneCountryCode !== ''
+                              && $selectedPhoneCountryCode === ($option['dial_code'] ?? '')
+                              && ($selectedPhoneOptionCountry === '' || $selectedPhoneOptionCountry === strtoupper((string) ($option['country_code'] ?? '')));
+                            $selectedPhoneCountryCodeResolved = $selectedPhoneCountryCodeResolved || $matchesSelectedPhoneOption;
+                          @endphp
+                          <option value="{{ $option['dial_code'] }}" data-flag="{{ $option['flag'] }}"
+                            data-label="{{ $option['name'] }}" data-secondary="{{ $option['dial_code'] }}"
+                            data-search="{{ implode(' ', array_filter([$option['name'], $option['dial_code'], $option['country_code'], $option['alpha3']])) }}"
+                            @selected($matchesSelectedPhoneOption)>
+                            {{ $option['name'] }} {{ $option['dial_code'] }}
+                          </option>
+                        @endforeach
+                      </optgroup>
+                    @endforeach
+                  </select>
+                  @if ($errorMessage('phone_country_code'))
+                    <div class="invalid-feedback d-block">{{ $errorMessage('phone_country_code') }}</div>
+                  @endif
+                </div>
+                <div>
+                  <input type="text"
+                    class="form-control {{ trim($invalidClass('phone_national_number') . ' ' . $invalidClass('phone_number')) }}"
+                    id="{{ $fieldIdPrefix }}-phone-national-number" name="phone_national_number"
+                    value="{{ $selectedPhoneNationalNumber }}" placeholder="8123456789" inputmode="numeric"
+                    {{ $isReadonly ? 'readonly' : '' }} data-user-input />
+                  @if ($errorMessage('phone_national_number'))
+                    <div class="invalid-feedback d-block">{{ $errorMessage('phone_national_number') }}</div>
+                  @endif
+                  @if ($errorMessage('phone_number'))
+                    <div class="invalid-feedback d-block">{{ $errorMessage('phone_number') }}</div>
+                  @endif
+                </div>
+              </div>
+              <small class="text-muted d-block mt-2">Choose the country code first, then enter the number without the leading zero.</small>
             </div>
 
             <div class="col-md-6">
               <label class="form-label" for="{{ $fieldIdPrefix }}-country">Country</label>
               <select class="form-select {{ $invalidClass('country') }}" id="{{ $fieldIdPrefix }}-country"
-                name="country" {{ $isReadonly ? 'disabled' : '' }} data-user-input data-user-country-select required>
-                @foreach ($countryOptions as $countryCodeOption => $countryName)
-                  <option value="{{ $countryCodeOption }}" data-flag="{{ strtolower($countryCodeOption) }}"
-                    @selected($fieldValue('country', $user['country'] ?? '') === $countryCodeOption)>{{ $countryName }}</option>
+                name="country" {{ $isReadonly ? 'disabled' : '' }} data-user-input data-user-country-select
+                data-user-select-kind="country" data-placeholder="Search nationality..." required>
+                @foreach ($countryOptionGroups as $group => $groupCountries)
+                  <optgroup label="{{ $group === 'priority' ? 'Priority Countries' : 'All Other Countries' }}">
+                    @foreach ($groupCountries as $country)
+                      <option value="{{ $country['code'] }}" data-flag="{{ $country['flag'] }}"
+                        data-label="{{ $country['name'] }}"
+                        data-search="{{ implode(' ', array_filter([$country['name'], $country['code'], $country['alpha3']])) }}"
+                        @selected($fieldValue('country', $user['country'] ?? '') === $country['code'])>{{ $country['name'] }}</option>
+                    @endforeach
+                  </optgroup>
                 @endforeach
               </select>
               @if ($errorMessage('country'))
