@@ -2,7 +2,9 @@
 
 use App\Http\Middleware\EnsureAdminRole;
 use App\Http\Middleware\EnsureEmailVerifiedForLogin;
+use App\Jobs\RefreshAttendanceReadModelMetaJob;
 use App\Jobs\RefreshUserManagementReadModelMetaJob;
+use App\Jobs\RebuildAttendanceReadModelJob;
 use App\Jobs\RebuildUserManagementReadModelJob;
 use App\Support\AppRouting;
 use Illuminate\Console\Scheduling\Schedule;
@@ -44,6 +46,31 @@ $app = Application::configure(basePath: dirname(__DIR__))
                 $connection,
             )
                 ->name('admin-user-management-read-model-reconcile')
+                ->cron(sprintf('*/%d * * * *', $reconcileMinutes))
+                ->withoutOverlapping();
+        }
+
+        if ((bool) config('admin.attendance.read_model.enabled', false)) {
+            $metaRefreshMinutes = max(1, (int) config('admin.attendance.read_model.meta_refresh_minutes', 3));
+            $reconcileMinutes = max(5, (int) config('admin.attendance.read_model.reconcile_minutes', 15));
+            $queue = (string) config('admin.attendance.read_model.rebuild_queue', 'admin-sync-low');
+            $connection = (string) config('admin.attendance.read_model.queue_connection', config('queue.default', 'sync'));
+
+            $schedule->job(
+                new RefreshAttendanceReadModelMetaJob('scheduled_meta_refresh'),
+                $queue,
+                $connection,
+            )
+                ->name('admin-attendance-read-model-meta-refresh')
+                ->cron(sprintf('*/%d * * * *', $metaRefreshMinutes))
+                ->withoutOverlapping();
+
+            $schedule->job(
+                new RebuildAttendanceReadModelJob('scheduled_reconcile'),
+                $queue,
+                $connection,
+            )
+                ->name('admin-attendance-read-model-reconcile')
                 ->cron(sprintf('*/%d * * * *', $reconcileMinutes))
                 ->withoutOverlapping();
         }

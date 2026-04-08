@@ -827,51 +827,56 @@ class AdminAuthenticationTest extends TestCase
             ->assertSessionHas('status', 'Participant data was updated successfully.');
     }
 
-    public function test_admin_attendance_page_uses_friendly_operational_labels(): void
+    public function test_admin_attendance_page_renders_near_realtime_summary_filters_and_participant_table(): void
     {
         $admin = Admin::query()->firstOrFail();
 
         $this->mock(AdminPanelService::class, function ($mock): void {
-            $mock->shouldReceive('attendanceData')
+            $mock->shouldReceive('attendanceManagementPage')
                 ->once()
+                ->with([])
                 ->andReturn([
-                    'history' => new LengthAwarePaginator(
+                    'rows' => new LengthAwarePaginator(
                         [
                             [
-                                'scanned_at' => '2026-03-25T09:00:00Z',
-                                'scan_date' => '2026-03-25',
-                                'ticket_code' => 'TICKET-123',
-                                'entry_code_display' => 'ABCD-1234',
+                                'participant_key' => 'user:user-123',
                                 'user_id' => 'user-123',
+                                'full_name' => 'Alya Putri',
+                                'email' => 'alya@example.test',
+                                'initials' => 'AP',
+                                'country' => 'MY',
+                                'country_label' => 'Malaysia',
+                                'entry_code_display' => 'ABCD-1234',
+                                'attendance_days_count' => 1,
+                                'attendance_total_days' => 2,
+                                'attendance_progress_percent' => 50,
+                                'attendance_status' => 'checked_in',
+                                'checked_in_at' => '2026-03-25T09:00:00Z',
                                 'scanner_name' => 'Gate A',
                                 'scanner_role' => 'staff',
                                 'scanner_id' => 'scanner-1',
-                                'result' => 'success',
-                                'participant' => [
-                                    'email' => 'alya@example.test',
-                                    'full_name' => 'Alya Putri',
-                                    'phone_number' => '+60123456789',
-                                    'country_label' => 'Malaysia',
-                                    'entry_code_display' => 'ABCD-1234',
-                                ],
+                                'latest_scan_at' => '2026-03-25T09:05:00Z',
+                                'latest_scan_result' => 'duplicate',
                             ],
                             [
-                                'scanned_at' => '2026-03-25T09:05:00Z',
-                                'scan_date' => '2026-03-25',
-                                'ticket_code' => 'TICKET-123',
-                                'entry_code_display' => 'ABCD-1234',
-                                'user_id' => 'user-123',
-                                'scanner_name' => 'Gate A',
+                                'participant_key' => 'user:user-456',
+                                'user_id' => 'user-456',
+                                'full_name' => 'Rafi Hakim',
+                                'email' => 'rafi@example.test',
+                                'initials' => 'RH',
+                                'country' => 'SG',
+                                'country_label' => 'Singapore',
+                                'entry_code_display' => 'WXYZ-6789',
+                                'attendance_days_count' => 0,
+                                'attendance_total_days' => 2,
+                                'attendance_progress_percent' => 0,
+                                'attendance_status' => 'not_checked_in',
+                                'checked_in_at' => null,
+                                'scanner_name' => 'Gate B',
                                 'scanner_role' => 'staff',
-                                'scanner_id' => 'scanner-1',
-                                'result' => 'duplicate',
-                                'participant' => [
-                                    'email' => 'alya@example.test',
-                                    'full_name' => 'Alya Putri',
-                                    'phone_number' => '+60123456789',
-                                    'country_label' => 'Malaysia',
-                                    'entry_code_display' => 'ABCD-1234',
-                                ],
+                                'scanner_id' => 'scanner-2',
+                                'latest_scan_at' => '2026-03-25T09:10:00Z',
+                                'latest_scan_result' => 'invalid',
                             ],
                         ],
                         2,
@@ -882,34 +887,81 @@ class AdminAuthenticationTest extends TestCase
                             'pageName' => 'page',
                         ],
                     ),
-                    'daily_attendance' => [
-                        [
-                            'scan_date' => '2026-03-25',
-                            'total_scans' => 2,
-                            'successful_attendance' => 1,
-                            'duplicate_scans' => 1,
-                            'invalid_scans' => 0,
+                    'overview' => [
+                        'total_attendance' => 2,
+                        'checked_in' => 1,
+                        'repeat_scans' => 1,
+                        'needs_review' => 1,
+                        'gate_counts' => [
+                            [
+                                'label' => 'Gate A',
+                                'count' => 2,
+                            ],
+                            [
+                                'label' => 'Gate B',
+                                'count' => 1,
+                            ],
                         ],
                     ],
-                    'scanner_activity' => [
-                        [
-                            'scanner_name' => 'Gate A',
-                            'scanner_role' => 'staff',
-                            'scanner_id' => 'scanner-1',
-                            'total_scans' => 2,
-                            'successful_scans' => 1,
-                            'duplicate_scans' => 1,
-                            'invalid_scans' => 0,
-                            'last_scanned_at' => '2026-03-25T09:05:00Z',
+                    'filter_options' => [
+                        'countries' => [
+                            [
+                                'value' => 'MY',
+                                'label' => 'Malaysia',
+                                'count' => 1,
+                            ],
+                            [
+                                'value' => 'SG',
+                                'label' => 'Singapore',
+                                'count' => 1,
+                            ],
+                        ],
+                        'identity_types' => [
+                            [
+                                'value' => 'national_id',
+                                'label' => 'Malaysia IC (MyKad)',
+                                'count' => 1,
+                            ],
+                            [
+                                'value' => 'passport',
+                                'label' => 'Passport',
+                                'count' => 1,
+                            ],
+                        ],
+                        'attendance_statuses' => [
+                            [
+                                'value' => 'checked_in',
+                                'label' => 'Checked In',
+                                'count' => 1,
+                            ],
+                            [
+                                'value' => 'not_checked_in',
+                                'label' => 'Not Checked In',
+                                'count' => 1,
+                            ],
+                        ],
+                        'scan_posts' => [
+                            [
+                                'value' => 'Gate A',
+                                'label' => 'Gate A',
+                                'count' => 2,
+                            ],
+                            [
+                                'value' => 'Gate B',
+                                'label' => 'Gate B',
+                                'count' => 1,
+                            ],
                         ],
                     ],
-                    'scan_post_options' => [
-                        [
-                            'value' => 'Gate A',
-                            'label' => 'Gate A',
-                            'scanner_role' => 'staff',
-                            'scanner_id' => 'scanner-1',
-                        ],
+                    'sync_status' => [
+                        'state' => 'fresh',
+                        'source' => 'read_model',
+                        'last_synced_at_utc' => '2026-03-25T09:10:00Z',
+                        'fresh_within_seconds' => 15,
+                        'degraded_after_seconds' => 60,
+                        'fallback_after_seconds' => 300,
+                        'relative_label' => 'Refresh in 15s',
+                        'helper_label' => 'After the timer ends, refresh browser to see the latest data.',
                     ],
                 ]);
 
@@ -922,89 +974,142 @@ class AdminAuthenticationTest extends TestCase
             ->get('/admin/attendance');
 
         $response->assertOk()
-            ->assertSee('Attendance Monitoring')
-            ->assertSee('Scan post')
-            ->assertSee('All scan posts')
-            ->assertSee('How to read the statuses')
+            ->assertSee('Data Attendance')
+            ->assertSee('Near realtime attendance directory for participant scans, gate activity, and issue follow-up.')
+            ->assertSee('Refresh in')
+            ->assertSee('After the timer ends, refresh browser to see the latest data.')
+            ->assertSee('Total Attendance')
             ->assertSee('Checked In')
-            ->assertSee('Already Scanned')
+            ->assertSee('Repeat Scans')
             ->assertSee('Needs Review')
-            ->assertSee('Latest Scan Activity')
-            ->assertSee('Email')
-            ->assertSee('Full Name')
-            ->assertSee('Phone Number')
+            ->assertSee('Gate A')
+            ->assertSee('Gate B')
+            ->assertSee('Filters')
             ->assertSee('Country')
+            ->assertSee('Document Type')
+            ->assertSee('Check-In Status')
+            ->assertSee('Scan Post')
+            ->assertSee('From Date')
+            ->assertSee('To Date')
+            ->assertSee('Search participant, entry code, passport/MyKad, phone')
+            ->assertSee('Malaysia IC (MyKad) (1)')
+            ->assertSee('Passport (1)')
+            ->assertSee('Participant')
+            ->assertSee('Entry Code')
+            ->assertSee('Attendance')
+            ->assertSee('Alya Putri')
+            ->assertSee('Rafi Hakim')
             ->assertSee('ABCD-1234')
-            ->assertSee('Daily Summary')
-            ->assertSee('Scan Posts / Staff')
-            ->assertDontSee('Download CSV');
+            ->assertSee('WXYZ-6789')
+            ->assertSee('Malaysia')
+            ->assertSee('Singapore')
+            ->assertSee('Repeat Scan')
+            ->assertSee('Not Checked In')
+            ->assertSee('2 participants found');
     }
 
-    public function test_admin_attendance_page_paginates_daily_summary_and_scanner_activity_sections(): void
+    public function test_admin_attendance_page_passes_filters_to_management_page_and_renders_requested_result_page(): void
     {
         $admin = Admin::query()->firstOrFail();
 
-        $dailyAttendance = [];
-        foreach (range(1, 12) as $index) {
-            $dailyAttendance[] = [
-                'scan_date' => sprintf('2026-03-%02d', 31 - $index),
-                'total_scans' => $index <= 10 ? $index * 10 : ($index - 10) * 1111,
-                'successful_attendance' => $index,
-                'duplicate_scans' => max(0, $index - 1),
-                'invalid_scans' => 0,
-            ];
-        }
-
-        $scannerActivity = [];
-        foreach (range(1, 12) as $index) {
-            $scannerActivity[] = [
-                'scanner_name' => $index <= 10 ? 'Gate First '.$index : 'Gate Last '.$index,
-                'scanner_role' => 'staff',
-                'scanner_id' => 'scanner-'.$index,
-                'total_scans' => 50 + $index,
-                'successful_scans' => 20 + $index,
-                'duplicate_scans' => $index,
-                'invalid_scans' => 0,
-                'last_scanned_at' => sprintf('2026-03-%02dT09:00:00Z', 31 - $index),
-            ];
-        }
-
-        $this->mock(AdminPanelService::class, function ($mock) use ($dailyAttendance, $scannerActivity): void {
-            $mock->shouldReceive('attendanceData')
+        $this->mock(AdminPanelService::class, function ($mock): void {
+            $mock->shouldReceive('attendanceManagementPage')
                 ->once()
+                ->withArgs(function (array $filters): bool {
+                    return ($filters['q'] ?? null) === 'MYKAD-7788'
+                        && ($filters['country'] ?? null) === 'MY'
+                        && ($filters['identity_type'] ?? null) === 'national_id'
+                        && ($filters['attendance_status'] ?? null) === 'checked_in'
+                        && ($filters['scanner_post'] ?? null) === 'Gate C'
+                        && ($filters['from'] ?? null) === '2026-03-24'
+                        && ($filters['to'] ?? null) === '2026-03-25'
+                        && ($filters['page'] ?? null) === '2'
+                        && ($filters['per_page'] ?? null) === '10';
+                })
                 ->andReturn([
-                    'history' => new LengthAwarePaginator(
+                    'rows' => new LengthAwarePaginator(
                         [
                             [
-                                'scanned_at' => '2026-03-30T09:00:00Z',
-                                'scan_date' => '2026-03-30',
-                                'ticket_code' => 'TICKET-123',
-                                'entry_code_display' => 'ABCD-1234',
-                                'user_id' => 'user-123',
-                                'scanner_name' => 'Gate A',
+                                'participant_key' => 'user:user-999',
+                                'user_id' => 'user-999',
+                                'full_name' => 'Nur Aisyah',
+                                'email' => 'nur.aisyah@example.test',
+                                'initials' => 'NA',
+                                'country' => 'MY',
+                                'country_label' => 'Malaysia',
+                                'entry_code_display' => 'MNOP-3456',
+                                'attendance_days_count' => 2,
+                                'attendance_total_days' => 2,
+                                'attendance_progress_percent' => 100,
+                                'attendance_status' => 'checked_in',
+                                'checked_in_at' => '2026-03-25T10:00:00Z',
+                                'scanner_name' => 'Gate C',
                                 'scanner_role' => 'staff',
-                                'scanner_id' => 'scanner-1',
-                                'result' => 'success',
-                                'participant' => [
-                                    'email' => 'alya@example.test',
-                                    'full_name' => 'Alya Putri',
-                                    'phone_number' => '+60123456789',
-                                    'country_label' => 'Malaysia',
-                                    'entry_code_display' => 'ABCD-1234',
-                                ],
+                                'scanner_id' => 'scanner-3',
+                                'latest_scan_at' => '2026-03-25T10:00:00Z',
+                                'latest_scan_result' => 'success',
                             ],
                         ],
-                        1,
+                        12,
                         10,
-                        1,
+                        2,
                         [
                             'path' => route('admin.attendance.index'),
                             'pageName' => 'page',
                         ],
                     ),
-                    'daily_attendance' => $dailyAttendance,
-                    'scanner_activity' => $scannerActivity,
-                    'scan_post_options' => [],
+                    'overview' => [
+                        'total_attendance' => 12,
+                        'checked_in' => 10,
+                        'repeat_scans' => 1,
+                        'needs_review' => 1,
+                        'gate_counts' => [
+                            [
+                                'label' => 'Gate C',
+                                'count' => 12,
+                            ],
+                        ],
+                    ],
+                    'filter_options' => [
+                        'countries' => [
+                            [
+                                'value' => 'MY',
+                                'label' => 'Malaysia',
+                                'count' => 12,
+                            ],
+                        ],
+                        'identity_types' => [
+                            [
+                                'value' => 'national_id',
+                                'label' => 'Malaysia IC (MyKad)',
+                                'count' => 12,
+                            ],
+                        ],
+                        'attendance_statuses' => [
+                            [
+                                'value' => 'checked_in',
+                                'label' => 'Checked In',
+                                'count' => 10,
+                            ],
+                        ],
+                        'scan_posts' => [
+                            [
+                                'value' => 'Gate C',
+                                'label' => 'Gate C',
+                                'count' => 12,
+                            ],
+                        ],
+                    ],
+                    'sync_status' => [
+                        'state' => 'fresh',
+                        'source' => 'read_model',
+                        'last_synced_at_utc' => '2026-03-25T10:00:00Z',
+                        'fresh_within_seconds' => 15,
+                        'degraded_after_seconds' => 60,
+                        'fallback_after_seconds' => 300,
+                        'relative_label' => 'Refresh in 15s',
+                        'helper_label' => 'After the timer ends, refresh browser to see the latest data.',
+                    ],
                 ]);
 
             $mock->shouldReceive('firestoreAvailable')
@@ -1013,13 +1118,17 @@ class AdminAuthenticationTest extends TestCase
         });
 
         $response = $this->actingAs($admin, 'admin')
-            ->get('/admin/attendance?daily_page=2&scanner_page=2');
+            ->get('/admin/attendance?q=MYKAD-7788&country=MY&identity_type=national_id&attendance_status=checked_in&scanner_post=Gate%20C&from=2026-03-24&to=2026-03-25&page=2&per_page=10');
 
         $response->assertOk()
-            ->assertSee('1,111')
-            ->assertSee('2,222')
-            ->assertSee('Gate Last 11')
-            ->assertSee('Gate Last 12')
-            ->assertDontSee('Gate First 1');
+            ->assertSee('12 participants found')
+            ->assertSee('Nur Aisyah')
+            ->assertSee('MNOP-3456')
+            ->assertSee('Gate C')
+            ->assertSee('value="MYKAD-7788"', false)
+            ->assertSee('value="2026-03-24"', false)
+            ->assertSee('value="2026-03-25"', false)
+            ->assertSee('Malaysia IC (MyKad)')
+            ->assertDontSee('No attendance data matches the current filters.');
     }
 }

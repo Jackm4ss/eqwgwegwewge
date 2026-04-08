@@ -37,6 +37,9 @@ class AdminPanelService
         private readonly ?AdminUserManagementReadModel $userManagementReadModel = null,
         private readonly ?AdminUserManagementReadModelDispatcher $userManagementReadModelDispatcher = null,
         private readonly ?AdminUserManagementSyncStatusFactory $userManagementSyncStatusFactory = null,
+        private readonly ?AdminAttendanceReadModel $attendanceReadModel = null,
+        private readonly ?AdminAttendanceReadModelDispatcher $attendanceReadModelDispatcher = null,
+        private readonly ?AdminAttendanceSyncStatusFactory $attendanceSyncStatusFactory = null,
     ) {}
 
     public function firestoreAvailable(): bool
@@ -154,6 +157,10 @@ class AdminPanelService
         Cache::forget(self::ATTENDANCE_DIRECTORY_STALE_KEY);
         Cache::forget(self::ATTENDANCE_REFRESH_LOCK_KEY);
         Cache::forget(self::ATTENDANCE_DIRECTORY_CACHE_KEY);
+
+        if ($this->attendanceReadModelEnabled()) {
+            $this->attendanceReadModel()->flush();
+        }
     }
 
     public function markAttendanceMonitoringCacheStale(): void
@@ -163,7 +170,57 @@ class AdminPanelService
 
     public function warmAttendanceMonitoringCache(): array
     {
-        return $this->refreshAttendanceDirectoryCache();
+        $rows = $this->refreshAttendanceDirectoryCache();
+
+        if ($this->attendanceReadModelEnabled()) {
+            $this->attendanceReadModel()->rebuild();
+        }
+
+        return $rows;
+    }
+
+    public function attendanceManagementPage(array $filters = []): array
+    {
+        $readModelFallback = false;
+
+        if ($this->attendanceReadModelEnabled() && $this->attendanceReadModel()->supportsFilters($filters)) {
+            try {
+                $readModelPage = $this->attendanceReadModel()->page($filters);
+
+                if (is_array($readModelPage)) {
+                    return $readModelPage;
+                }
+
+                $readModelFallback = true;
+                $this->attendanceReadModelDispatcher()->requestRebuild('page_miss');
+            } catch (\Throwable $exception) {
+                $readModelFallback = true;
+
+                Log::warning('Falling back from the admin attendance read model to the legacy path.', [
+                    'message' => $exception->getMessage(),
+                    'filters' => $filters,
+                ]);
+            }
+        }
+
+        try {
+            return $this->withAttendanceSyncStatus(
+                $this->cachedAttendanceManagementPage($filters),
+                $readModelFallback ? 'legacy_fallback' : 'legacy_cache',
+                $readModelFallback ? 'fallback' : null,
+            );
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to serve the cached admin attendance projection fallback.', [
+                'message' => $exception->getMessage(),
+                'filters' => $filters,
+            ]);
+        }
+
+        return $this->withAttendanceSyncStatus(
+            $this->emptyAttendanceManagementPage($filters),
+            $readModelFallback ? 'legacy_fallback' : 'legacy_cache',
+            $readModelFallback ? 'fallback' : 'fresh',
+        );
     }
 
     public function flushDashboardCache(): void
@@ -235,6 +292,11 @@ class AdminPanelService
             $this->userManagementReadModelDispatcher()->requestMetaRefresh('admin_update');
         }
 
+        if ($this->attendanceReadModelEnabled()) {
+            $this->attendanceReadModelDispatcher()->syncUser($userId, 'admin_update');
+            $this->attendanceReadModelDispatcher()->requestMetaRefresh('admin_update');
+        }
+
         return $user;
     }
 
@@ -248,6 +310,11 @@ class AdminPanelService
         if ($this->userManagementReadModelEnabled()) {
             $this->userManagementReadModelDispatcher()->removeUser($userId, 'admin_delete');
             $this->userManagementReadModelDispatcher()->requestMetaRefresh('admin_delete');
+        }
+
+        if ($this->attendanceReadModelEnabled()) {
+            $this->attendanceReadModelDispatcher()->syncUser($userId, 'admin_delete');
+            $this->attendanceReadModelDispatcher()->requestMetaRefresh('admin_delete');
         }
 
         return $result;
@@ -265,6 +332,11 @@ class AdminPanelService
         if ($this->userManagementReadModelEnabled()) {
             $this->userManagementReadModelDispatcher()->syncUser($userId, 'qr_reset');
             $this->userManagementReadModelDispatcher()->requestMetaRefresh('qr_reset');
+        }
+
+        if ($this->attendanceReadModelEnabled()) {
+            $this->attendanceReadModelDispatcher()->syncUser($userId, 'qr_reset');
+            $this->attendanceReadModelDispatcher()->requestMetaRefresh('qr_reset');
         }
 
         return $result;
@@ -290,6 +362,11 @@ class AdminPanelService
         if ($this->userManagementReadModelEnabled()) {
             $this->userManagementReadModelDispatcher()->syncUser($userId, 'qr_regenerate');
             $this->userManagementReadModelDispatcher()->requestMetaRefresh('qr_regenerate');
+        }
+
+        if ($this->attendanceReadModelEnabled()) {
+            $this->attendanceReadModelDispatcher()->syncUser($userId, 'qr_regenerate');
+            $this->attendanceReadModelDispatcher()->requestMetaRefresh('qr_regenerate');
         }
 
         return $result;
@@ -699,6 +776,72 @@ class AdminPanelService
                 $overview['history'],
                 [$filters['scanner_post'] ?? null],
             ),
+        ];
+    }
+
+    private function cachedAttendanceManagementPage(array $filters = []): array
+    {
+        $allRows = array_values(array_filter(array_map(
+            fn (array $row): ?array => $this->attendanceManagementProjectedRow($row),
+            $this->cachedAttendanceDirectory(),
+        )));
+        $filteredRows = array_values(array_filter(
+            $allRows,
+            fn (array $row): bool => $this->matchesAttendanceManagementRowFilters($row, $filters),
+        ));
+        $participantRows = $this->attendanceManagementParticipantRows($filteredRows);
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        $perPage = max(1, (int) ($filters['per_page'] ?? config('admin.per_page', 10)));
+        $offset = ($page - 1) * $perPage;
+
+        return [
+            'rows' => new LengthAwarePaginator(
+                array_values(array_slice($participantRows, $offset, $perPage)),
+                count($participantRows),
+                $perPage,
+                $page,
+                [
+                    'path' => request()->url(),
+                    'query' => request()->query(),
+                    'pageName' => 'page',
+                ],
+            ),
+            'overview' => $this->buildAttendanceManagementOverview($filteredRows),
+            'filter_options' => $this->buildAttendanceManagementFilterOptions($allRows),
+        ];
+    }
+
+    private function emptyAttendanceManagementPage(array $filters = []): array
+    {
+        $page = max(1, (int) ($filters['page'] ?? 1));
+        $perPage = max(1, (int) ($filters['per_page'] ?? config('admin.per_page', 10)));
+
+        return [
+            'rows' => new LengthAwarePaginator(
+                [],
+                0,
+                $perPage,
+                $page,
+                [
+                    'path' => request()->url(),
+                    'query' => request()->query(),
+                    'pageName' => 'page',
+                ],
+            ),
+            'overview' => [
+                'total_attendance' => 0,
+                'checked_in' => 0,
+                'repeat_scans' => 0,
+                'needs_review' => 0,
+                'total_scans' => 0,
+                'gate_counts' => [],
+            ],
+            'filter_options' => [
+                'countries' => [],
+                'identity_types' => [],
+                'attendance_statuses' => [],
+                'scan_posts' => [],
+            ],
         ];
     }
 
@@ -1264,6 +1407,15 @@ class AdminPanelService
             'phone_number' => trim((string) ($snapshot['phone_number'] ?? '')),
             'country' => $country,
             'country_label' => $countryLabel,
+            'identity_type' => strtolower(trim((string) ($snapshot['identity_type'] ?? 'passport'))) === 'national_id'
+                ? 'national_id'
+                : 'passport',
+            'identity_number' => trim((string) ($snapshot['identity_number'] ?? '')),
+            'attendance_status' => strtolower(trim((string) ($snapshot['attendance_status'] ?? 'not_checked_in'))),
+            'checked_in_at' => $snapshot['checked_in_at'] ?? null,
+            'attendance_days_count' => (int) ($snapshot['attendance_days_count'] ?? 0),
+            'attendance_total_days' => (int) ($snapshot['attendance_total_days'] ?? 0),
+            'attendance_progress_percent' => (int) ($snapshot['attendance_progress_percent'] ?? 0),
             'ticket_code' => (string) ($snapshot['ticket_code'] ?? $log['ticket_code'] ?? ''),
             'entry_code_display' => (string) ($snapshot['entry_code_display'] ?? $log['entry_code_display'] ?? ''),
         ];
@@ -1288,6 +1440,15 @@ class AdminPanelService
             'phone_number' => $phoneNumber,
             'country' => $country,
             'country_label' => (string) ($row['country_label'] ?? ($country !== '' ? $this->analytics->countryLabel($country) : '')),
+            'identity_type' => strtolower(trim((string) ($row['identity_type'] ?? 'passport'))) === 'national_id'
+                ? 'national_id'
+                : 'passport',
+            'identity_number' => trim((string) ($row['identity_number'] ?? '')),
+            'attendance_status' => strtolower(trim((string) ($row['attendance_status'] ?? 'not_checked_in'))),
+            'checked_in_at' => $row['checked_in_at'] ?? null,
+            'attendance_days_count' => (int) ($row['attendance_days_count'] ?? 0),
+            'attendance_total_days' => (int) ($row['attendance_total_days'] ?? 0),
+            'attendance_progress_percent' => (int) ($row['attendance_progress_percent'] ?? 0),
             'ticket_code' => $ticketCode,
             'entry_code_display' => (string) ($row['entry_code_display'] ?? ''),
         ];
@@ -1310,7 +1471,352 @@ class AdminPanelService
             (string) ($participant['phone_number'] ?? ''),
             (string) ($participant['country'] ?? ''),
             (string) ($participant['country_label'] ?? ''),
+            (string) ($participant['identity_type'] ?? ''),
+            $this->analytics->identityTypeLabel($participant['identity_type'] ?? null),
+            (string) ($participant['identity_number'] ?? ''),
         ])));
+    }
+
+    private function attendanceManagementProjectedRow(array $row): ?array
+    {
+        $participant = is_array($row['participant'] ?? null) ? $row['participant'] : null;
+        $userId = trim((string) ($row['user_id'] ?? ''));
+        $ticketCode = trim((string) ($row['ticket_code'] ?? $participant['ticket_code'] ?? ''));
+        $entryCodeDisplay = trim((string) ($row['entry_code_display'] ?? $participant['entry_code_display'] ?? ''));
+        $fullName = trim((string) ($participant['full_name'] ?? $participant['name'] ?? ''));
+        $email = trim((string) ($participant['email'] ?? ''));
+        $phoneNumber = trim((string) ($participant['phone_number'] ?? ''));
+        $country = strtoupper(trim((string) ($participant['country'] ?? '')));
+        $countryLabel = trim((string) ($participant['country_label'] ?? ''));
+        $identityType = strtolower(trim((string) ($participant['identity_type'] ?? 'passport'))) === 'national_id'
+            ? 'national_id'
+            : 'passport';
+        $identityNumber = trim((string) ($participant['identity_number'] ?? ''));
+
+        if ($countryLabel === '' && $country !== '') {
+            $countryLabel = $this->analytics->countryLabel($country);
+        }
+
+        $scanDate = trim((string) ($row['scan_date'] ?? ''));
+
+        if ($scanDate === '' && filled($row['scanned_at'] ?? null)) {
+            try {
+                $scanDate = CarbonImmutable::parse((string) $row['scanned_at'])
+                    ->setTimezone((string) config('admin.event.timezone', config('app.timezone', 'UTC')))
+                    ->toDateString();
+            } catch (\Throwable) {
+                $scanDate = '';
+            }
+        }
+
+        $participantKey = $this->attendanceManagementParticipantKey(
+            $userId,
+            $ticketCode,
+            $entryCodeDisplay,
+            $email,
+            $phoneNumber,
+            $fullName,
+            (string) ($row['scan_id'] ?? ''),
+        );
+
+        return [
+            'scan_id' => (string) ($row['scan_id'] ?? ''),
+            'participant_key' => $participantKey,
+            'user_id' => $userId,
+            'ticket_code' => $ticketCode,
+            'entry_code_display' => $entryCodeDisplay,
+            'full_name' => $fullName,
+            'email' => $email,
+            'phone_number' => $phoneNumber,
+            'country' => $country,
+            'country_label' => $countryLabel,
+            'identity_type' => $identityType,
+            'identity_number' => $identityNumber,
+            'attendance_status' => strtolower(trim((string) ($participant['attendance_status'] ?? 'not_checked_in'))),
+            'checked_in_at' => $participant['checked_in_at'] ?? null,
+            'attendance_days_count' => (int) ($participant['attendance_days_count'] ?? 0),
+            'attendance_total_days' => (int) ($participant['attendance_total_days'] ?? 0),
+            'attendance_progress_percent' => (int) ($participant['attendance_progress_percent'] ?? 0),
+            'scanner_name' => trim((string) ($row['scanner_name'] ?? '')),
+            'scanner_role' => trim((string) ($row['scanner_role'] ?? '')),
+            'scanner_id' => trim((string) ($row['scanner_id'] ?? '')),
+            'scanned_at' => trim((string) ($row['scanned_at'] ?? '')),
+            'scan_date' => $scanDate,
+            'result' => strtolower(trim((string) ($row['result'] ?? 'invalid'))),
+            'search_blob' => (string) ($row['search_blob'] ?? ''),
+        ];
+    }
+
+    private function matchesAttendanceManagementRowFilters(array $row, array $filters): bool
+    {
+        $query = $this->normalizeAttendanceSearchText((string) ($filters['q'] ?? ''));
+
+        if ($query !== '' && ! str_contains((string) ($row['search_blob'] ?? ''), $query)) {
+            return false;
+        }
+
+        $country = strtoupper(trim((string) ($filters['country'] ?? '')));
+        if ($country !== '' && strtoupper((string) ($row['country'] ?? '')) !== $country) {
+            return false;
+        }
+
+        $identityType = trim((string) ($filters['identity_type'] ?? ''));
+        if ($identityType !== '' && strtolower((string) ($row['identity_type'] ?? 'passport')) !== strtolower($identityType)) {
+            return false;
+        }
+
+        $attendanceStatus = trim((string) ($filters['attendance_status'] ?? ''));
+        if ($attendanceStatus !== '' && strtolower((string) ($row['attendance_status'] ?? 'not_checked_in')) !== strtolower($attendanceStatus)) {
+            return false;
+        }
+
+        $scannerPost = trim((string) ($filters['scanner_post'] ?? ''));
+        if ($scannerPost !== '' && trim((string) ($row['scanner_name'] ?? '')) !== $scannerPost) {
+            return false;
+        }
+
+        $fromDate = $this->normalizeAttendanceFilterDate($filters['from'] ?? null);
+        $toDate = $this->normalizeAttendanceFilterDate($filters['to'] ?? null);
+        $scanDate = trim((string) ($row['scan_date'] ?? ''));
+
+        if ($fromDate !== null && ($scanDate === '' || $scanDate < $fromDate)) {
+            return false;
+        }
+
+        if ($toDate !== null && ($scanDate === '' || $scanDate > $toDate)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function attendanceManagementParticipantRows(array $rows): array
+    {
+        $participantRows = [];
+
+        foreach ($rows as $row) {
+            $participantKey = trim((string) ($row['participant_key'] ?? ''));
+
+            if ($participantKey === '' || isset($participantRows[$participantKey])) {
+                continue;
+            }
+
+            if (
+                trim((string) ($row['full_name'] ?? '')) === ''
+                && trim((string) ($row['email'] ?? '')) === ''
+                && trim((string) ($row['entry_code_display'] ?? '')) === ''
+                && trim((string) ($row['user_id'] ?? '')) === ''
+            ) {
+                continue;
+            }
+
+            $participantRows[$participantKey] = [
+                'participant_key' => $participantKey,
+                'user_id' => (string) ($row['user_id'] ?? ''),
+                'full_name' => (string) ($row['full_name'] ?? ''),
+                'email' => (string) ($row['email'] ?? ''),
+                'initials' => $this->attendanceManagementInitials(
+                    (string) ($row['full_name'] ?? $row['email'] ?? $row['entry_code_display'] ?? '')
+                ),
+                'country' => (string) ($row['country'] ?? ''),
+                'country_label' => (string) ($row['country_label'] ?? ''),
+                'entry_code_display' => (string) ($row['entry_code_display'] ?? ''),
+                'attendance_days_count' => (int) ($row['attendance_days_count'] ?? 0),
+                'attendance_total_days' => (int) ($row['attendance_total_days'] ?? 0),
+                'attendance_progress_percent' => (int) ($row['attendance_progress_percent'] ?? 0),
+                'attendance_status' => (string) ($row['attendance_status'] ?? 'not_checked_in'),
+                'checked_in_at' => $row['checked_in_at'] ?? null,
+                'scanner_name' => (string) ($row['scanner_name'] ?? ''),
+                'scanner_role' => (string) ($row['scanner_role'] ?? ''),
+                'scanner_id' => (string) ($row['scanner_id'] ?? ''),
+                'latest_scan_at' => (string) ($row['scanned_at'] ?? ''),
+                'latest_scan_result' => (string) ($row['result'] ?? ''),
+                'identity_type' => (string) ($row['identity_type'] ?? ''),
+                'identity_number' => (string) ($row['identity_number'] ?? ''),
+                'phone_number' => (string) ($row['phone_number'] ?? ''),
+            ];
+        }
+
+        return array_values($participantRows);
+    }
+
+    private function buildAttendanceManagementOverview(array $rows): array
+    {
+        $participantKeys = [];
+        $checkedInKeys = [];
+        $repeatScans = 0;
+        $needsReview = 0;
+        $gateCounts = [];
+
+        foreach ($rows as $row) {
+            $participantKey = trim((string) ($row['participant_key'] ?? ''));
+            $result = strtolower(trim((string) ($row['result'] ?? 'invalid')));
+            $scannerName = trim((string) ($row['scanner_name'] ?? ''));
+
+            if ($participantKey !== '') {
+                $participantKeys[$participantKey] = true;
+            }
+
+            if ($result === 'success' && $participantKey !== '') {
+                $checkedInKeys[$participantKey] = true;
+            } elseif ($result === 'duplicate') {
+                $repeatScans++;
+            } else {
+                $needsReview++;
+            }
+
+            if ($scannerName !== '') {
+                $gateCounts[$scannerName] = (int) ($gateCounts[$scannerName] ?? 0) + 1;
+            }
+        }
+
+        $gateCards = array_map(static fn (string $label, int $count): array => [
+            'value' => $label,
+            'label' => $label,
+            'count' => $count,
+        ], array_keys($gateCounts), array_values($gateCounts));
+        usort($gateCards, fn (array $left, array $right): int => ((int) ($right['count'] ?? 0)) <=> ((int) ($left['count'] ?? 0)));
+
+        return [
+            'total_attendance' => count($participantKeys),
+            'checked_in' => count($checkedInKeys),
+            'repeat_scans' => $repeatScans,
+            'needs_review' => $needsReview,
+            'total_scans' => count($rows),
+            'gate_counts' => $gateCards,
+        ];
+    }
+
+    private function buildAttendanceManagementFilterOptions(array $rows): array
+    {
+        $participantRows = $this->attendanceManagementParticipantRows($rows);
+        $countries = [];
+        $identityTypes = [];
+        $attendanceStatuses = [];
+        $scanPosts = [];
+
+        foreach ($participantRows as $row) {
+            $country = strtoupper(trim((string) ($row['country'] ?? '')));
+            if ($country !== '') {
+                $countries[$country] = (int) ($countries[$country] ?? 0) + 1;
+            }
+
+            $identityType = strtolower(trim((string) ($row['identity_type'] ?? 'passport'))) === 'national_id'
+                ? 'national_id'
+                : 'passport';
+            $identityTypes[$identityType] = (int) ($identityTypes[$identityType] ?? 0) + 1;
+
+            $attendanceStatus = strtolower(trim((string) ($row['attendance_status'] ?? 'not_checked_in')));
+            $attendanceStatuses[$attendanceStatus] = (int) ($attendanceStatuses[$attendanceStatus] ?? 0) + 1;
+        }
+
+        foreach ($rows as $row) {
+            $scanPost = trim((string) ($row['scanner_name'] ?? ''));
+
+            if ($scanPost !== '') {
+                $scanPosts[$scanPost] = (int) ($scanPosts[$scanPost] ?? 0) + 1;
+            }
+        }
+
+        $countryOptions = array_map(fn (string $country, int $count): array => [
+            'value' => $country,
+            'label' => $this->analytics->countryLabel($country),
+            'count' => $count,
+        ], array_keys($countries), array_values($countries));
+        usort($countryOptions, fn (array $left, array $right): int => strcasecmp(
+            (string) ($left['label'] ?? ''),
+            (string) ($right['label'] ?? ''),
+        ));
+
+        $identityTypeOptions = array_map(fn (string $identityType, int $count): array => [
+            'value' => $identityType,
+            'label' => $this->analytics->identityTypeLabel($identityType),
+            'count' => $count,
+        ], array_keys($identityTypes), array_values($identityTypes));
+        usort($identityTypeOptions, fn (array $left, array $right): int => strcasecmp(
+            (string) ($left['label'] ?? ''),
+            (string) ($right['label'] ?? ''),
+        ));
+
+        $attendanceStatusOptions = array_map(fn (string $attendanceStatus, int $count): array => [
+            'value' => $attendanceStatus,
+            'label' => match ($attendanceStatus) {
+                'checked_in' => 'Checked In',
+                'cancelled' => 'Cancelled',
+                'invalid' => 'Invalid',
+                default => 'Not Checked In',
+            },
+            'count' => $count,
+        ], array_keys($attendanceStatuses), array_values($attendanceStatuses));
+        usort($attendanceStatusOptions, fn (array $left, array $right): int => strcasecmp(
+            (string) ($left['label'] ?? ''),
+            (string) ($right['label'] ?? ''),
+        ));
+
+        $scanPostOptions = array_map(static fn (string $scanPost, int $count): array => [
+            'value' => $scanPost,
+            'label' => $scanPost,
+            'count' => $count,
+        ], array_keys($scanPosts), array_values($scanPosts));
+        usort($scanPostOptions, fn (array $left, array $right): int => strcasecmp(
+            (string) ($left['label'] ?? ''),
+            (string) ($right['label'] ?? ''),
+        ));
+
+        return [
+            'countries' => array_values($countryOptions),
+            'identity_types' => array_values($identityTypeOptions),
+            'attendance_statuses' => array_values($attendanceStatusOptions),
+            'scan_posts' => array_values($scanPostOptions),
+        ];
+    }
+
+    private function attendanceManagementParticipantKey(
+        string $userId,
+        string $ticketCode,
+        string $entryCodeDisplay,
+        string $email,
+        string $phoneNumber,
+        string $fullName,
+        string $scanId,
+    ): string {
+        if ($userId !== '') {
+            return 'user:'.$userId;
+        }
+
+        if ($ticketCode !== '') {
+            return 'ticket:'.strtoupper($ticketCode);
+        }
+
+        $normalizedEntryCode = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $entryCodeDisplay) ?? '');
+        if ($normalizedEntryCode !== '') {
+            return 'entry:'.$normalizedEntryCode;
+        }
+
+        if ($email !== '') {
+            return 'email:'.mb_strtolower($email);
+        }
+
+        if ($phoneNumber !== '') {
+            return 'phone:'.preg_replace('/\s+/', '', $phoneNumber);
+        }
+
+        if ($fullName !== '') {
+            return 'name:'.$this->normalizeAttendanceSearchText($fullName).':'.$scanId;
+        }
+
+        return '';
+    }
+
+    private function attendanceManagementInitials(string $value): string
+    {
+        $parts = preg_split('/\s+/u', trim($value), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $letters = collect($parts)
+            ->take(2)
+            ->map(fn (string $part): string => mb_strtoupper(mb_substr($part, 0, 1)))
+            ->implode('');
+
+        return $letters !== '' ? $letters : 'P';
     }
 
     private function filterCachedAttendanceRows(array $rows, array $filters): array
@@ -1850,6 +2356,40 @@ class AdminPanelService
         ?string $state = null,
     ): array {
         $payload['sync_status'] ??= $this->userManagementSyncStatusFactory()->make(
+            now('UTC')->toIso8601String(),
+            $source,
+            $state,
+        );
+
+        return $payload;
+    }
+
+    private function attendanceReadModel(): AdminAttendanceReadModel
+    {
+        return $this->attendanceReadModel ?? app(AdminAttendanceReadModel::class);
+    }
+
+    private function attendanceReadModelEnabled(): bool
+    {
+        return (bool) config('admin.attendance.read_model.enabled', false);
+    }
+
+    private function attendanceReadModelDispatcher(): AdminAttendanceReadModelDispatcher
+    {
+        return $this->attendanceReadModelDispatcher ?? app(AdminAttendanceReadModelDispatcher::class);
+    }
+
+    private function attendanceSyncStatusFactory(): AdminAttendanceSyncStatusFactory
+    {
+        return $this->attendanceSyncStatusFactory ?? app(AdminAttendanceSyncStatusFactory::class);
+    }
+
+    private function withAttendanceSyncStatus(
+        array $payload,
+        string $source,
+        ?string $state = null,
+    ): array {
+        $payload['sync_status'] ??= $this->attendanceSyncStatusFactory()->make(
             now('UTC')->toIso8601String(),
             $source,
             $state,

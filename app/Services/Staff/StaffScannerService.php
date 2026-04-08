@@ -4,6 +4,7 @@ namespace App\Services\Staff;
 
 use App\Models\Admin;
 use App\Services\Admin\AdminAnalyticsService;
+use App\Services\Admin\AdminAttendanceReadModelDispatcher;
 use App\Services\Admin\AdminFirestoreRepository;
 use App\Services\Admin\AdminUserManagementReadModelDispatcher;
 use App\Services\Tickets\TicketQrCodeService;
@@ -22,6 +23,7 @@ class StaffScannerService
         private readonly AdminAnalyticsService $analytics,
         private readonly TicketQrCodeService $ticketQrCodeService,
         private readonly ?AdminUserManagementReadModelDispatcher $userManagementReadModelDispatcher = null,
+        private readonly ?AdminAttendanceReadModelDispatcher $attendanceReadModelDispatcher = null,
     ) {}
 
     public function scan(Admin $operator, string $scannerPost, string $payload, ?string $ipAddress = null): array
@@ -70,7 +72,7 @@ class StaffScannerService
                 'participant_snapshot' => $this->participantSummary($user, $ticket),
             ], $ipAddress),
         );
-        $this->syncUserManagementReadModelAfterAttendance($record, $user);
+        $this->syncReadModelsAfterAttendance($record, $user);
 
         return $this->buildScanResponse(
             (string) ($record['result'] ?? 'invalid'),
@@ -164,7 +166,7 @@ class StaffScannerService
                 'participant_snapshot' => $this->participantSummary($user, $ticket),
             ], $ipAddress),
         );
-        $this->syncUserManagementReadModelAfterAttendance($record, $user);
+        $this->syncReadModelsAfterAttendance($record, $user);
 
         return $this->buildScanResponse(
             (string) ($record['result'] ?? 'invalid'),
@@ -245,6 +247,10 @@ class StaffScannerService
             ], $ipAddress),
             $extra,
         ));
+        $this->syncReadModelsAfterAttendance([
+            'result' => 'invalid',
+            'log' => $log,
+        ]);
 
         return [
             'status' => 'invalid',
@@ -677,8 +683,22 @@ class StaffScannerService
         ]);
     }
 
-    private function syncUserManagementReadModelAfterAttendance(array $record, array $user): void
+    private function syncReadModelsAfterAttendance(array $record, ?array $user = null): void
     {
+        $userId = trim((string) ($user['user_id'] ?? ''));
+
+        if ((bool) config('admin.attendance.read_model.enabled', false)) {
+            $scanId = trim((string) data_get($record, 'log.scan_id', ''));
+
+            if ($scanId !== '') {
+                $this->attendanceReadModelDispatcher()->syncScan($scanId, 'scanner_scan');
+            }
+
+            if ($userId !== '') {
+                $this->attendanceReadModelDispatcher()->syncUser($userId, 'scanner_scan');
+            }
+        }
+
         if (strtolower(trim((string) ($record['result'] ?? 'invalid'))) !== 'success') {
             return;
         }
@@ -687,11 +707,16 @@ class StaffScannerService
             return;
         }
 
-        $this->userManagementReadModelDispatcher()->syncUser((string) ($user['user_id'] ?? ''), 'attendance_success');
+        $this->userManagementReadModelDispatcher()->syncUser($userId, 'attendance_success');
     }
 
     private function userManagementReadModelDispatcher(): AdminUserManagementReadModelDispatcher
     {
         return $this->userManagementReadModelDispatcher ?? app(AdminUserManagementReadModelDispatcher::class);
+    }
+
+    private function attendanceReadModelDispatcher(): AdminAttendanceReadModelDispatcher
+    {
+        return $this->attendanceReadModelDispatcher ?? app(AdminAttendanceReadModelDispatcher::class);
     }
 }

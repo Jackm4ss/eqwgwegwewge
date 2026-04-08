@@ -271,6 +271,17 @@ class AdminFirestoreRepository
         return $this->getDocument($this->ticketPath($ticketId));
     }
 
+    public function findScanLog(string $scanId): ?array
+    {
+        $scanId = trim($scanId);
+
+        if ($scanId === '') {
+            return null;
+        }
+
+        return $this->getDocument($this->scanLogPath($scanId));
+    }
+
     public function findTicketByTicketCode(string $ticketCode): ?array
     {
         $ticketCode = strtoupper(trim($ticketCode));
