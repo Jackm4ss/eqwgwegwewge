@@ -137,7 +137,7 @@ class AdminPanelServiceTest extends TestCase
         $this->assertTrue($dashboard['date_range']['is_filtered']);
     }
 
-    public function test_optimized_user_management_meta_counts_only_explicit_checked_in_tickets(): void
+    public function test_optimized_user_management_meta_counts_checked_in_users_from_attendance_aware_snapshot(): void
     {
         Cache::forget(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY);
 
@@ -180,10 +180,7 @@ class AdminPanelServiceTest extends TestCase
                 'account_status' => 'active',
             ])
             ->andReturn(0);
-        $repository->shouldReceive('countTickets')
-            ->once()
-            ->with(['attendance_status' => 'checked_in'])
-            ->andReturn(0);
+        $repository->shouldNotReceive('countTickets');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
@@ -288,10 +285,7 @@ class AdminPanelServiceTest extends TestCase
                 'account_status' => 'active',
             ])
             ->andReturn(0);
-        $repository->shouldReceive('countTickets')
-            ->once()
-            ->with(['attendance_status' => 'checked_in'])
-            ->andReturn(0);
+        $repository->shouldNotReceive('countTickets');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
@@ -386,10 +380,7 @@ class AdminPanelServiceTest extends TestCase
                 'account_status' => 'active',
             ])
             ->andReturn(1);
-        $repository->shouldReceive('countTickets')
-            ->once()
-            ->with(['attendance_status' => 'checked_in'])
-            ->andReturn(1);
+        $repository->shouldNotReceive('countTickets');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
@@ -462,10 +453,7 @@ class AdminPanelServiceTest extends TestCase
                 'account_status' => 'active',
             ])
             ->andReturn(0);
-        $repository->shouldReceive('countTickets')
-            ->once()
-            ->with(['attendance_status' => 'checked_in'])
-            ->andReturn(0);
+        $repository->shouldNotReceive('countTickets');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
@@ -520,10 +508,7 @@ class AdminPanelServiceTest extends TestCase
                 'account_status' => 'active',
             ])
             ->andReturn(0);
-        $repository->shouldReceive('countTickets')
-            ->once()
-            ->with(['attendance_status' => 'checked_in'])
-            ->andReturn(0);
+        $repository->shouldNotReceive('countTickets');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
         $notifications->shouldIgnoreMissing();
@@ -573,7 +558,7 @@ class AdminPanelServiceTest extends TestCase
                     'ticket_id' => 'ticket-1',
                     'user_id' => 'user-1',
                     'ticket_code' => 'TICKET-1',
-                    'attendance_status' => 'checked_in',
+                    'attendance_status' => 'not_checked_in',
                 ],
                 [
                     'ticket_id' => 'ticket-2',
@@ -584,7 +569,15 @@ class AdminPanelServiceTest extends TestCase
             ]);
         $repository->shouldReceive('allAttendanceDaily')
             ->once()
-            ->andReturn([]);
+            ->andReturn([
+                [
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'ticket_code' => 'TICKET-1',
+                    'scan_date' => '2026-04-10',
+                    'first_scanned_at' => '2026-04-10T08:30:00Z',
+                ],
+            ]);
         $repository->shouldNotReceive('countUsers');
         $repository->shouldNotReceive('countTickets');
 
@@ -627,6 +620,22 @@ class AdminPanelServiceTest extends TestCase
             ],
         ]);
         Cache::forever(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY, true);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-1',
+                'country' => 'MY',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'attendance_status' => 'checked_in',
+            ],
+            [
+                'user_id' => 'user-2',
+                'country' => 'ID',
+                'verification_status' => 'verified',
+                'account_status' => 'active',
+                'attendance_status' => 'not_checked_in',
+            ],
+        ]);
 
         $repository = Mockery::mock(AdminFirestoreRepository::class);
         $repository->shouldReceive('paginateUsers')
@@ -652,10 +661,7 @@ class AdminPanelServiceTest extends TestCase
                 'account_status' => 'active',
             ])
             ->andReturn(9000);
-        $repository->shouldReceive('countTickets')
-            ->once()
-            ->with(['attendance_status' => 'checked_in'])
-            ->andReturn(1405);
+        $repository->shouldNotReceive('countTickets');
         $repository->shouldNotReceive('allUsers');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);
@@ -666,7 +672,7 @@ class AdminPanelServiceTest extends TestCase
 
         $this->assertSame(9350, $page['overview']['total_users']);
         $this->assertSame(9125, $page['overview']['verified_users']);
-        $this->assertSame(1405, $page['overview']['checked_in_users']);
+        $this->assertSame(1, $page['overview']['checked_in_users']);
         $this->assertSame(350, $page['overview']['follow_up_users']);
         $this->assertSame('Malaysia', $page['filter_options']['countries'][0]['label']);
         $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
@@ -2094,10 +2100,7 @@ class AdminPanelServiceTest extends TestCase
                 'account_status' => 'active',
             ])
             ->andReturn(1);
-        $repository->shouldReceive('countTickets')
-            ->once()
-            ->with(['attendance_status' => 'checked_in'])
-            ->andReturn(0);
+        $repository->shouldNotReceive('countTickets');
         $repository->shouldNotReceive('allUsers');
 
         $notifications = Mockery::mock(AdminParticipantNotificationService::class);

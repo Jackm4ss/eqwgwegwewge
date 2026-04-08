@@ -274,6 +274,7 @@ class AdminAnalyticsService
             $userId = (string) ($row['user_id'] ?? '');
             $attendanceDaysWithinEvent = [];
             $attendanceDaysFallback = [];
+            $attendanceTimestamps = [];
 
             foreach ($successfulScanLogsByUser[$userId] ?? [] as $scanLog) {
                 if (! $this->scanLogMatchesAttendanceRow($scanLog, $row)) {
@@ -294,6 +295,11 @@ class AdminAnalyticsService
                 }
 
                 $attendanceDaysFallback[$scanDate] = true;
+                $attendanceTimestamp = $this->attendanceTimestampFromLog($scanLog);
+
+                if ($attendanceTimestamp !== null) {
+                    $attendanceTimestamps[] = $attendanceTimestamp;
+                }
 
                 if ($scanDate >= $eventStart && $scanDate <= $eventEnd) {
                     $attendanceDaysWithinEvent[$scanDate] = true;
@@ -314,6 +320,16 @@ class AdminAnalyticsService
             $row['attendance_progress_percent'] = $eventTotalDays > 0
                 ? (int) round(($attendanceCount / $eventTotalDays) * 100)
                 : 0;
+            $normalizedAttendanceStatus = $this->normalizeAttendanceStatus($row['attendance_status'] ?? null);
+
+            if ($attendanceCount > 0) {
+                sort($attendanceTimestamps);
+                $row['attendance_status'] = 'checked_in';
+                $row['checked_in_at'] = $attendanceTimestamps[0] ?? ($row['checked_in_at'] ?? null);
+            } elseif (! in_array($normalizedAttendanceStatus, ['cancelled', 'invalid'], true)) {
+                $row['attendance_status'] = 'not_checked_in';
+                $row['checked_in_at'] = null;
+            }
 
             return $row;
         }, $rows);
@@ -944,6 +960,19 @@ class AdminAnalyticsService
         }
 
         return $scanTicketId === '' && $scanTicketCode === '';
+    }
+
+    private function attendanceTimestampFromLog(array $scanLog): ?string
+    {
+        foreach (['first_scanned_at', 'scanned_at', 'checked_in_at', 'updated_at', 'created_at'] as $field) {
+            $value = trim((string) ($scanLog[$field] ?? ''));
+
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     private function userSearchHaystack(array $row): string

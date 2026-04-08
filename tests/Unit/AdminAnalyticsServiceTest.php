@@ -613,6 +613,58 @@ class AdminAnalyticsServiceTest extends TestCase
         $this->assertSame(2, $user['attendance_progress_percent']);
     }
 
+    public function test_attendance_progress_marks_rows_checked_in_when_attendance_daily_exists(): void
+    {
+        config()->set('admin.event.start_date', '2026-04-09');
+        config()->set('admin.event.end_date', '2026-04-19');
+
+        $service = new AdminAnalyticsService;
+
+        $rows = $service->attachAttendanceProgress([
+            [
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-1',
+                'ticket_code' => 'TICKET-001',
+                'attendance_status' => 'not_checked_in',
+                'checked_in_at' => null,
+            ],
+        ], [
+            [
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-1',
+                'ticket_code' => 'TICKET-001',
+                'scan_date' => '2026-04-10',
+                'first_scanned_at' => '2026-04-10T08:30:00Z',
+            ],
+        ]);
+
+        $this->assertSame('checked_in', $rows[0]['attendance_status']);
+        $this->assertSame('2026-04-10T08:30:00Z', $rows[0]['checked_in_at']);
+        $this->assertSame(1, $rows[0]['attendance_days_count']);
+    }
+
+    public function test_attendance_progress_clears_stale_checked_in_status_when_daily_records_are_missing(): void
+    {
+        config()->set('admin.event.start_date', '2026-04-09');
+        config()->set('admin.event.end_date', '2026-04-19');
+
+        $service = new AdminAnalyticsService;
+
+        $rows = $service->attachAttendanceProgress([
+            [
+                'user_id' => 'user-1',
+                'ticket_id' => 'ticket-1',
+                'ticket_code' => 'TICKET-001',
+                'attendance_status' => 'checked_in',
+                'checked_in_at' => '2026-04-10T08:30:00Z',
+            ],
+        ], []);
+
+        $this->assertSame('not_checked_in', $rows[0]['attendance_status']);
+        $this->assertNull($rows[0]['checked_in_at']);
+        $this->assertSame(0, $rows[0]['attendance_days_count']);
+    }
+
     public function test_user_management_overview_counts_verified_checked_in_and_follow_up_users(): void
     {
         $service = new AdminAnalyticsService;

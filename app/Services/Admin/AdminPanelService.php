@@ -617,6 +617,7 @@ class AdminPanelService
         $overview = $this->optimizedUserManagementOverview(
             $filters,
             (int) ($pageResult['total'] ?? 0),
+            $directoryRows,
             is_array($meta['overview'] ?? null) ? $meta['overview'] : [],
         );
 
@@ -642,6 +643,7 @@ class AdminPanelService
     private function optimizedUserManagementOverview(
         array $filters,
         int $totalUsers,
+        array $directoryRows,
         array $fallbackOverview,
     ): array {
         $countFilters = $this->optimizedUserManagementOverviewCountFilters($filters);
@@ -653,7 +655,7 @@ class AdminPanelService
             'account_status' => 'active',
         ]));
         $checkedInUsers = $this->canCountCheckedInUsersLive($countFilters)
-            ? $this->repository->countTickets(['attendance_status' => 'checked_in'])
+            ? (int) ($this->analytics->buildUserManagementOverview($directoryRows)['checked_in_users'] ?? 0)
             : (int) ($fallbackOverview['checked_in_users'] ?? 0);
         $followUpUsers = max(0, $totalUsers - $healthyUsers);
 

@@ -253,7 +253,7 @@ class AdminUserManagementReadModelTest extends TestCase
                     'ticket_id' => 'ticket-1',
                     'user_id' => 'user-1',
                     'ticket_code' => 'TICKET-001',
-                    'attendance_status' => 'checked_in',
+                    'attendance_status' => 'not_checked_in',
                     'status' => 'active',
                 ],
                 [
@@ -266,7 +266,15 @@ class AdminUserManagementReadModelTest extends TestCase
             ]);
         $repository->shouldReceive('allAttendanceDaily')
             ->once()
-            ->andReturn([]);
+            ->andReturn([
+                [
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'ticket_code' => 'TICKET-001',
+                    'scan_date' => '2026-04-10',
+                    'first_scanned_at' => '2026-04-10T08:30:00Z',
+                ],
+            ]);
 
         $readModel = new AdminUserManagementReadModel(
             $repository,
