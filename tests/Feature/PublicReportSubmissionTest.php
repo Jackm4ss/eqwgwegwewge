@@ -34,6 +34,13 @@ class PublicReportSubmissionTest extends TestCase
             ->assertViewIs('welcome');
     }
 
+    public function test_report_tracking_page_loads_the_spa_shell(): void
+    {
+        $this->get('/report-tracking')
+            ->assertOk()
+            ->assertViewIs('welcome');
+    }
+
     public function test_public_report_submission_saves_report_without_sending_email_notifications(): void
     {
         Mail::fake();
@@ -220,6 +227,76 @@ class PublicReportSubmissionTest extends TestCase
             ->assertJsonPath('reference', fn ($reference) => is_string($reference) && $reference !== '');
 
         Mail::assertNothingSent();
+    }
+
+    public function test_public_report_tracking_lookup_returns_status_for_matching_reference(): void
+    {
+        PublicReport::query()->create([
+            'case_id' => 'LI001',
+            'report_type' => 'lost_item',
+            'case_prefix' => 'LI',
+            'case_sequence' => 1,
+            'action_status' => PublicReport::ACTION_STATUS_RESOLVED,
+            'admin_note' => 'Item has been secured at the help desk counter.',
+            'name' => 'Bang Raymond',
+            'email' => 'raymond@example.test',
+            'phone' => '+60123456789',
+            'identity_type' => 'passport',
+            'identity_number' => 'A12345678',
+            'incident_date' => '2026-04-01',
+            'incident_time' => '18:30',
+            'chronology' => 'Lost a black sling bag near the main stage around 18:30.',
+            'staff_name' => 'Mina',
+            'ip_address' => '127.0.0.1',
+            'reported_at' => '2026-04-01 19:00:00',
+        ]);
+
+        $this->postJson('/api/report/lookup', [
+            'reference' => 'li001',
+        ])->assertOk()
+            ->assertJson(fn (AssertableJson $json) => $json
+                ->where('found', true)
+                ->where('report.reference', 'LI001')
+                ->where('report.report_type', 'Lost Item')
+                ->where('report.action_status', PublicReport::ACTION_STATUS_RESOLVED)
+                ->where('report.action_status_label', 'Resolved')
+                ->where('report.email', 'raymond@example.test')
+                ->where('report.phone', '+60123456789')
+                ->where('report.latest_update', 'Item has been secured at the help desk counter.')
+                ->etc()
+            );
+    }
+
+    public function test_public_report_tracking_lookup_returns_not_found_for_unknown_reference(): void
+    {
+        PublicReport::query()->create([
+            'case_id' => 'IS001',
+            'report_type' => 'incident_security',
+            'case_prefix' => 'IS',
+            'case_sequence' => 1,
+            'action_status' => PublicReport::ACTION_STATUS_IN_PROGRESS,
+            'admin_note' => 'Security team is reviewing CCTV footage.',
+            'name' => 'Alya Putri',
+            'email' => 'alya@example.test',
+            'phone' => '+60111111111',
+            'identity_type' => 'national_id',
+            'identity_number' => '901231101234',
+            'incident_date' => '2026-04-01',
+            'incident_time' => '20:15',
+            'chronology' => 'Security incident reported near the main entrance.',
+            'staff_name' => 'Mina',
+            'ip_address' => '127.0.0.1',
+            'reported_at' => now(),
+        ]);
+
+        $this->postJson('/api/report/lookup', [
+            'reference' => 'IS999',
+        ])->assertOk()
+            ->assertJson(fn (AssertableJson $json) => $json
+                ->where('found', false)
+                ->where('message', 'Report data was not found. Please check the reference number.')
+                ->etc()
+            );
     }
 
     public function test_admin_reports_page_shows_saved_public_report_rows(): void

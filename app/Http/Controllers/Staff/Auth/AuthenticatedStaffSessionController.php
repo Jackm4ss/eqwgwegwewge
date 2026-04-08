@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Staff\StaffLoginRequest;
 use App\Models\Admin;
 use App\Services\Admin\AdminAuditLogger;
+use App\Services\Admin\AdminPresenceService;
 use App\Services\Auth\LocalAuthBootstrapService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -17,6 +18,7 @@ class AuthenticatedStaffSessionController extends Controller
 {
     public function __construct(
         private readonly AdminAuditLogger $auditLogger,
+        private readonly AdminPresenceService $presence,
         private readonly LocalAuthBootstrapService $localAuthBootstrap,
     ) {}
 
@@ -42,6 +44,7 @@ class AuthenticatedStaffSessionController extends Controller
         /** @var Admin $admin */
         $admin = Auth::guard('admin')->user();
         $admin->forceFill(['last_login_at' => now()])->save();
+        $this->presence->markOnline($admin);
 
         $this->auditLogger->log(
             $admin,
@@ -81,6 +84,10 @@ class AuthenticatedStaffSessionController extends Controller
             [],
             $request->ip(),
         );
+
+        if ($admin !== null) {
+            $this->presence->markOffline($admin);
+        }
 
         Auth::guard('admin')->logout();
 

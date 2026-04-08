@@ -93,6 +93,7 @@ class AdminUserController extends Controller
             ],
             'presence' => [
                 'statuses' => $presence->statuses($visibleAdminIds),
+                'last_seen_at' => $presence->lastSeenTimestamps($visibleAdminIds),
                 'heartbeat_seconds' => $presence->heartbeatSeconds(),
                 'ttl_seconds' => $presence->ttlSeconds(),
                 'statuses_url' => route('admin.presence.statuses'),

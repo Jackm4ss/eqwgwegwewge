@@ -19,10 +19,6 @@
             <h5 class="mb-1">Daily Report</h5>
             <small class="text-muted">Scan totals, visitors, and attendance statistics</small>
           </div>
-          <div class="d-flex gap-2">
-            <a href="{{ route('admin.exports.download', ['type' => 'daily-report', 'format' => 'csv'] + request()->query()) }}" class="btn btn-sm btn-label-success">CSV</a>
-            <a href="{{ route('admin.exports.download', ['type' => 'daily-report', 'format' => 'xlsx'] + request()->query()) }}" class="btn btn-sm btn-label-info">Excel</a>
-          </div>
         </div>
         <div class="table-responsive">
           <table class="table">
@@ -57,10 +53,6 @@
           <div>
             <h5 class="mb-1">Overall Report</h5>
             <small class="text-muted">Aggregate visitor statistics</small>
-          </div>
-          <div class="d-flex gap-2">
-            <a href="{{ route('admin.exports.download', ['type' => 'overall-report', 'format' => 'csv'] + request()->query()) }}" class="btn btn-sm btn-label-success">CSV</a>
-            <a href="{{ route('admin.exports.download', ['type' => 'overall-report', 'format' => 'xlsx'] + request()->query()) }}" class="btn btn-sm btn-label-info">Excel</a>
           </div>
         </div>
         <div class="table-responsive">

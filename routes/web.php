@@ -71,6 +71,7 @@ $renderReportSpa = static function () {
     $spaConfig['paths']['register'] = [];
     $spaConfig['paths']['forgotQr'] = [];
     $spaConfig['paths']['report'] = ['/', AppRouting::routePath('report.form')];
+    $spaConfig['paths']['reportTracking'] = [AppRouting::routePath('report-tracking.form')];
 
     return view('welcome', [
         'spaContext' => 'public',
@@ -205,6 +206,9 @@ $publicRoutes = static function () use ($renderSpa, $isSubdomainMode, $adminLogi
     Route::get('/report', static fn () => $renderSpa('public'))
         ->name('report.form');
 
+    Route::get('/report-tracking', static fn () => $renderSpa('public'))
+        ->name('report-tracking.form');
+
     Route::post('/register', function (RegisterRequest $request, RegistrationService $service) {
         try {
             $result = $service->register($request->validated(), $request->ip());
@@ -302,6 +306,7 @@ if ($isSubdomainMode) {
         $groupForDomain($helpHost, static function () use ($renderReportSpa) {
             Route::get('/', $renderReportSpa);
             Route::get('/report', $renderReportSpa);
+            Route::get('/report-tracking', $renderReportSpa);
         });
     }
 }
@@ -395,6 +400,8 @@ if ($isSubdomainMode) {
                     ->name('scanner-users.destroy');
                 Route::post('/presence/heartbeat', [AdminPresenceController::class, 'heartbeat'])
                     ->name('presence.heartbeat');
+                Route::post('/presence/offline', [AdminPresenceController::class, 'offline'])
+                    ->name('presence.offline');
                 Route::get('/presence/statuses', [AdminPresenceController::class, 'statuses'])
                     ->name('presence.statuses');
 
@@ -506,6 +513,8 @@ if ($isSubdomainMode) {
                     ->name('scanner-users.destroy');
                 Route::post('/presence/heartbeat', [AdminPresenceController::class, 'heartbeat'])
                     ->name('presence.heartbeat');
+                Route::post('/presence/offline', [AdminPresenceController::class, 'offline'])
+                    ->name('presence.offline');
                 Route::get('/presence/statuses', [AdminPresenceController::class, 'statuses'])
                     ->name('presence.statuses');
 
@@ -545,6 +554,11 @@ if ($isSubdomainMode) {
             ->group(function () {
                 Route::post('/logout', [AuthenticatedStaffSessionController::class, 'destroy'])
                     ->name('logout');
+
+                Route::post('/presence/heartbeat', [AdminPresenceController::class, 'heartbeat'])
+                    ->name('presence.heartbeat');
+                Route::post('/presence/offline', [AdminPresenceController::class, 'offline'])
+                    ->name('presence.offline');
 
                 Route::get('/session', [StaffScannerSessionController::class, 'show'])
                     ->name('session.show');
@@ -592,6 +606,11 @@ if ($isSubdomainMode) {
             Route::middleware(['auth:admin', 'admin.role:scanner'])->group(function () {
                 Route::post('/logout', [AuthenticatedStaffSessionController::class, 'destroy'])
                     ->name('logout');
+
+                Route::post('/presence/heartbeat', [AdminPresenceController::class, 'heartbeat'])
+                    ->name('presence.heartbeat');
+                Route::post('/presence/offline', [AdminPresenceController::class, 'offline'])
+                    ->name('presence.offline');
 
                 Route::get('/session', [StaffScannerSessionController::class, 'show'])
                     ->name('session.show');

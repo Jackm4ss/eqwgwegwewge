@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PublicReport;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Schema\Blueprint;
@@ -47,6 +48,45 @@ class PublicReportService
                 'reported_at' => now(),
             ]);
         });
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public function lookupForPublic(array $payload): array
+    {
+        $this->ensureStorageReady();
+
+        $reference = strtoupper(trim((string) ($payload['reference'] ?? '')));
+        $report = PublicReport::query()
+            ->where('case_id', $reference)
+            ->first();
+
+        if (! $report) {
+            return $this->publicLookupNotFoundResponse();
+        }
+
+        return [
+            'found' => true,
+            'report' => [
+                'reference' => (string) $report->case_id,
+                'report_type' => $this->reportTypeLabel((string) $report->report_type),
+                'action_status' => (string) ($report->action_status ?? PublicReport::ACTION_STATUS_PENDING),
+                'action_status_label' => $this->actionStatusLabel((string) ($report->action_status ?? PublicReport::ACTION_STATUS_PENDING)),
+                'status_guidance' => $this->publicStatusGuidance((string) ($report->action_status ?? PublicReport::ACTION_STATUS_PENDING)),
+                'name' => (string) $report->name,
+                'email' => (string) ($report->email ?? ''),
+                'phone' => (string) ($report->phone ?? ''),
+                'identity_type' => $this->identityTypeLabel((string) ($report->identity_type ?? '')),
+                'identity_number' => (string) ($report->identity_number ?? ''),
+                'incident_date' => (string) optional($report->incident_date)->format('d M Y'),
+                'incident_time' => $this->formatTimeValue((string) ($report->incident_time ?? '')),
+                'reported_at' => (string) optional($report->reported_at)->format('d M Y, h:i A'),
+                'chronology' => (string) ($report->chronology ?? ''),
+                'latest_update' => (string) ($report->admin_note ?? ''),
+            ],
+        ];
     }
 
     /**
@@ -181,6 +221,15 @@ class PublicReportService
         };
     }
 
+    public function publicStatusGuidance(string $value): string
+    {
+        return match ($value) {
+            PublicReport::ACTION_STATUS_IN_PROGRESS => 'Your report is currently being reviewed by the help desk team.',
+            PublicReport::ACTION_STATUS_RESOLVED => 'The team has marked this report as resolved. Please review the latest update below.',
+            default => 'We have received your report and it is waiting for review from the help desk team.',
+        };
+    }
+
     /**
      * @return array<int, array{value: string, label: string}>
      */
@@ -308,6 +357,40 @@ class PublicReportService
         $normalized = trim((string) $value);
 
         return $normalized === '' ? null : $normalized;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function publicLookupNotFoundResponse(): array
+    {
+        return [
+            'found' => false,
+            'message' => 'Report data was not found. Please check the reference number.',
+        ];
+    }
+
+    private function formatTimeValue(string $value): string
+    {
+        $normalized = trim($value);
+
+        if ($normalized === '') {
+            return '-';
+        }
+
+        foreach (['H:i:s', 'H:i'] as $format) {
+            try {
+                $parsed = CarbonImmutable::createFromFormat($format, $normalized);
+
+                if ($parsed !== false) {
+                    return $parsed->format('h:i A');
+                }
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        return $normalized;
     }
 
     private function ensureStorageReady(): void

@@ -158,6 +158,9 @@ const STAFF_MANUAL_CONFIRM_URL = getSpaUrl('staffManualConfirm', '/staff/manual-
 const STAFF_DASHBOARD_URL = getSpaUrl('staffDashboard', '/staff/dashboard');
 const STAFF_HISTORY_URL = getSpaUrl('staffHistory', '/staff/history');
 const STAFF_LOGOUT_URL = getSpaUrl('staffLogout', '/staff/logout');
+const STAFF_PRESENCE_HEARTBEAT_URL = getSpaUrl('staffPresenceHeartbeat', '/staff/presence/heartbeat');
+const STAFF_PRESENCE_OFFLINE_URL = getSpaUrl('staffPresenceOffline', '/staff/presence/offline');
+const STAFF_PRESENCE_HEARTBEAT_MS = 45_000;
 
 function csrfToken() {
   return (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ?? '';
@@ -1132,6 +1135,63 @@ export function StaffScannerPage() {
     }
   }, []);
 
+  const sendPresenceHeartbeat = useCallback(async () => {
+    const token = csrfToken();
+    if (!STAFF_PRESENCE_HEARTBEAT_URL || !token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(STAFF_PRESENCE_HEARTBEAT_URL, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': token,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ heartbeat: true }),
+        keepalive: true,
+      });
+
+      if ([401, 403].includes(response.status)) {
+        redirectToLogin();
+      }
+    } catch {
+      // Presence refresh is best-effort and should never interrupt scanning.
+    }
+  }, [redirectToLogin]);
+
+  const sendPresenceOffline = useCallback(() => {
+    const token = csrfToken();
+    if (!STAFF_PRESENCE_OFFLINE_URL || !token) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('_token', token);
+    formData.append('offline', '1');
+
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      navigator.sendBeacon(STAFF_PRESENCE_OFFLINE_URL, formData);
+      return;
+    }
+
+    void fetch(STAFF_PRESENCE_OFFLINE_URL, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': token,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify({ offline: true }),
+      keepalive: true,
+    }).catch(() => null);
+  }, []);
+
   const refreshDashboard = useCallback(async (perPage = historyMeta.per_page || DEFAULT_HISTORY_PER_PAGE) => {
     setDashboardLoading(true);
 
@@ -1274,6 +1334,37 @@ export function StaffScannerPage() {
       void stopScanner();
     };
   }, [redirectToLogin, refreshDashboard, showScannerAlert, stopScanner]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    void sendPresenceHeartbeat();
+
+    const heartbeatTimer = window.setInterval(() => {
+      void sendPresenceHeartbeat();
+    }, STAFF_PRESENCE_HEARTBEAT_MS);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void sendPresenceHeartbeat();
+      }
+    };
+
+    const handlePageHide = () => {
+      sendPresenceOffline();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      window.clearInterval(heartbeatTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [sendPresenceHeartbeat, sendPresenceOffline, session]);
 
   useEffect(() => {
     let mounted = true;

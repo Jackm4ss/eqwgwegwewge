@@ -33,10 +33,6 @@
         <h5 class="mb-1">Admin Activity Records</h5>
         <small class="text-muted">{{ number_format($logs->total()) }} logs found</small>
       </div>
-      <div class="d-flex gap-2">
-        <a href="{{ route('admin.exports.download', ['type' => 'admin-logs', 'format' => 'csv'] + request()->query()) }}" class="btn btn-sm btn-label-success">CSV</a>
-        <a href="{{ route('admin.exports.download', ['type' => 'admin-logs', 'format' => 'xlsx'] + request()->query()) }}" class="btn btn-sm btn-label-info">Excel</a>
-      </div>
     </div>
     <div class="table-responsive">
       <table class="table">

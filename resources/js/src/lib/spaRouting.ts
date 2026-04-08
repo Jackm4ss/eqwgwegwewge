@@ -5,6 +5,7 @@ export type SpaPathKey =
   | 'register'
   | 'forgotQr'
   | 'report'
+  | 'reportTracking'
   | 'adminLogin'
   | 'staffLogin'
   | 'staffHome';
@@ -12,9 +13,11 @@ export type SpaPathKey =
 export type SpaUrlKey =
   | 'publicHome'
   | 'registerForm'
+  | 'reportTrackingForm'
   | 'registerApi'
   | 'forgotQrLookupApi'
   | 'reportSubmitApi'
+  | 'reportTrackingLookupApi'
   | 'forgotPassword'
   | 'login'
   | 'adminLoginSubmit'
@@ -23,6 +26,8 @@ export type SpaUrlKey =
   | 'staffHome'
   | 'staffLoginSubmit'
   | 'staffLogout'
+  | 'staffPresenceHeartbeat'
+  | 'staffPresenceOffline'
   | 'staffSession'
   | 'staffScannerPost'
   | 'staffScan'
@@ -53,6 +58,7 @@ const FALLBACK_CONFIG: SpaConfig = {
     register: ['/register'],
     forgotQr: ['/forgot-qr'],
     report: ['/report'],
+    reportTracking: ['/report-tracking'],
     adminLogin: ['/login'],
     staffLogin: ['/staff/login'],
     staffHome: ['/staff'],
@@ -60,9 +66,11 @@ const FALLBACK_CONFIG: SpaConfig = {
   urls: {
     publicHome: '/',
     registerForm: '/register',
+    reportTrackingForm: '/report-tracking',
     registerApi: '/api/register',
     forgotQrLookupApi: '/api/forgot-qr/lookup',
     reportSubmitApi: '/api/report',
+    reportTrackingLookupApi: '/api/report/lookup',
     forgotPassword: '/forgot-password',
     login: '/login',
     adminLoginSubmit: '/admin/login',
@@ -71,6 +79,8 @@ const FALLBACK_CONFIG: SpaConfig = {
     staffHome: '/staff',
     staffLoginSubmit: '/staff/login',
     staffLogout: '/staff/logout',
+    staffPresenceHeartbeat: '/staff/presence/heartbeat',
+    staffPresenceOffline: '/staff/presence/offline',
     staffSession: '/staff/session',
     staffScannerPost: '/staff/session/scanner-post',
     staffScan: '/staff/scan',
@@ -143,6 +153,7 @@ function buildConfig(): SpaConfig {
     register: normalizePaths(rawPaths.register),
     forgotQr: normalizePaths(rawPaths.forgotQr),
     report: normalizePaths(rawPaths.report),
+    reportTracking: normalizePaths(rawPaths.reportTracking),
     adminLogin: normalizePaths(rawPaths.adminLogin),
     staffLogin: normalizePaths(rawPaths.staffLogin),
     staffHome: normalizePaths(rawPaths.staffHome),

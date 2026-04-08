@@ -19,22 +19,13 @@ class AdminQrManagementLookupService
 
     public function lookup(array $data): array
     {
-        $user = match ((string) ($data['search_type'] ?? '')) {
-            'email' => $this->users->findByEmail((string) $data['email']),
-            'phone' => $this->users->findByPhoneNumber((string) $data['phone_number']),
-            'passport', 'ic' => $this->users->findByIdentityDocument(
-                (string) $data['identity_type'],
-                (string) $data['country'],
-                (string) $data['identity_number'],
-            ),
-            default => null,
-        };
+        [$user, $ticket] = $this->resolveLookupTarget($data);
 
         if (! $user) {
             return $this->notFoundResponse();
         }
 
-        $ticket = $this->resolveTicket($user);
+        $ticket ??= $this->resolveTicket($user);
 
         if (! $ticket || blank($ticket['ticket_id'] ?? null)) {
             return $this->notFoundResponse();
@@ -86,6 +77,39 @@ class AdminQrManagementLookupService
             'found' => false,
             'message' => 'Participant data was not found.',
         ];
+    }
+
+    private function resolveLookupTarget(array $data): array
+    {
+        $searchType = (string) ($data['search_type'] ?? '');
+
+        if ($searchType === 'entry_code') {
+            $ticket = $this->repository->findTicketByEntryCode((string) ($data['entry_code'] ?? ''));
+
+            if (! $ticket) {
+                return [null, null];
+            }
+
+            $userId = trim((string) ($ticket['user_id'] ?? ''));
+            $user = $userId !== ''
+                ? $this->users->findById($userId)
+                : null;
+
+            return [$user, $ticket];
+        }
+
+        $user = match ($searchType) {
+            'email' => $this->users->findByEmail((string) $data['email']),
+            'phone' => $this->users->findByPhoneNumber((string) $data['phone_number']),
+            'passport', 'ic' => $this->users->findByIdentityDocument(
+                (string) $data['identity_type'],
+                (string) $data['country'],
+                (string) $data['identity_number'],
+            ),
+            default => null,
+        };
+
+        return [$user, null];
     }
 
     private function resolvePhoneParts(array $user): array

@@ -121,7 +121,7 @@ class CampaignLinkFeatureTest extends TestCase
             ->assertDontSee('campaign-link-source-options', false)
             ->assertSee('https://songkranfestival.my/')
             ->assertSee('/fb')
-            ->assertSee('Export link CSV')
+            ->assertDontSee('Export link CSV')
             ->assertSee('Analytics & Filters', false)
             ->assertSee('Source Click Breakdown')
             ->assertSee('Top source')

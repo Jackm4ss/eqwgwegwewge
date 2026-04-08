@@ -391,9 +391,6 @@
                 <h5 class="mb-1">Analytics & Filters</h5>
                 <p class="text-muted mb-0">Filter the shortlink library by slug, source, destination, and status. Traffic is tracked automatically for active slugs.</p>
               </div>
-              <a href="{{ route('admin.campaign-links.index', $exportQuery) }}" class="btn btn-label-primary">
-                Export link CSV
-              </a>
             </div>
 
             <div class="row g-3 mb-4">

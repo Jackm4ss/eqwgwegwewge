@@ -59,3 +59,4 @@ out/
 !/public/build/manifest.json
 !/public/build/assets/
 !/public/build/assets/**
+.how_to.md

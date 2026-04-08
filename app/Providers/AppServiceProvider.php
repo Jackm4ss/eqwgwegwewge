@@ -117,6 +117,19 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        RateLimiter::for('public-report-lookup', function (Request $request) {
+            $reference = strtoupper(trim((string) $request->input('reference', '')));
+
+            if ($reference === '') {
+                $reference = 'missing-reference';
+            }
+
+            return [
+                Limit::perMinute(8)->by($request->ip()),
+                Limit::perMinute(3)->by($request->ip().'|'.$reference),
+            ];
+        });
+
         RateLimiter::for('traffic-visit', function (Request $request) {
             $landingPath = trim((string) $request->input('traffic_landing_path', ''));
 

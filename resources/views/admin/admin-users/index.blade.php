@@ -72,6 +72,7 @@
     $currentPerPage = (int) ($filters['per_page'] ?? 10);
     $currentPresence = (string) ($filters['presence'] ?? 'all');
     $presenceStatuses = $presence['statuses'] ?? [];
+    $presenceLastSeen = $presence['last_seen_at'] ?? [];
     $visibleOnlineCount = collect($presenceStatuses)->filter()->count();
     $visibleOfflineCount = max(0, count($presenceStatuses) - $visibleOnlineCount);
   @endphp
@@ -212,7 +213,7 @@
             <th>Account status</th>
             <th>Role</th>
             <th>Presence</th>
-            <th>Last login</th>
+            <th>Last active</th>
             <th>Created</th>
             <th class="text-end">Action</th>
           </tr>
@@ -222,6 +223,7 @@
             @php
               $isOnline = (bool) ($presenceStatuses[(string) $admin->getKey()] ?? false);
               $isCurrentAdmin = (int) optional(auth('admin')->user())->getKey() === (int) $admin->getKey();
+              $lastSeenAt = $presenceLastSeen[(string) $admin->getKey()] ?? null;
             @endphp
             <tr>
               <td>
@@ -252,7 +254,12 @@
                   {{ $isOnline ? 'Online' : 'Offline' }}
                 </span>
               </td>
-              <td>{{ $formatDateTime($admin->last_login_at) }}</td>
+              <td data-admin-last-seen-cell
+                data-admin-id="{{ $admin->getKey() }}"
+                data-last-seen-at="{{ $lastSeenAt ?? '' }}"
+                data-login-at="{{ $admin->last_login_at?->toISOString() ?? '' }}">
+                {{ $isOnline ? 'Currently online' : $formatDateTime($lastSeenAt ?? $admin->last_login_at) }}
+              </td>
               <td>{{ $formatDateTime($admin->created_at) }}</td>
               <td class="text-end">
                 <div class="d-inline-flex flex-wrap justify-content-end gap-2">
@@ -376,8 +383,12 @@
       const statusesUrl = @json($presence['statuses_url'] ?? '');
       const refreshIntervalMs = {{ max(15000, ((int) ($presence['heartbeat_seconds'] ?? 45)) * 1000) }};
       const badges = Array.from(document.querySelectorAll('[data-admin-presence-badge]'));
+      const lastSeenCells = Array.from(document.querySelectorAll('[data-admin-last-seen-cell]'));
       const onlineCountEl = document.querySelector('[data-online-count]');
       const offlineCountEl = document.querySelector('[data-offline-count]');
+      const lastSeenCurrentLabel = 'Currently online';
+      const lastSeenFallbackLabel = 'Never';
+      const appTimeZone = @json(config('app.timezone'));
 
       if (!statusesUrl || badges.length === 0) {
         return;
@@ -391,6 +402,33 @@
         badge.classList.add(isOnline ? onlineClass : offlineClass);
         badge.textContent = isOnline ? 'Online' : 'Offline';
         badge.dataset.presenceState = isOnline ? 'online' : 'offline';
+      };
+
+      const formatLastSeen = (value) => {
+        if (!value) {
+          return lastSeenFallbackLabel;
+        }
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+          return value;
+        }
+
+        return date.toLocaleString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone: appTimeZone || undefined,
+        }).replace(',', '');
+      };
+
+      const applyLastSeen = (cell, isOnline, lastSeenAt) => {
+        cell.dataset.lastSeenAt = lastSeenAt || '';
+        cell.textContent = isOnline ? lastSeenCurrentLabel : formatLastSeen(lastSeenAt);
       };
 
       const updateCounters = () => {
@@ -408,6 +446,13 @@
 
       badges.forEach((badge) => {
         applyStatus(badge, badge.textContent.trim().toLowerCase() === 'online');
+      });
+
+      lastSeenCells.forEach((cell) => {
+        const adminId = cell.dataset.adminId || '';
+        const badge = badges.find((currentBadge) => (currentBadge.dataset.adminId || '') === adminId);
+        const isOnline = badge?.dataset.presenceState === 'online';
+        applyLastSeen(cell, isOnline, cell.dataset.lastSeenAt || cell.dataset.loginAt || '');
       });
 
       const refreshStatuses = () => {
@@ -437,8 +482,17 @@
 
             badges.forEach((badge) => {
               const adminId = badge.dataset.adminId || '';
+              const lastSeenCell = lastSeenCells.find((cell) => (cell.dataset.adminId || '') === adminId);
+              const lastSeenAt = typeof payload.last_seen_at?.[adminId] === 'string'
+                ? payload.last_seen_at[adminId]
+                : '';
+              const isOnline = Boolean(payload.statuses[adminId]);
 
-              applyStatus(badge, Boolean(payload.statuses[adminId]));
+              applyStatus(badge, isOnline);
+
+              if (lastSeenCell) {
+                applyLastSeen(lastSeenCell, isOnline, lastSeenAt || lastSeenCell.dataset.loginAt || '');
+              }
             });
 
             updateCounters();

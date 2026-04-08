@@ -302,14 +302,6 @@
           <h5 class="mb-1">Find the data you need</h5>
           <p class="text-muted mb-0">Use a simple search so admins do not need to review the full scan history.</p>
         </div>
-        <div class="d-flex gap-2">
-          <a href="{{ route('admin.exports.download', ['type' => 'attendance', 'format' => 'csv'] + request()->query()) }}" class="btn btn-label-success">
-            Download CSV
-          </a>
-          <a href="{{ route('admin.exports.download', ['type' => 'attendance', 'format' => 'xlsx'] + request()->query()) }}" class="btn btn-label-info">
-            Download Excel
-          </a>
-        </div>
       </div>
 
       <form method="GET" action="{{ route('admin.attendance.index') }}" class="row g-4 align-items-end">

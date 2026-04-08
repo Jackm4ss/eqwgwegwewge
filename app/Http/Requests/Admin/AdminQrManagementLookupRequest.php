@@ -16,8 +16,9 @@ class AdminQrManagementLookupRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'search_type' => ['nullable', 'string', Rule::in(['email', 'phone', 'passport', 'ic'])],
+            'search_type' => ['nullable', 'string', Rule::in(['email', 'entry_code', 'phone', 'passport', 'ic'])],
             'email' => ['nullable', 'email:rfc', 'max:120'],
+            'entry_code' => ['nullable', 'string', 'max:20', 'regex:/^[A-Z0-9]+$/'],
             'phone_country_code' => ['nullable', 'string', 'regex:/^\+\d{1,4}$/'],
             'phone_national_number' => ['nullable', 'string', 'regex:/^\d{4,20}$/'],
             'phone_number' => ['nullable', 'string', 'max:30', 'regex:/^\+\d{6,20}$/'],
@@ -38,6 +39,7 @@ class AdminQrManagementLookupRequest extends FormRequest
 
             match ($searchType) {
                 'email' => $this->validateEmailSearch($validator),
+                'entry_code' => $this->validateEntryCodeSearch($validator),
                 'phone' => $this->validatePhoneSearch($validator),
                 'passport' => $this->validatePassportSearch($validator),
                 'ic' => $this->validateIcSearch($validator),
@@ -50,6 +52,7 @@ class AdminQrManagementLookupRequest extends FormRequest
     {
         return filled($this->input('search_type'))
             || filled($this->input('email'))
+            || filled($this->input('entry_code'))
             || filled($this->input('phone_national_number'))
             || filled($this->input('identity_number'));
     }
@@ -58,6 +61,7 @@ class AdminQrManagementLookupRequest extends FormRequest
     {
         $searchType = strtolower(trim((string) $this->input('search_type', '')));
         $email = strtolower(trim((string) $this->input('email', '')));
+        $entryCode = strtoupper(preg_replace('/[^A-Z0-9]/i', '', (string) $this->input('entry_code', '')) ?? '');
         $phoneCountryCode = $this->normalizePhoneCountryCode((string) $this->input('phone_country_code', ''));
         $phoneNationalNumber = $this->normalizePhoneNationalNumber((string) $this->input('phone_national_number', ''));
         $country = strtoupper(trim((string) $this->input('country', '')));
@@ -82,6 +86,7 @@ class AdminQrManagementLookupRequest extends FormRequest
         $this->merge([
             'search_type' => $searchType !== '' ? $searchType : null,
             'email' => $email !== '' ? $email : null,
+            'entry_code' => $entryCode !== '' ? $entryCode : null,
             'phone_country_code' => $phoneCountryCode !== '' ? $phoneCountryCode : null,
             'phone_national_number' => $phoneNationalNumber !== '' ? $phoneNationalNumber : null,
             'phone_number' => $phoneNumber !== '' ? $phoneNumber : null,
@@ -95,6 +100,13 @@ class AdminQrManagementLookupRequest extends FormRequest
     {
         if ((string) $this->input('email') === '') {
             $validator->errors()->add('email', 'Email is required.');
+        }
+    }
+
+    private function validateEntryCodeSearch(Validator $validator): void
+    {
+        if ((string) $this->input('entry_code') === '') {
+            $validator->errors()->add('entry_code', 'Entry code is required.');
         }
     }
 

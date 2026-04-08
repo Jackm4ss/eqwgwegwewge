@@ -342,7 +342,7 @@ class FirestoreUserRepository implements UserRepositoryInterface
 
     private function ticketEntryCodeIndexDocument(FirestoreClient $client, string $entryCode): DocumentReference
     {
-        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/', '', $entryCode) ?? '');
+        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $entryCode) ?? '');
 
         return $client->collection((string) config('firebase.ticket_entry_code_index_collection', 'ticket_entry_code_index'))
             ->document(hash('sha256', $normalized));
@@ -521,7 +521,7 @@ class FirestoreUserRepository implements UserRepositoryInterface
 
     private function formatEntryCodeDisplay(string $entryCode): string
     {
-        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/', '', $entryCode) ?? '');
+        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $entryCode) ?? '');
 
         if ($normalized === '') {
             return '';

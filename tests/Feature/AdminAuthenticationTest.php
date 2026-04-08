@@ -230,6 +230,7 @@ class AdminAuthenticationTest extends TestCase
         $response->assertOk()
             ->assertSee('QR Management')
             ->assertSee('Participant Lookup')
+            ->assertSee('Entry Code')
             ->assertSee('Search Participant')
             ->assertSee('Scanner Management')
             ->assertSee(route('admin.qr-management.index'), false);
@@ -245,6 +246,7 @@ class AdminAuthenticationTest extends TestCase
                 ->with([
                     'search_type' => 'email',
                     'email' => 'jokiaja@gmail.com',
+                    'entry_code' => null,
                     'phone_country_code' => null,
                     'phone_national_number' => null,
                     'phone_number' => null,
@@ -315,6 +317,47 @@ class AdminAuthenticationTest extends TestCase
             ->assertDontSee('Ticket Code')
             ->assertSee(route('admin.users.qr.reset', 'user-123'), false)
             ->assertSee(route('admin.users.qr.regenerate', 'user-123'), false);
+    }
+
+    public function test_admin_qr_management_page_normalizes_entry_code_lookup_request(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        $this->mock(AdminQrManagementLookupService::class, function ($mock): void {
+            $mock->shouldReceive('lookup')
+                ->once()
+                ->with([
+                    'search_type' => 'entry_code',
+                    'email' => null,
+                    'entry_code' => 'ABCD1234',
+                    'phone_country_code' => null,
+                    'phone_national_number' => null,
+                    'phone_number' => null,
+                    'country' => null,
+                    'identity_type' => null,
+                    'identity_number' => null,
+                ])
+                ->andReturn([
+                    'found' => false,
+                    'message' => 'Participant data was not found.',
+                ]);
+        });
+
+        $this->mock(AdminPanelService::class, function ($mock): void {
+            $mock->shouldReceive('firestoreAvailable')
+                ->once()
+                ->andReturnTrue();
+        });
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get(route('admin.qr-management.index', [
+                'search_type' => 'entry_code',
+                'entry_code' => 'abcd-1234',
+            ]));
+
+        $response->assertOk()
+            ->assertSee('Participant data was not found.')
+            ->assertSee('Entry Code');
     }
 
     public function test_admin_management_menu_and_admin_account_list_render_for_authenticated_admin(): void
@@ -554,6 +597,7 @@ class AdminAuthenticationTest extends TestCase
                                 'identity_type' => 'passport',
                                 'identity_number' => '320240002222',
                                 'ticket_code' => '01KMHDQB6728DXYQWWCA9T7JKP',
+                                'entry_code_display' => 'ABCD-1234',
                                 'ticket_created_at' => '2026-03-24T20:26:00Z',
                                 'ticket_regenerated_at' => null,
                                 'attendance_status' => 'not_checked_in',
@@ -574,6 +618,7 @@ class AdminAuthenticationTest extends TestCase
                                 'country' => 'JP',
                                 'country_label' => 'Japan',
                                 'ticket_code' => '01KMHDQB6728DXYQWWCA9T7JKQ',
+                                'entry_code_display' => 'WXYZ-6789',
                                 'ticket_created_at' => '2026-03-24T20:20:00Z',
                                 'ticket_regenerated_at' => '2026-03-24T20:26:00Z',
                                 'attendance_status' => 'not_checked_in',
@@ -654,6 +699,8 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('Participant Overview')
             ->assertSee('Participant Details')
             ->assertSee('Summary of key participant information')
+            ->assertSee('Entry Code')
+            ->assertSee('ABCD-1234')
             ->assertSee('Registrant Source')
             ->assertSee('Promo Link: songkran-launch')
             ->assertDontSee('js-user-editor-modal', false)
@@ -686,6 +733,7 @@ class AdminAuthenticationTest extends TestCase
                     'ticket' => [
                         'ticket_id' => 'ticket-123',
                         'ticket_code' => '01KMHDQB6728DXYQWWCA9T7JKP',
+                        'entry_code_display' => 'ABCD-1234',
                         'qr_version' => 'v1',
                         'attendance_status' => 'not_checked_in',
                     ],
@@ -717,10 +765,11 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('name="phone_number"', false)
             ->assertSee('Save Changes')
             ->assertSee('Ticket Snapshot')
-            ->assertSee('Ticket Code')
-            ->assertSee('QR Actions')
-            ->assertSee('Reset Attendance')
-            ->assertSee('Generate QR')
+            ->assertSee('Entry Code')
+            ->assertSee('ABCD-1234')
+            ->assertDontSee('QR Actions')
+            ->assertDontSee('Reset Attendance')
+            ->assertDontSee('Generate QR')
             ->assertDontSee('Reset QR Code')
             ->assertDontSee('Regenerate QR Code');
     }
@@ -888,7 +937,7 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('ABCD-1234')
             ->assertSee('Daily Summary')
             ->assertSee('Scan Posts / Staff')
-            ->assertSee('Download CSV');
+            ->assertDontSee('Download CSV');
     }
 
     public function test_admin_attendance_page_paginates_daily_summary_and_scanner_activity_sections(): void

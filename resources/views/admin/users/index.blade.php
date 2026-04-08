@@ -262,6 +262,20 @@
       return $countryCode;
     };
 
+    $formatEntryCodeDisplay = static function (?string $entryCode): string {
+      $normalized = strtoupper(preg_replace('/[^A-Z0-9]/i', '', (string) $entryCode) ?? '');
+
+      if ($normalized === '') {
+        return '';
+      }
+
+      if (strlen($normalized) <= 4) {
+        return $normalized;
+      }
+
+      return substr($normalized, 0, 4) . '-' . substr($normalized, 4, 4);
+    };
+
     $qrMeta = static function (array $user) use ($formatDateTime): string {
       if (blank($user['ticket_code'] ?? null)) {
         return 'QR not generated';
@@ -511,26 +525,6 @@
                 <button type="submit" class="btn btn-outline-primary">Search</button>
             </div>
 
-            <div class="btn-group">
-              <button type="button" class="btn btn-label-secondary dropdown-toggle" data-bs-toggle="dropdown"
-                aria-expanded="false">
-                <i class="icon-base ti tabler-upload me-1"></i> Export
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li>
-                  <a class="dropdown-item"
-                    href="{{ route('admin.exports.download', array_merge($exportQuery, ['type' => 'users', 'format' => 'csv'])) }}">
-                    <i class="icon-base ti tabler-file-type-csv me-2"></i> Export CSV
-                  </a>
-                </li>
-                <li>
-                  <a class="dropdown-item"
-                    href="{{ route('admin.exports.download', array_merge($exportQuery, ['type' => 'users', 'format' => 'xlsx'])) }}">
-                    <i class="icon-base ti tabler-file-spreadsheet me-2"></i> Export Excel
-                  </a>
-                </li>
-              </ul>
-            </div>
           </div>
         </div>
       </div>
@@ -574,7 +568,9 @@
                 'country_flag' => $countryFlagClass($user['country'] ?? null),
                 'identity_label' => ($user['identity_type'] ?? 'passport') === 'national_id' ? 'Malaysia IC (MyKad)' : 'Passport',
                 'identity_number' => filled($user['identity_number'] ?? null) ? (string) $user['identity_number'] : '-',
-                'ticket_code' => filled($user['ticket_code'] ?? null) ? (string) $user['ticket_code'] : 'No ticket yet',
+                'entry_code_display' => filled($user['entry_code_display'] ?? null)
+                  ? (string) $user['entry_code_display']
+                  : ($formatEntryCodeDisplay($user['entry_code'] ?? null) ?: 'No entry code yet'),
                 'qr_meta' => $qrMeta($user),
                 'checked_in_at' => filled($user['checked_in_at'] ?? null) ? $formatDateTime($user['checked_in_at']) : '-',
                 'attendance_count_label' => $attendanceDaysCount . ' / ' . $attendanceTotalDays . ' Days',
@@ -801,8 +797,8 @@
             </div>
 
             <div class="user-overview-item">
-              <span class="user-overview-item-label">Ticket Code</span>
-              <div class="user-overview-item-value" data-detail-ticket-code>-</div>
+              <span class="user-overview-item-label">Entry Code</span>
+              <div class="user-overview-item-value" data-detail-entry-code>-</div>
             </div>
 
             <div class="user-overview-item">
@@ -949,7 +945,7 @@
           setText('[data-detail-country-label]', payload.country_label);
           setText('[data-detail-identity-label]', payload.identity_label);
           setText('[data-detail-identity-number]', payload.identity_number);
-          setText('[data-detail-ticket-code]', payload.ticket_code);
+          setText('[data-detail-entry-code]', payload.entry_code_display);
           setText('[data-detail-qr-meta]', payload.qr_meta);
           setText('[data-detail-checked-in-at]', payload.checked_in_at);
           setText('[data-detail-attendance-count]', payload.attendance_count_label);

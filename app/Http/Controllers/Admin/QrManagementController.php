@@ -30,6 +30,7 @@ class QrManagementController extends Controller
             'searchType' => (string) ($request->input('search_type') ?? 'email') ?: 'email',
             'lookupInput' => [
                 'email' => (string) ($request->input('email') ?? ''),
+                'entry_code' => (string) ($request->input('entry_code') ?? ''),
                 'phone_country_code' => (string) ($request->input('phone_country_code') ?? '+60'),
                 'phone_national_number' => (string) ($request->input('phone_national_number') ?? ''),
                 'country' => (string) ($request->input('country') ?? 'MY'),

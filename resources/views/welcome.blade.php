@@ -17,6 +17,7 @@
         $currentHost !== '' && $currentHost === $staffHost => 'staff',
         $currentRouteName === 'register.form' || request()->is('register') => 'register',
         $currentRouteName === 'report.form' || request()->is('report') => 'help',
+        $currentRouteName === 'report-tracking.form' || request()->is('report-tracking') => 'help',
         ($spaContext ?? null) === 'admin' => 'admin',
         ($spaContext ?? null) === 'staff' => 'staff',
         default => 'public',

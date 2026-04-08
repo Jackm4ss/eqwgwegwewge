@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Admin;
 use App\Models\ScannerGate;
+use App\Services\Admin\AdminPresenceService;
 use Database\Seeders\AdminSeeder;
 use Database\Seeders\ScannerStaffSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,6 +21,7 @@ class StaffAuthenticationTest extends TestCase
         config([
             'admin.bootstrap_password' => 'LocalAdmin123!',
             'admin.seed_count' => 1,
+            'cache.default' => 'array',
             'scanner.bootstrap_password' => 'ScannerPass123!',
             'scanner.seed_count' => 1,
             'scanner.posts' => ['Gate A', 'Gate B'],
@@ -71,6 +73,11 @@ class StaffAuthenticationTest extends TestCase
             ->assertSessionHas('staff.scanner_post', 'Gate B');
 
         $this->assertAuthenticated('admin');
+
+        $scanner = Admin::query()->where('email', 'scanner01@songkran.local')->firstOrFail();
+
+        $this->assertNotNull($scanner->fresh()->last_login_at);
+        $this->assertTrue(app(AdminPresenceService::class)->isOnline($scanner));
     }
 
     public function test_scanner_login_requires_a_valid_gate_selection(): void
@@ -137,5 +144,28 @@ class StaffAuthenticationTest extends TestCase
         $this->actingAs($scanner, 'admin')
             ->get('/admin/dashboard')
             ->assertRedirect('/staff');
+    }
+
+    public function test_scanner_can_send_presence_heartbeat_and_offline_signal(): void
+    {
+        $scanner = Admin::query()->where('role', 'scanner')->firstOrFail();
+        $presence = app(AdminPresenceService::class);
+
+        $this->actingAs($scanner, 'admin')
+            ->postJson(route('staff.presence.heartbeat'))
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('admin_id', (string) $scanner->getKey());
+
+        $this->assertTrue($presence->isOnline($scanner));
+
+        $this->actingAs($scanner, 'admin')
+            ->postJson(route('staff.presence.offline'))
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('admin_id', (string) $scanner->getKey())
+            ->assertJsonPath('last_seen_at', fn (mixed $value): bool => is_string($value) && $value !== '');
+
+        $this->assertFalse($presence->isOnline($scanner));
     }
 }

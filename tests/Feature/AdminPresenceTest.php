@@ -45,7 +45,26 @@ class AdminPresenceTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('statuses.'.$admin->getKey(), true)
-            ->assertJsonPath('statuses.'.$otherAdmin->getKey(), false);
+            ->assertJsonPath('statuses.'.$otherAdmin->getKey(), false)
+            ->assertJsonPath('last_seen_at.'.$admin->getKey(), fn (mixed $value): bool => is_string($value) && $value !== '');
+    }
+
+    public function test_admin_can_send_offline_signal_without_logging_out(): void
+    {
+        $admin = Admin::query()->where('email', 'admin01@songkran.local')->firstOrFail();
+        $presence = app(AdminPresenceService::class);
+
+        $presence->markOnline($admin);
+        $this->assertTrue($presence->isOnline($admin));
+
+        $this->actingAs($admin, 'admin')
+            ->postJson(route('admin.presence.offline'))
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('admin_id', (string) $admin->getKey())
+            ->assertJsonPath('last_seen_at', fn (mixed $value): bool => is_string($value) && $value !== '');
+
+        $this->assertFalse($presence->isOnline($admin));
     }
 
     public function test_admin_logout_marks_presence_offline_immediately(): void

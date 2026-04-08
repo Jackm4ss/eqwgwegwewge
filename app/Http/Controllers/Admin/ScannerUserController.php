@@ -93,6 +93,7 @@ class ScannerUserController extends Controller
             ],
             'presence' => [
                 'statuses' => $presence->statuses($visibleScannerIds),
+                'last_seen_at' => $presence->lastSeenTimestamps($visibleScannerIds),
                 'heartbeat_seconds' => $presence->heartbeatSeconds(),
                 'ttl_seconds' => $presence->ttlSeconds(),
                 'statuses_url' => route('admin.presence.statuses'),

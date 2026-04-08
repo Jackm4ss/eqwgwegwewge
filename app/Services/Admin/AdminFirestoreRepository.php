@@ -287,7 +287,7 @@ class AdminFirestoreRepository
 
     public function findTicketByEntryCode(string $entryCode): ?array
     {
-        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/', '', $entryCode) ?? '');
+        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $entryCode) ?? '');
 
         if ($normalized === '') {
             return null;
@@ -2976,7 +2976,7 @@ class AdminFirestoreRepository
 
     private function ticketEntryCodeIndexPath(string $entryCode): string
     {
-        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/', '', $entryCode) ?? '');
+        $normalized = strtoupper(preg_replace('/[^A-Z0-9]/i', '', $entryCode) ?? '');
 
         return $this->ticketEntryCodeIndexCollection().'/'.hash('sha256', $normalized);
     }

@@ -147,4 +147,62 @@ class AdminQrManagementLookupServiceTest extends TestCase
         $this->assertSame(11, $result['participant']['attendance_total_days']);
         $this->assertSame(0, $result['participant']['attendance_progress_percent']);
     }
+
+    public function test_lookup_can_find_participant_by_entry_code(): void
+    {
+        config()->set('admin.event.start_date', '2026-04-09');
+        config()->set('admin.event.end_date', '2026-04-19');
+
+        $users = Mockery::mock(UserRepositoryInterface::class);
+        $users->shouldReceive('findById')
+            ->once()
+            ->with('user-123')
+            ->andReturn([
+                'user_id' => 'user-123',
+                'full_name' => 'Joki',
+                'email' => 'joki@example.test',
+                'country' => 'MY',
+                'identity_type' => 'national_id',
+                'identity_number' => '010203100011',
+            ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findTicketByEntryCode')
+            ->once()
+            ->with('ABCD1234')
+            ->andReturn([
+                'ticket_id' => 'ticket-123',
+                'user_id' => 'user-123',
+                'ticket_code' => 'TICKET-123',
+                'entry_code' => 'ABCD1234',
+                'attendance_status' => 'checked_in',
+            ]);
+        $repository->shouldReceive('findAttendanceDailyByUserIds')
+            ->once()
+            ->with(['user-123'])
+            ->andReturn([]);
+
+        $qrService = Mockery::mock(TicketQrCodeService::class);
+        $qrService->shouldReceive('signedTicketUrl')
+            ->once()
+            ->with('ticket-123')
+            ->andReturn('https://example.test/ticket-123');
+
+        $service = new AdminQrManagementLookupService(
+            $users,
+            $repository,
+            new AdminAnalyticsService,
+            $qrService,
+        );
+
+        $result = $service->lookup([
+            'search_type' => 'entry_code',
+            'entry_code' => 'ABCD1234',
+        ]);
+
+        $this->assertTrue($result['found']);
+        $this->assertSame('user-123', $result['participant']['user_id']);
+        $this->assertSame('ABCD1234', $result['ticket']['entry_code']);
+        $this->assertSame('ABCD-1234', $result['ticket']['entry_code_display']);
+    }
 }

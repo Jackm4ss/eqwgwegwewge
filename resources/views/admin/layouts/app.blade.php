@@ -271,6 +271,7 @@
     <script>
       document.addEventListener('DOMContentLoaded', function () {
         const heartbeatUrl = @json(route('admin.presence.heartbeat'));
+        const offlineUrl = @json(route('admin.presence.offline'));
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
         const heartbeatIntervalMs = {{ max(15000, ((int) config('admin.presence.heartbeat_seconds', 45)) * 1000) }};
         let heartbeatRequest = null;
@@ -296,6 +297,34 @@
           });
         };
 
+        const sendOfflineSignal = () => {
+          if (!offlineUrl || !csrfToken) {
+            return;
+          }
+
+          const formData = new FormData();
+          formData.append('_token', csrfToken);
+          formData.append('offline', '1');
+
+          if (typeof navigator.sendBeacon === 'function') {
+            navigator.sendBeacon(offlineUrl, formData);
+            return;
+          }
+
+          fetch(offlineUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': csrfToken,
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ offline: true }),
+            keepalive: true
+          }).catch(() => null);
+        };
+
         sendHeartbeat();
         window.setInterval(sendHeartbeat, heartbeatIntervalMs);
 
@@ -304,6 +333,8 @@
             sendHeartbeat();
           }
         });
+
+        window.addEventListener('pagehide', sendOfflineSignal);
       });
     </script>
   @endif

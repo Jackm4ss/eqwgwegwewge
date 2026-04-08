@@ -25,6 +25,20 @@ class AdminPresenceController extends Controller
         ]);
     }
 
+    public function offline(Request $request, AdminPresenceService $presence): JsonResponse
+    {
+        /** @var Admin $admin */
+        $admin = $request->user('admin');
+
+        $presence->markOffline($admin);
+
+        return response()->json([
+            'ok' => true,
+            'admin_id' => (string) $admin->getKey(),
+            'last_seen_at' => $presence->lastSeenTimestamps([(string) $admin->getKey()])[(string) $admin->getKey()] ?? null,
+        ]);
+    }
+
     public function statuses(Request $request, AdminPresenceService $presence): JsonResponse
     {
         $adminIds = collect($request->input('ids', []))
@@ -36,6 +50,7 @@ class AdminPresenceController extends Controller
 
         return response()->json([
             'statuses' => $presence->statuses($adminIds),
+            'last_seen_at' => $presence->lastSeenTimestamps($adminIds),
             'server_time' => now()->toISOString(),
             'ttl_seconds' => $presence->ttlSeconds(),
         ]);

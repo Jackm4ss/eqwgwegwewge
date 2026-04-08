@@ -672,7 +672,24 @@
   $accountStatus = (string) ($user['account_status'] ?? 'pending_verification');
   $verificationStatus = (string) ($user['verification_status'] ?? 'unverified');
   $attendanceStatus = (string) data_get($ticket, 'attendance_status', $user['attendance_status'] ?? 'not_checked_in');
-  $ticketCode = (string) data_get($ticket, 'ticket_code', $user['ticket_code'] ?? '-');
+  $formatEntryCodeDisplay = static function (?string $entryCode): string {
+    $normalized = strtoupper(preg_replace('/[^A-Z0-9]/i', '', (string) $entryCode) ?? '');
+
+    if ($normalized === '') {
+      return '';
+    }
+
+    if (strlen($normalized) <= 4) {
+      return $normalized;
+    }
+
+    return substr($normalized, 0, 4) . '-' . substr($normalized, 4, 4);
+  };
+  $entryCodeDisplay = (string) data_get($ticket, 'entry_code_display', $user['entry_code_display'] ?? '');
+
+  if ($entryCodeDisplay === '') {
+    $entryCodeDisplay = $formatEntryCodeDisplay(data_get($ticket, 'entry_code', $user['entry_code'] ?? ''));
+  }
   $identityType = (string) ($user['identity_type'] ?? 'passport');
   $identityTypeLabel = $identityType === 'national_id' ? 'Malaysia IC (MyKad)' : 'Passport';
   $countryLabel = (string) ($user['country_label'] ?? (\App\Support\CountryCatalog::nameFor($user['country'] ?? null) ?? ($user['country'] ?? '-')));
@@ -1088,45 +1105,9 @@
           </div>
 
           <dl class="row gy-2">
-            <dt class="col-5">Ticket Code</dt>
-            <dd class="col-7">{{ $ticketCode !== '' ? $ticketCode : '-' }}</dd>
+            <dt class="col-5">Entry Code</dt>
+            <dd class="col-7">{{ $entryCodeDisplay !== '' ? $entryCodeDisplay : '-' }}</dd>
           </dl>
-
-          <hr class="my-4" />
-
-          <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
-            <div>
-              <h5 class="mb-1">QR Actions</h5>
-              <p class="text-muted mb-0">Reset attendance or generate a new QR code when needed.</p>
-            </div>
-            <span class="user-editor-inline-note text-muted small" data-user-view-only @if (!$isReadonly)
-            style="display:none;" @endif>
-              <i class="icon-base ti tabler-eye"></i>
-              Available in edit mode
-            </span>
-          </div>
-
-          <div class="d-grid gap-3" data-user-edit-only @if ($isReadonly) style="display:none;" @endif>
-            <form method="POST" action="{{ route('admin.users.qr.reset', $user['user_id']) }}"
-              data-user-qr-action-form
-              data-confirm-title="Reset attendance?"
-              data-confirm-text="This will clear the participant attendance record and reset the QR state for this participant. Do you want to continue?"
-              data-confirm-button-text="Yes, reset attendance"
-              data-confirm-button-class="btn btn-label-warning me-2">
-              @csrf
-              <button type="submit" class="btn btn-label-warning w-100">Reset Attendance</button>
-            </form>
-
-            <form method="POST" action="{{ route('admin.users.qr.regenerate', $user['user_id']) }}"
-              data-user-qr-action-form
-              data-confirm-title="Generate a new QR code?"
-              data-confirm-text="This will generate a fresh QR code for the participant. Previous QR references should no longer be used. Do you want to continue?"
-              data-confirm-button-text="Yes, generate QR"
-              data-confirm-button-class="btn btn-primary me-2">
-              @csrf
-              <button type="submit" class="btn btn-label-primary w-100">Generate QR</button>
-            </form>
-          </div>
         </div>
       </div>
     </div>

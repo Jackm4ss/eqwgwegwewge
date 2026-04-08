@@ -416,7 +416,7 @@
         <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
           <div>
             <h5 class="mb-1">Participant Lookup</h5>
-            <p class="text-body-secondary mb-0">Search by email, phone, passport, or Malaysia IC.</p>
+            <p class="text-body-secondary mb-0">Search by email, entry code, phone, passport, or Malaysia IC.</p>
           </div>
         </div>
 
@@ -427,6 +427,14 @@
               <span class="qr-management-mode-card">
                 <span class="qr-management-mode-title">Email</span>
                 <span class="qr-management-mode-copy">Fastest when the participant knows the registered email.</span>
+              </span>
+            </label>
+            <label>
+              <input type="radio" name="search_type" value="entry_code"
+                {{ $searchType === 'entry_code' ? 'checked' : '' }} />
+              <span class="qr-management-mode-card">
+                <span class="qr-management-mode-title">Entry Code</span>
+                <span class="qr-management-mode-copy">Use the printed entry code shown on the participant QR.</span>
               </span>
             </label>
             <label>
@@ -460,6 +468,18 @@
                 <input type="email" class="form-control @error('email') is-invalid @enderror" id="qrLookupEmail"
                   name="email" value="{{ old('email', $lookupInput['email']) }}" placeholder="participant@example.com" />
                 @error('email')
+                  <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+              </div>
+            </div>
+
+            <div data-search-panel="entry_code" class="{{ $searchType === 'entry_code' ? 'is-active' : '' }}">
+              <div class="mb-3">
+                <label for="qrLookupEntryCode" class="form-label">Entry Code</label>
+                <input type="text" class="form-control @error('entry_code') is-invalid @enderror"
+                  id="qrLookupEntryCode" name="entry_code" value="{{ old('entry_code', $lookupInput['entry_code']) }}"
+                  placeholder="ABCD-1234" />
+                @error('entry_code')
                   <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
               </div>

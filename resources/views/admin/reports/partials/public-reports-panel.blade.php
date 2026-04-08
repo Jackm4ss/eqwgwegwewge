@@ -288,10 +288,6 @@
       <h5 class="mb-1">{{ $publicReportPanelTitle }}</h5>
       <small class="text-muted">{{ $publicReportPanelDescription }}</small>
     </div>
-    <div class="d-flex gap-2">
-      <a href="{{ route('admin.exports.download', array_merge($exportQuery, ['type' => 'public-reports', 'format' => 'csv'])) }}"
-        class="btn btn-label-success">Export CSV</a>
-    </div>
   </div>
   <div class="card-body">
     <form method="GET" action="{{ $publicReportIndexUrl }}" class="row g-4 align-items-end">

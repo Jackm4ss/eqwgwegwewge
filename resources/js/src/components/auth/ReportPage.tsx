@@ -78,6 +78,7 @@ type SubmittedState = {
 
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
 const PUBLIC_HOME_URL = getSpaUrl('publicHome', '/');
+const REPORT_TRACKING_URL = getSpaUrl('reportTrackingForm', '/report-tracking');
 
 const REPORT_OPTIONS: Array<{
   value: ReportType;
@@ -1133,6 +1134,9 @@ export function ReportPage() {
                 </div>
 
                 <DialogFooter className="border-t border-slate-100 px-6 py-4">
+                  <Button asChild type="button" variant="outline" className="border-sky-200 text-sky-700 hover:bg-sky-50 hover:text-sky-800">
+                    <a href={REPORT_TRACKING_URL}>Track Report</a>
+                  </Button>
                   <DialogClose asChild>
                     <Button type="button" className="bg-sky-600 text-white hover:bg-sky-700">
                       Done
