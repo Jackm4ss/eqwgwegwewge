@@ -143,7 +143,7 @@ class AdminAuthenticationTest extends TestCase
         $response->assertRedirect(route('admin.dashboard'));
     }
 
-    public function test_admin_dashboard_renders_date_filters_and_selected_range_summary(): void
+    public function test_admin_dashboard_hides_attendance_analytics_widgets_while_other_cards_still_render(): void
     {
         $admin = Admin::query()->firstOrFail();
 
@@ -189,13 +189,18 @@ class AdminAuthenticationTest extends TestCase
         $response->assertOk()
             ->assertSee('Analytics Dashboard')
             ->assertSee('Unique IP visitors')
-            ->assertSee('Dashboard Filters')
-            ->assertSee('From date')
-            ->assertSee('To date')
-            ->assertSee('Showing scan data for')
-            ->assertSee('24 Mar 2026 - 25 Mar 2026')
-            ->assertSee('Scan Statistics')
-            ->assertSee('Visitor Trend');
+            ->assertSee('Campaign Links')
+            ->assertSee('Public Reports')
+            ->assertDontSee('Dashboard Filters')
+            ->assertDontSee('From date')
+            ->assertDontSee('To date')
+            ->assertDontSee('Showing scan data for')
+            ->assertDontSee('Total Registrations')
+            ->assertDontSee('Total Scans')
+            ->assertDontSee('Unique Attendees')
+            ->assertDontSee('Duplicate Scans')
+            ->assertDontSee('Scan Statistics')
+            ->assertDontSee('Visitor Trend');
     }
 
     public function test_admin_users_page_renders_for_authenticated_admin(): void
