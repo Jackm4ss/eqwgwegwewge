@@ -141,6 +141,7 @@ type ExtendedMediaTrackSettings = MediaTrackSettings & {
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
 const PWA_APP_ICON_URL = '/pwa/icons/icon-192.png';
 const SCANNER_REGION_ID = 'staff-html5-qrcode-region';
+const CAMERA_AUTO_VALUE = '__auto__';
 const DEFAULT_HISTORY_PER_PAGE = 5;
 const EMPTY_STATS: ScannerStats = { total_scans: 0, successful_scans: 0, duplicate_scans: 0, invalid_scans: 0 };
 const EMPTY_HISTORY_META: HistoryMeta = {
@@ -948,7 +949,20 @@ function pickPreferredBackCamera(cameras: CameraDevice[]) {
     })[0] ?? null;
 }
 
-async function buildCameraStartTargets(platform: CameraPlatform): Promise<CameraStartTarget[]> {
+function cameraOptionLabel(camera: CameraDevice, index: number) {
+  const label = camera.label.trim();
+
+  if (label) {
+    return label;
+  }
+
+  return `Camera ${index + 1}`;
+}
+
+async function buildCameraStartTargets(
+  platform: CameraPlatform,
+  selectedCameraId?: string,
+): Promise<CameraStartTarget[]> {
   const targets: CameraStartTarget[] = [];
   const seen = new Set<string>();
 
@@ -964,6 +978,11 @@ async function buildCameraStartTargets(platform: CameraPlatform): Promise<Camera
       targets.push(target);
     }
   };
+
+  if (selectedCameraId) {
+    addTarget(selectedCameraId);
+    return targets;
+  }
 
   try {
     const cameras = await Html5Qrcode.getCameras();
@@ -1019,6 +1038,9 @@ export function StaffScannerPage() {
   const [scannerPending, setScannerPending] = useState(false);
   const [cameraMessage, setCameraMessage] = useState('');
   const [cameraPermissionState, setCameraPermissionState] = useState<CameraPermissionState>('unknown');
+  const [availableCameras, setAvailableCameras] = useState<CameraDevice[]>([]);
+  const [cameraDiscoveryBusy, setCameraDiscoveryBusy] = useState(false);
+  const [selectedCameraId, setSelectedCameraId] = useState('');
   const [cameraZoom, setCameraZoom] = useState<CameraZoomState | null>(null);
   const [awaitingCameraPermission, setAwaitingCameraPermission] = useState(false);
   const [activeTab, setActiveTab] = useState<StaffScannerTab>('home');
@@ -1080,6 +1102,23 @@ export function StaffScannerPage() {
       .then(runAlert);
 
     return alertQueueRef.current;
+  }, []);
+  const refreshAvailableCameras = useCallback(async () => {
+    setCameraDiscoveryBusy(true);
+
+    try {
+      const cameras = await Html5Qrcode.getCameras();
+      setAvailableCameras(cameras);
+      setSelectedCameraId((current) => (
+        current && cameras.some((camera) => camera.id === current)
+          ? current
+          : ''
+      ));
+    } catch {
+      // Keep the last known list so operators do not lose their selection mid-session.
+    } finally {
+      setCameraDiscoveryBusy(false);
+    }
   }, []);
   const handleCameraZoomChange = useCallback((rawValue: number) => {
     if (!cameraZoom) {
@@ -1330,10 +1369,11 @@ export function StaffScannerPage() {
     };
 
     void load();
+    void refreshAvailableCameras();
     return () => {
       void stopScanner();
     };
-  }, [redirectToLogin, refreshDashboard, showScannerAlert, stopScanner]);
+  }, [redirectToLogin, refreshAvailableCameras, refreshDashboard, showScannerAlert, stopScanner]);
 
   useEffect(() => {
     if (!session) {
@@ -1426,6 +1466,12 @@ export function StaffScannerPage() {
   }, []);
 
   useEffect(() => {
+    if (cameraPermissionState === 'granted') {
+      void refreshAvailableCameras();
+    }
+  }, [cameraPermissionState, refreshAvailableCameras]);
+
+  useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
       const promptEvent = event as BeforeInstallPromptEvent;
       promptEvent.preventDefault();
@@ -1509,7 +1555,7 @@ export function StaffScannerPage() {
     }
   }, [applyResult, redirectToLogin, showScannerAlert, stats]);
 
-  const startScanner = async () => {
+  const startScanner = async (nextSelectedCameraId?: string) => {
     if (!scannerPost.trim()) {
       void showScannerAlert({
         icon: 'error',
@@ -1589,7 +1635,8 @@ export function StaffScannerPage() {
         return;
       };
 
-      const startTargets = await buildCameraStartTargets(cameraPlatform);
+      const resolvedCameraId = nextSelectedCameraId ?? selectedCameraId;
+      const startTargets = await buildCameraStartTargets(cameraPlatform, resolvedCameraId);
       let lastStartError: unknown = null;
       let scannerStarted = false;
 
@@ -1626,6 +1673,7 @@ export function StaffScannerPage() {
       setScannerActive(true);
       setCameraPermissionState('granted');
       setCameraZoom(await configureActiveScannerCamera(scannerRegionRef.current, cameraPlatform));
+      void refreshAvailableCameras();
       void showScannerAlert(cameraReadyAlertConfig());
     } catch (error) {
       const failure = cameraStartFailure(error, cameraSurface, cameraPlatform);
@@ -1640,6 +1688,16 @@ export function StaffScannerPage() {
     } finally {
       setAwaitingCameraPermission(false);
       setScannerPending(false);
+    }
+  };
+
+  const handleCameraSelectionChange = (cameraValue: string) => {
+    const nextCameraId = cameraValue === CAMERA_AUTO_VALUE ? '' : cameraValue;
+    setSelectedCameraId(nextCameraId);
+    setCameraMessage('');
+
+    if (scannerActive) {
+      void startScanner(nextCameraId);
     }
   };
 
@@ -1780,6 +1838,13 @@ export function StaffScannerPage() {
   const LatestIcon = latestMeta.icon;
   const cameraSurface = detectCameraSurface();
   const cameraPlatform = detectCameraPlatform();
+  const cameraSelectValue = selectedCameraId || CAMERA_AUTO_VALUE;
+  const hasSelectableCameras = availableCameras.length > 0;
+  const cameraSelectionHelpText = cameraDiscoveryBusy
+    ? 'Checking camera devices on this device...'
+    : hasSelectableCameras
+      ? 'Automatic keeps the current behavior and prefers the best rear camera. Choosing a device restarts the live scanner when it is active.'
+      : 'No named camera devices are exposed yet. Grant camera permission first or reconnect the external camera, then refresh this list.';
   const permissionNotice = describeCameraPermission(
     cameraPermissionState,
     cameraSurface,
@@ -1897,6 +1962,46 @@ export function StaffScannerPage() {
                         <span className="rounded-full border border-current/15 bg-white/55 px-3 py-1">{cameraSurface === 'pwa' ? 'PWA' : 'Browser'}</span>
                         <span className="rounded-full border border-current/15 bg-white/55 px-3 py-1">{cameraPlatform === 'ios' ? 'iPhone / iPad' : cameraPlatform === 'android' ? 'Android' : 'Desktop'}</span>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-[1.4rem] border border-sky-100 bg-white px-4 py-4 shadow-[0_12px_35px_rgba(2,132,199,0.08)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Camera Source</p>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600">Choose a specific camera when the phone, dock, or external camera exposes more than one camera device.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void refreshAvailableCameras()}
+                        disabled={cameraDiscoveryBusy || scannerPending}
+                        className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition-all ${(cameraDiscoveryBusy || scannerPending)
+                          ? 'cursor-wait border-sky-100 bg-sky-50 text-sky-400'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                          }`}
+                        aria-label="Refresh available cameras"
+                      >
+                        <RefreshCcw className={`h-4.5 w-4.5 ${cameraDiscoveryBusy ? 'animate-spin' : ''}`} aria-hidden="true" />
+                      </button>
+                    </div>
+
+                    <div className="mt-4">
+                      <label htmlFor="staff-camera-source" className="mb-1.5 block text-sm font-semibold text-slate-700">Detected Camera</label>
+                      <select
+                        id="staff-camera-source"
+                        value={cameraSelectValue}
+                        onChange={(event) => handleCameraSelectionChange(event.target.value)}
+                        disabled={cameraDiscoveryBusy || scannerPending}
+                        className={authInputClass(false, { withIcon: false })}
+                      >
+                        <option value={CAMERA_AUTO_VALUE}>Automatic (Recommended)</option>
+                        {availableCameras.map((camera, index) => (
+                          <option key={camera.id} value={camera.id}>
+                            {cameraOptionLabel(camera, index)}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-2 text-xs leading-relaxed text-slate-500">{cameraSelectionHelpText}</p>
                     </div>
                   </div>
 
