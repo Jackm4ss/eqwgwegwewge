@@ -607,4 +607,149 @@ class AdminAttendanceReadModelTest extends TestCase
         $this->assertSame('checked_in', $page['rows']->items()[0]['attendance_status']);
         $this->assertSame('duplicate', $page['rows']->items()[0]['latest_scan_result']);
     }
+
+    public function test_rebuild_skips_orphaned_scan_logs_for_deleted_participants(): void
+    {
+        CarbonImmutable::setTestNow('2026-04-10 09:00:00 UTC');
+        config([
+            'cache.default' => 'array',
+            'admin.event.timezone' => 'Asia/Kuala_Lumpur',
+            'admin.event.start_date' => '2026-04-09',
+            'admin.event.end_date' => '2026-04-19',
+            'admin.attendance.read_model.enabled' => true,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allScanLogs')
+            ->once()
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-orphan',
+                    'user_id' => 'user-deleted',
+                    'ticket_id' => 'ticket-deleted',
+                    'ticket_code' => 'TICKET-404',
+                    'entry_code_display' => 'ORPH-4040',
+                    'scanner_name' => 'Gate A',
+                    'scanner_role' => 'staff',
+                    'scanner_id' => 'scanner-1',
+                    'result' => 'success',
+                    'scan_date' => '2026-04-10',
+                    'scanned_at' => '2026-04-10T09:00:00Z',
+                    'participant_snapshot' => [
+                        'full_name' => 'Deleted Person',
+                        'email' => 'deleted@example.test',
+                        'country' => 'MY',
+                        'ticket_code' => 'TICKET-404',
+                        'entry_code_display' => 'ORPH-4040',
+                    ],
+                ],
+            ]);
+        $repository->shouldReceive('allAttendanceDaily')
+            ->once()
+            ->andReturn([]);
+        $repository->shouldReceive('findUsersByIds')
+            ->once()
+            ->with(['user-deleted'])
+            ->andReturn([]);
+        $repository->shouldReceive('findTicketsByIds')
+            ->once()
+            ->with(['ticket-deleted'])
+            ->andReturn([]);
+
+        $readModel = new AdminAttendanceReadModel(
+            $repository,
+            new AdminAnalyticsService,
+            new AdminAttendanceSyncStatusFactory,
+        );
+
+        $payload = $readModel->rebuild();
+        $page = $readModel->page([]);
+
+        $this->assertSame([], $payload['rows']);
+        $this->assertNotNull($page);
+        $this->assertSame(0, $page['rows']->total());
+        $this->assertSame(0, $page['overview']['total_attendance']);
+        $this->assertSame(0, $page['overview']['checked_in']);
+    }
+
+    public function test_sync_user_removes_existing_projection_rows_after_participant_is_deleted(): void
+    {
+        CarbonImmutable::setTestNow('2026-04-10 09:00:00 UTC');
+        config([
+            'cache.default' => 'array',
+            'admin.event.timezone' => 'Asia/Kuala_Lumpur',
+            'admin.event.start_date' => '2026-04-09',
+            'admin.event.end_date' => '2026-04-19',
+            'admin.attendance.read_model.enabled' => true,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allScanLogs')
+            ->once()
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-1',
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'ticket_code' => 'TICKET-001',
+                    'entry_code_display' => 'ABCD-1234',
+                    'scanner_name' => 'Gate A',
+                    'scanner_role' => 'staff',
+                    'scanner_id' => 'scanner-1',
+                    'result' => 'success',
+                    'scan_date' => '2026-04-10',
+                    'scanned_at' => '2026-04-10T09:00:00Z',
+                ],
+            ]);
+        $repository->shouldReceive('allAttendanceDaily')
+            ->once()
+            ->andReturn([]);
+        $repository->shouldReceive('findUsersByIds')
+            ->once()
+            ->with(['user-1'])
+            ->andReturn([
+                [
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'full_name' => 'Alya Putri',
+                    'email' => 'alya@example.test',
+                    'country' => 'MY',
+                    'identity_type' => 'national_id',
+                    'identity_number' => '901231101234',
+                ],
+            ]);
+        $repository->shouldReceive('findTicketsByIds')
+            ->once()
+            ->with(['ticket-1'])
+            ->andReturn([
+                [
+                    'ticket_id' => 'ticket-1',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-001',
+                    'entry_code_display' => 'ABCD-1234',
+                    'attendance_status' => 'not_checked_in',
+                    'checked_in_at' => null,
+                ],
+            ]);
+        $repository->shouldReceive('findUser')
+            ->once()
+            ->with('user-1')
+            ->andReturn(null);
+
+        $readModel = new AdminAttendanceReadModel(
+            $repository,
+            new AdminAnalyticsService,
+            new AdminAttendanceSyncStatusFactory,
+        );
+
+        $readModel->rebuild();
+        $this->assertSame(1, $readModel->page([])['rows']->total());
+
+        $readModel->syncUser('user-1');
+
+        $page = $readModel->page([]);
+        $this->assertSame(0, $page['rows']->total());
+        $this->assertSame(0, $page['overview']['total_attendance']);
+        $this->assertSame(0, $page['overview']['checked_in']);
+    }
 }

@@ -175,6 +175,12 @@ class AdminAttendanceReadModel
         }
 
         try {
+            if (! is_array($this->repository->findUser($userId))) {
+                $this->removeUser($userId);
+
+                return;
+            }
+
             $scanLogs = $this->repository->findScanLogsByUserIds([$userId]);
             $attendanceLogs = $this->repository->findAttendanceDailyByUserIds([$userId]);
 
@@ -192,6 +198,21 @@ class AdminAttendanceReadModel
         } finally {
             Cache::forget($lockKey);
         }
+    }
+
+    public function removeUser(string $userId): void
+    {
+        if (! $this->enabled() || trim($userId) === '') {
+            return;
+        }
+
+        if ($this->usingRedisStorage()) {
+            $this->removeUserRowsUsingRedis($userId);
+        } else {
+            $this->removeUserRowsUsingCache($userId);
+        }
+
+        $this->refreshMetaAfterMutation();
     }
 
     public function removeScan(string $scanId): void
@@ -657,6 +678,11 @@ class AdminAttendanceReadModel
 
         $userId = trim((string) ($scanLog['user_id'] ?? ''));
         $ticketId = trim((string) ($scanLog['ticket_id'] ?? ''));
+
+        if ($this->scanLogReferencesMissingActiveParticipant($userId, $ticketId, $participantRowsByUserId, $ticketsById)) {
+            return null;
+        }
+
         $participantRow = $userId !== '' ? ($participantRowsByUserId[$userId] ?? null) : null;
         $ticket = $ticketId !== '' ? ($ticketsById[$ticketId] ?? null) : null;
         $snapshot = $this->participantSnapshotFromLog($scanLog);
@@ -735,6 +761,19 @@ class AdminAttendanceReadModel
         $row['search_blob'] = $this->searchBlob($row);
 
         return $row;
+    }
+
+    private function scanLogReferencesMissingActiveParticipant(
+        string $userId,
+        string $ticketId,
+        array $participantRowsByUserId,
+        array $ticketsById,
+    ): bool {
+        if ($userId !== '' && ! array_key_exists($userId, $participantRowsByUserId)) {
+            return true;
+        }
+
+        return $ticketId !== '' && ! array_key_exists($ticketId, $ticketsById);
     }
 
     private function participantSnapshotFromLog(array $scanLog): array
@@ -1568,6 +1607,84 @@ class AdminAttendanceReadModel
         usort($orderedScanIds, function (string $leftScanId, string $rightScanId) use ($rowsById): int {
             return $this->scoreForRow($rowsById[$rightScanId] ?? []) <=> $this->scoreForRow($rowsById[$leftScanId] ?? []);
         });
+
+        Cache::forever(self::ORDER_CACHE_KEY, $orderedScanIds);
+    }
+
+    private function removeUserRowsUsingRedis(string $userId): void
+    {
+        $redis = $this->redisConnection();
+        $matchingScanIds = [];
+        $rangeStart = 0;
+        $chunkSize = self::FILTER_SCAN_CHUNK_SIZE;
+
+        while (true) {
+            $scanIds = $redis->zrevrange(
+                self::ORDER_CACHE_KEY,
+                $rangeStart,
+                $rangeStart + $chunkSize - 1,
+            );
+
+            if (! is_array($scanIds) || $scanIds === []) {
+                break;
+            }
+
+            $encodedRows = $redis->hmget(self::ROWS_CACHE_KEY, $scanIds);
+
+            foreach ($encodedRows as $index => $encodedRow) {
+                $row = is_string($encodedRow) ? json_decode($encodedRow, true) : null;
+
+                if (
+                    ! is_array($row)
+                    || trim((string) ($row['user_id'] ?? '')) !== $userId
+                    || ! isset($scanIds[$index])
+                ) {
+                    continue;
+                }
+
+                $matchingScanIds[] = (string) $scanIds[$index];
+            }
+
+            $rangeStart += $chunkSize;
+        }
+
+        $matchingScanIds = array_values(array_unique(array_filter(
+            $matchingScanIds,
+            static fn (string $scanId): bool => trim($scanId) !== '',
+        )));
+
+        if ($matchingScanIds === []) {
+            return;
+        }
+
+        call_user_func_array([$redis, 'hdel'], array_merge([self::ROWS_CACHE_KEY], $matchingScanIds));
+        call_user_func_array([$redis, 'zrem'], array_merge([self::ORDER_CACHE_KEY], $matchingScanIds));
+    }
+
+    private function removeUserRowsUsingCache(string $userId): void
+    {
+        $rowsById = Cache::get(self::ROWS_CACHE_KEY, []);
+
+        if (! is_array($rowsById) || $rowsById === []) {
+            return;
+        }
+
+        $updatedRowsById = array_filter($rowsById, static function (mixed $row) use ($userId): bool {
+            return ! is_array($row) || trim((string) ($row['user_id'] ?? '')) !== $userId;
+        });
+
+        if (count($updatedRowsById) === count($rowsById)) {
+            return;
+        }
+
+        Cache::forever(self::ROWS_CACHE_KEY, $updatedRowsById);
+
+        $orderedScanIds = array_values(array_filter(
+            Cache::get(self::ORDER_CACHE_KEY, []),
+            static function (mixed $scanId) use ($updatedRowsById): bool {
+                return is_string($scanId) && array_key_exists($scanId, $updatedRowsById);
+            },
+        ));
 
         Cache::forever(self::ORDER_CACHE_KEY, $orderedScanIds);
     }

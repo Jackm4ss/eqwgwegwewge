@@ -1157,14 +1157,14 @@ class AdminPanelService
             }
         }
 
-        $rows = array_map(
-            fn (array $log): array => $this->buildAttendanceDirectoryRow(
+        $rows = array_values(array_filter(array_map(
+            fn (array $log): ?array => $this->buildAttendanceDirectoryRow(
                 $log,
                 $participantsByUserId,
                 $participantsByTicketCode,
             ),
             $this->repository->allScanLogs(),
-        );
+        )));
 
         Cache::forever(self::ATTENDANCE_DIRECTORY_CACHE_KEY, $rows);
         Cache::forget(self::ATTENDANCE_DIRECTORY_STALE_KEY);
@@ -1349,17 +1349,24 @@ class AdminPanelService
         array $log,
         array $participantsByUserId,
         array $participantsByTicketCode,
-    ): array {
-        $participant = $this->attendanceParticipantFromSnapshot($log);
+    ): ?array {
         $userId = trim((string) ($log['user_id'] ?? ''));
         $ticketCode = strtoupper(trim((string) ($log['ticket_code'] ?? '')));
-
-        if ($participant === null && $userId !== '') {
-            $participant = $participantsByUserId[$userId] ?? null;
-        }
+        $hasParticipantDirectory = $participantsByUserId !== [] || $participantsByTicketCode !== [];
+        $participant = $userId !== ''
+            ? ($participantsByUserId[$userId] ?? null)
+            : null;
 
         if ($participant === null && $ticketCode !== '') {
             $participant = $participantsByTicketCode[$ticketCode] ?? null;
+        }
+
+        if ($participant === null && $hasParticipantDirectory && ($userId !== '' || $ticketCode !== '')) {
+            return null;
+        }
+
+        if ($participant === null) {
+            $participant = $this->attendanceParticipantFromSnapshot($log);
         }
 
         $entryCodeDisplay = trim((string) ($log['entry_code_display'] ?? ''));

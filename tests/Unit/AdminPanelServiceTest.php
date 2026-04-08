@@ -1499,6 +1499,82 @@ class AdminPanelServiceTest extends TestCase
         $this->assertFalse(Cache::has(AdminPanelService::ATTENDANCE_DIRECTORY_STALE_KEY));
     }
 
+    public function test_warm_attendance_monitoring_cache_skips_deleted_participants_when_directory_has_active_rows(): void
+    {
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-active',
+                'ticket_id' => 'ticket-active',
+                'full_name' => 'Active Person',
+                'email' => 'active@example.test',
+                'country' => 'ID',
+                'country_label' => 'Indonesia',
+                'identity_type' => 'passport',
+                'identity_number' => 'P123456',
+                'ticket_code' => 'ACTIVE-1',
+                'entry_code_display' => 'ACTIVE-ENTRY',
+                'attendance_status' => 'checked_in',
+                'checked_in_at' => '2026-03-30T05:00:00Z',
+                'attendance_days_count' => 1,
+                'attendance_total_days' => 11,
+                'attendance_progress_percent' => 9,
+            ],
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allScanLogs')
+            ->once()
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-active',
+                    'ticket_id' => 'ticket-active',
+                    'ticket_code' => 'ACTIVE-1',
+                    'user_id' => 'user-active',
+                    'scanner_id' => 'scanner-post:gate-ab',
+                    'scanner_name' => 'Gate AB',
+                    'scanner_role' => 'staff',
+                    'scanned_at' => '2026-03-30T05:15:38Z',
+                    'scan_date' => '2026-03-30',
+                    'result' => 'success',
+                    'entry_code_display' => 'ACTIVE-ENTRY',
+                ],
+                [
+                    'scan_id' => 'scan-deleted',
+                    'ticket_id' => 'ticket-deleted',
+                    'ticket_code' => 'DELETED-1',
+                    'user_id' => 'user-deleted',
+                    'scanner_id' => 'scanner-post:gate-ab',
+                    'scanner_name' => 'Gate AB',
+                    'scanner_role' => 'staff',
+                    'scanned_at' => '2026-03-30T05:20:00Z',
+                    'scan_date' => '2026-03-30',
+                    'result' => 'success',
+                    'entry_code_display' => 'DELETED-ENTRY',
+                    'participant_snapshot' => [
+                        'full_name' => 'Deleted Person',
+                        'email' => 'deleted@example.test',
+                        'country' => 'ID',
+                        'country_label' => 'Indonesia',
+                        'ticket_code' => 'DELETED-1',
+                        'entry_code_display' => 'DELETED-ENTRY',
+                    ],
+                ],
+            ]);
+        $repository->shouldNotReceive('queryScanLogs');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+        $rows = $service->warmAttendanceMonitoringCache();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('scan-active', $rows[0]['scan_id']);
+        $this->assertSame('active@example.test', $rows[0]['participant']['email']);
+    }
+
     public function test_warm_attendance_monitoring_cache_uses_collection_scan_reads_instead_of_query_scan_logs(): void
     {
         Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, []);
