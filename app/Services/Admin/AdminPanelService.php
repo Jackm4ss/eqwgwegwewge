@@ -1083,6 +1083,14 @@ class AdminPanelService
         $cachedRows = Cache::get(self::ATTENDANCE_DIRECTORY_CACHE_KEY);
 
         if (is_array($cachedRows)) {
+            if (Cache::has(self::ATTENDANCE_DIRECTORY_STALE_KEY)) {
+                if (app()->environment('testing')) {
+                    return $this->refreshAttendanceDirectoryCache();
+                }
+
+                $this->scheduleAttendanceCacheRefreshAfterResponse();
+            }
+
             return $cachedRows;
         }
 

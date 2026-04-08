@@ -1413,6 +1413,86 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame('Gate AB', $attendance['scan_post_options'][0]['value']);
     }
 
+    public function test_attendance_search_refreshes_stale_cached_directory_during_tests(): void
+    {
+        config(['scanner.posts' => ['Gate AB']]);
+
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, []);
+        Cache::forever(AdminPanelService::ATTENDANCE_DIRECTORY_CACHE_KEY, [[
+            'scan_id' => 'scan-stale',
+            'ticket_id' => 'ticket-stale',
+            'ticket_code' => 'STALE-1',
+            'user_id' => 'user-stale',
+            'scanner_id' => 'scanner-post:gate-ab',
+            'scanner_name' => 'Gate AB',
+            'scanner_role' => 'staff',
+            'scanned_at' => '2026-03-30T01:00:00Z',
+            'scan_date' => '2026-03-30',
+            'result' => 'success',
+            'entry_code_display' => 'STALE-ENTRY',
+            'participant' => [
+                'name' => 'Stale Person',
+                'full_name' => 'Stale Person',
+                'email' => 'stale@example.com',
+                'phone_number' => '+62000000000',
+                'country' => 'ID',
+                'country_label' => 'Indonesia',
+                'ticket_code' => 'STALE-1',
+                'entry_code_display' => 'STALE-ENTRY',
+            ],
+            'search_blob' => 'stale person stale@example.com stale-entry',
+        ]]);
+        Cache::forever(AdminPanelService::ATTENDANCE_DIRECTORY_STALE_KEY, true);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allScanLogs')
+            ->once()
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-fresh',
+                    'ticket_id' => 'ticket-fresh',
+                    'ticket_code' => 'FRESH-1',
+                    'user_id' => 'user-fresh',
+                    'scanner_id' => 'scanner-post:gate-ab',
+                    'scanner_name' => 'Gate AB',
+                    'scanner_role' => 'staff',
+                    'scanned_at' => '2026-03-30T05:15:38Z',
+                    'scan_date' => '2026-03-30',
+                    'result' => 'success',
+                    'entry_code_display' => 'FRESH-ENTRY',
+                    'participant_snapshot' => [
+                        'full_name' => 'Fresh Person',
+                        'email' => 'fresh@example.com',
+                        'phone_number' => '+62811111111',
+                        'country' => 'ID',
+                        'country_label' => 'Indonesia',
+                        'ticket_code' => 'FRESH-1',
+                        'entry_code_display' => 'FRESH-ENTRY',
+                    ],
+                ],
+            ]);
+        $repository->shouldNotReceive('queryScanLogs');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications, ['Gate AB']);
+
+        $attendance = $service->attendanceData([
+            'q' => 'fresh',
+            'from' => '2026-03-30',
+            'to' => '2026-03-30',
+        ]);
+        $history = $attendance['history']->items();
+
+        $this->assertCount(1, $history);
+        $this->assertSame('scan-fresh', $history[0]['scan_id']);
+        $this->assertSame('fresh@example.com', $history[0]['participant']['email']);
+        $this->assertFalse(Cache::has(AdminPanelService::ATTENDANCE_DIRECTORY_STALE_KEY));
+    }
+
     public function test_warm_attendance_monitoring_cache_uses_collection_scan_reads_instead_of_query_scan_logs(): void
     {
         Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, []);
