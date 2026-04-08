@@ -1160,4 +1160,88 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('Malaysia IC (MyKad)')
             ->assertDontSee('No attendance data matches the current filters.');
     }
+
+    public function test_admin_attendance_page_defaults_zero_total_days_to_event_window(): void
+    {
+        $admin = Admin::query()->firstOrFail();
+
+        config([
+            'admin.event.start_date' => '2026-04-09',
+            'admin.event.end_date' => '2026-04-19',
+        ]);
+
+        $this->mock(AdminPanelService::class, function ($mock): void {
+            $mock->shouldReceive('attendanceManagementPage')
+                ->once()
+                ->with([])
+                ->andReturn([
+                    'rows' => new LengthAwarePaginator(
+                        [
+                            [
+                                'participant_key' => 'user:user-777',
+                                'user_id' => 'user-777',
+                                'full_name' => 'Maya Lestari',
+                                'email' => 'maya@example.test',
+                                'initials' => 'ML',
+                                'country' => 'MY',
+                                'country_label' => 'Malaysia',
+                                'entry_code_display' => 'QWER-1122',
+                                'attendance_days_count' => 0,
+                                'attendance_total_days' => 0,
+                                'attendance_progress_percent' => 0,
+                                'attendance_status' => 'not_checked_in',
+                                'checked_in_at' => null,
+                                'scanner_name' => 'Gate A',
+                                'scanner_role' => 'staff',
+                                'scanner_id' => 'scanner-1',
+                                'latest_scan_at' => '2026-04-10T09:10:00Z',
+                                'latest_scan_result' => 'invalid',
+                            ],
+                        ],
+                        1,
+                        10,
+                        1,
+                        [
+                            'path' => route('admin.attendance.index'),
+                            'pageName' => 'page',
+                        ],
+                    ),
+                    'overview' => [
+                        'total_attendance' => 1,
+                        'checked_in' => 0,
+                        'repeat_scans' => 0,
+                        'needs_review' => 1,
+                        'gate_counts' => [],
+                    ],
+                    'filter_options' => [
+                        'countries' => [],
+                        'identity_types' => [],
+                        'attendance_statuses' => [],
+                        'scan_results' => [],
+                        'scan_posts' => [],
+                    ],
+                    'sync_status' => [
+                        'state' => 'fresh',
+                        'source' => 'read_model',
+                        'last_synced_at_utc' => '2026-04-10T09:10:00Z',
+                        'fresh_within_seconds' => 15,
+                        'degraded_after_seconds' => 60,
+                        'fallback_after_seconds' => 300,
+                        'relative_label' => 'Refresh in 15s',
+                        'helper_label' => 'After the timer ends, refresh browser to see the latest data.',
+                    ],
+                ]);
+
+            $mock->shouldReceive('firestoreAvailable')
+                ->once()
+                ->andReturnTrue();
+        });
+
+        $response = $this->actingAs($admin, 'admin')
+            ->get('/admin/attendance');
+
+        $response->assertOk()
+            ->assertSee('0/11 days')
+            ->assertDontSee('0/0 days');
+    }
 }

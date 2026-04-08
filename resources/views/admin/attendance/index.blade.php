@@ -59,6 +59,20 @@
 @section('content')
   @php
     $adminEventTimezone = (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
+    $eventStartDate = \Carbon\CarbonImmutable::parse(
+      config('admin.event.start_date', now($adminEventTimezone)->toDateString()),
+      $adminEventTimezone
+    )->startOfDay();
+    $eventEndDate = \Carbon\CarbonImmutable::parse(
+      config('admin.event.end_date', config('admin.event.start_date', now($adminEventTimezone)->toDateString())),
+      $adminEventTimezone
+    )->startOfDay();
+
+    if ($eventStartDate->greaterThan($eventEndDate)) {
+      [$eventStartDate, $eventEndDate] = [$eventEndDate, $eventStartDate];
+    }
+
+    $eventTotalDays = max(1, $eventStartDate->diffInDays($eventEndDate) + 1);
     $countryFlagClass = static function (?string $countryCode): string {
       $countryCode = strtolower(trim((string) $countryCode));
 
@@ -342,6 +356,17 @@
             @php
               $attendance = $attendanceMeta($row['attendance_status'] ?? null);
               $latestScan = $scanMeta($row['latest_scan_result'] ?? null);
+              $attendanceDaysCount = max(0, (int) ($row['attendance_days_count'] ?? 0));
+              $attendanceTotalDays = (int) ($row['attendance_total_days'] ?? 0);
+              $attendanceTotalDays = $attendanceTotalDays > 0 ? $attendanceTotalDays : $eventTotalDays;
+
+              $attendanceProgressPercent = $row['attendance_progress_percent'] ?? null;
+
+              if (($attendanceProgressPercent === null || (int) ($row['attendance_total_days'] ?? 0) <= 0) && $attendanceTotalDays > 0) {
+                $attendanceProgressPercent = (int) round(($attendanceDaysCount / $attendanceTotalDays) * 100);
+              }
+
+              $attendanceProgressPercent = max(0, min(100, (int) ($attendanceProgressPercent ?? 0)));
             @endphp
             <tr>
               <td>
@@ -369,11 +394,11 @@
 
               <td style="min-width: 13.5rem;">
                 <div class="d-flex justify-content-between gap-3 mb-2">
-                  <span class="fw-medium">{{ (int) ($row['attendance_days_count'] ?? 0) }}/{{ max(0, (int) ($row['attendance_total_days'] ?? 0)) }} days</span>
-                  <span class="text-primary fw-semibold">{{ max(0, min(100, (int) ($row['attendance_progress_percent'] ?? 0))) }}%</span>
+                  <span class="fw-medium">{{ $attendanceDaysCount }}/{{ $attendanceTotalDays }} days</span>
+                  <span class="text-primary fw-semibold">{{ $attendanceProgressPercent }}%</span>
                 </div>
-                <div class="attendance-progress-track" role="progressbar" aria-valuenow="{{ max(0, min(100, (int) ($row['attendance_progress_percent'] ?? 0))) }}" aria-valuemin="0" aria-valuemax="100">
-                  <div class="attendance-progress-fill" style="width: {{ max(0, min(100, (int) ($row['attendance_progress_percent'] ?? 0))) }}%;"></div>
+                <div class="attendance-progress-track" role="progressbar" aria-valuenow="{{ $attendanceProgressPercent }}" aria-valuemin="0" aria-valuemax="100">
+                  <div class="attendance-progress-fill" style="width: {{ $attendanceProgressPercent }}%;"></div>
                 </div>
               </td>
 
