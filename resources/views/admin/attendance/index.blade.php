@@ -6,7 +6,12 @@
 
 @push('vendor-styles')
   <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/fonts/flag-icons.css') }}" />
+  <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/libs/flatpickr/flatpickr.css') }}" />
   <style>
+    .attendance-filter-date.flatpickr-input[readonly] {
+      background-color: var(--bs-body-bg);
+    }
+
     .attendance-sync-status {
       min-width: min(100%, 22rem);
     }
@@ -45,6 +50,10 @@
       background: linear-gradient(90deg, rgba(var(--bs-primary-rgb), 0.7), rgba(var(--bs-primary-rgb), 1));
     }
   </style>
+@endpush
+
+@push('vendor-scripts')
+  <script src="{{ asset('assets-vuexy/vendor/libs/flatpickr/flatpickr.js') }}"></script>
 @endpush
 
 @section('content')
@@ -278,12 +287,14 @@
 
           <div class="col-md-3">
             <label for="from" class="form-label">From Date</label>
-            <input type="date" class="form-control" id="from" name="from" value="{{ $filters['from'] ?? '' }}" />
+            <input type="text" class="form-control attendance-filter-date" id="from" name="from" value="{{ $filters['from'] ?? '' }}"
+              placeholder="Select date" autocomplete="off" />
           </div>
 
           <div class="col-md-3">
             <label for="to" class="form-label">To Date</label>
-            <input type="date" class="form-control" id="to" name="to" value="{{ $filters['to'] ?? '' }}" />
+            <input type="text" class="form-control attendance-filter-date" id="to" name="to" value="{{ $filters['to'] ?? '' }}"
+              placeholder="Select date" autocomplete="off" />
           </div>
         </div>
       </div>
@@ -405,3 +416,77 @@
     </div>
   </div>
 @endsection
+
+@push('page-scripts')
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      if (typeof window.flatpickr !== 'function') {
+        return;
+      }
+
+      const fromInput = document.querySelector('#from.attendance-filter-date');
+      const toInput = document.querySelector('#to.attendance-filter-date');
+
+      const destroyPicker = function (input) {
+        if (input?._flatpickr) {
+          input._flatpickr.destroy();
+        }
+      };
+
+      const applyAltInputAttributes = function (instance, label) {
+        const altInput = instance?.altInput;
+
+        if (!altInput) {
+          return;
+        }
+
+        altInput.classList.add('attendance-filter-date');
+        altInput.setAttribute('aria-label', label);
+        altInput.setAttribute('placeholder', 'Select date');
+      };
+
+      destroyPicker(fromInput);
+      destroyPicker(toInput);
+
+      if (fromInput) {
+        window.flatpickr(fromInput, {
+          altInput: true,
+          altFormat: 'd M Y',
+          allowInput: true,
+          clickOpens: true,
+          dateFormat: 'Y-m-d',
+          disableMobile: true,
+          maxDate: toInput?.value || null,
+          onReady: function (_, __, instance) {
+            applyAltInputAttributes(instance, 'From Date');
+          },
+          onChange: function (selectedDates) {
+            if (toInput?._flatpickr) {
+              toInput._flatpickr.set('minDate', selectedDates[0] ?? null);
+            }
+          },
+        });
+      }
+
+      if (toInput) {
+        window.flatpickr(toInput, {
+          altInput: true,
+          altFormat: 'd M Y',
+          allowInput: true,
+          clickOpens: true,
+          dateFormat: 'Y-m-d',
+          disableMobile: true,
+          minDate: fromInput?.value || null,
+          onReady: function (_, __, instance) {
+            applyAltInputAttributes(instance, 'To Date');
+          },
+          onChange: function (selectedDates) {
+            if (fromInput?._flatpickr) {
+              fromInput._flatpickr.set('maxDate', selectedDates[0] ?? null);
+            }
+          },
+        });
+      }
+    });
+  </script>
+@endpush
