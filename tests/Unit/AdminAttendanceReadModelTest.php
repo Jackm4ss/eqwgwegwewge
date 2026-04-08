@@ -148,6 +148,20 @@ class AdminAttendanceReadModelTest extends TestCase
                     'checked_in_at' => null,
                 ],
             ]);
+        $repository->shouldReceive('findAttendanceDailyByUserIds')
+            ->twice()
+            ->with(['user-1'])
+            ->andReturn([
+                [
+                    'attendance_id' => 'attendance-1',
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'ticket_code' => 'TICKET-001',
+                    'scan_date' => '2026-04-10',
+                    'first_scanned_at' => '2026-04-10T09:00:00Z',
+                    'updated_at' => '2026-04-10T09:00:00Z',
+                ],
+            ]);
 
         $readModel = new AdminAttendanceReadModel(
             $repository,
@@ -434,5 +448,163 @@ class AdminAttendanceReadModelTest extends TestCase
         $this->assertSame(1, $page['filter_options']['attendance_statuses'][0]['count']);
         $this->assertSame(1, $page['filter_options']['attendance_statuses'][1]['count']);
         $this->assertSame(1, $page['filter_options']['scan_results'][1]['count']);
+    }
+
+    public function test_page_hydrates_checked_in_progress_from_attendance_daily(): void
+    {
+        CarbonImmutable::setTestNow('2026-04-10 09:00:00 UTC');
+        config([
+            'admin.event.timezone' => 'Asia/Kuala_Lumpur',
+            'admin.event.start_date' => '2026-04-09',
+            'admin.event.end_date' => '2026-04-19',
+            'admin.attendance.read_model.enabled' => true,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('findAttendanceDailyByUserIds')
+            ->once()
+            ->with(['user-1'])
+            ->andReturn([
+                [
+                    'attendance_id' => 'attendance-1',
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'ticket_code' => 'TICKET-001',
+                    'scan_date' => '2026-04-10',
+                    'first_scanned_at' => '2026-04-10T09:00:00Z',
+                    'updated_at' => '2026-04-10T09:00:00Z',
+                ],
+            ]);
+
+        $redisStore = Mockery::mock(RedisStore::class);
+        Cache::shouldReceive('getStore')->zeroOrMoreTimes()->andReturn($redisStore);
+        Cache::shouldReceive('flush')->zeroOrMoreTimes();
+
+        $meta = [
+            'overview' => [
+                'total_attendance' => 1,
+                'checked_in' => 1,
+                'repeat_scans' => 1,
+                'needs_review' => 0,
+                'gate_counts' => [
+                    ['label' => 'Gate A', 'count' => 2],
+                ],
+            ],
+            'filter_options' => [
+                'countries' => [],
+                'identity_types' => [],
+                'attendance_statuses' => [],
+                'scan_results' => [],
+                'scan_posts' => [],
+            ],
+        ];
+        $sync = [
+            'source' => 'read_model',
+            'state' => 'fresh',
+            'last_synced_at_utc' => '2026-04-10T09:00:00Z',
+        ];
+        $rows = [
+            [
+                'scan_id' => 'scan-2',
+                'participant_key' => 'user:user-1',
+                'ticket_id' => 'ticket-1',
+                'ticket_code' => 'TICKET-001',
+                'user_id' => 'user-1',
+                'full_name' => 'Alya Putri',
+                'email' => 'alya@example.test',
+                'country' => 'MY',
+                'country_label' => 'Malaysia',
+                'entry_code_display' => 'ABCD-1234',
+                'attendance_days_count' => 0,
+                'attendance_total_days' => 11,
+                'attendance_progress_percent' => 0,
+                'attendance_status' => 'checked_in',
+                'checked_in_at' => '2026-04-10T09:00:00Z',
+                'attendance_active_for_scan_date' => false,
+                'attendance_active_at' => null,
+                'scanner_name' => 'Gate A',
+                'scanner_role' => 'staff',
+                'scanner_id' => 'scanner-1',
+                'scanned_at' => '2026-04-10T09:05:00Z',
+                'scan_date' => '2026-04-10',
+                'result' => 'duplicate',
+                'identity_type' => 'national_id',
+                'identity_number' => '901231101234',
+                'phone_number' => '+60123456789',
+                'search_blob' => 'alya putri abcd-1234 malaysia 901231101234',
+            ],
+            [
+                'scan_id' => 'scan-1',
+                'participant_key' => 'user:user-1',
+                'ticket_id' => 'ticket-1',
+                'ticket_code' => 'TICKET-001',
+                'user_id' => 'user-1',
+                'full_name' => 'Alya Putri',
+                'email' => 'alya@example.test',
+                'country' => 'MY',
+                'country_label' => 'Malaysia',
+                'entry_code_display' => 'ABCD-1234',
+                'attendance_days_count' => 0,
+                'attendance_total_days' => 11,
+                'attendance_progress_percent' => 0,
+                'attendance_status' => 'checked_in',
+                'checked_in_at' => '2026-04-10T09:00:00Z',
+                'attendance_active_for_scan_date' => true,
+                'attendance_active_at' => '2026-04-10T09:00:00Z',
+                'scanner_name' => 'Gate A',
+                'scanner_role' => 'staff',
+                'scanner_id' => 'scanner-1',
+                'scanned_at' => '2026-04-10T09:00:00Z',
+                'scan_date' => '2026-04-10',
+                'result' => 'success',
+                'identity_type' => 'national_id',
+                'identity_number' => '901231101234',
+                'phone_number' => '+60123456789',
+                'search_blob' => 'alya putri abcd-1234 malaysia 901231101234',
+            ],
+        ];
+
+        $redisConnection = Mockery::mock();
+        Redis::shouldReceive('connection')->andReturn($redisConnection);
+        $redisConnection->shouldReceive('get')
+            ->twice()
+            ->andReturn(
+                json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+                json_encode($sync, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+            );
+        $redisConnection->shouldReceive('zcard')
+            ->once()
+            ->with('admin:attendance:read-model:order:v1')
+            ->andReturn(2);
+        $redisConnection->shouldReceive('zrevrange')
+            ->twice()
+            ->andReturn(
+                ['scan-2', 'scan-1'],
+                [],
+            );
+        $redisConnection->shouldReceive('hmget')
+            ->once()
+            ->with('admin:attendance:read-model:rows:v1', ['scan-2', 'scan-1'])
+            ->andReturn([
+                json_encode($rows[0], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+                json_encode($rows[1], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+            ]);
+
+        $readModel = new AdminAttendanceReadModel(
+            $repository,
+            new AdminAnalyticsService,
+            new AdminAttendanceSyncStatusFactory,
+        );
+
+        $page = $readModel->page([]);
+
+        $this->assertNotNull($page);
+        $this->assertSame(1, $page['rows']->total());
+        $this->assertSame('Alya Putri', $page['rows']->items()[0]['full_name']);
+        $this->assertSame(1, $page['rows']->items()[0]['attendance_days_count']);
+        $this->assertSame(11, $page['rows']->items()[0]['attendance_total_days']);
+        $this->assertSame(9, $page['rows']->items()[0]['attendance_progress_percent']);
+        $this->assertSame('checked_in', $page['rows']->items()[0]['attendance_status']);
+        $this->assertSame('duplicate', $page['rows']->items()[0]['latest_scan_result']);
     }
 }

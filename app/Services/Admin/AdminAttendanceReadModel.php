@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Cache\RedisStore;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 
@@ -401,7 +402,9 @@ class AdminAttendanceReadModel
         int $perPage,
     ): array {
         $offset = ($page - 1) * $perPage;
-        $pageRows = array_values(array_slice($participantRows, $offset, $perPage));
+        $pageRows = $this->hydratePageRowsWithAttendanceDaily(
+            array_values(array_slice($participantRows, $offset, $perPage)),
+        );
 
         return [
             'rows' => new LengthAwarePaginator(
@@ -421,6 +424,124 @@ class AdminAttendanceReadModel
                 : $this->buildFilterOptions([]),
             'sync_status' => $syncStatus,
         ];
+    }
+
+    private function hydratePageRowsWithAttendanceDaily(array $participantRows): array
+    {
+        if ($participantRows === []) {
+            return [];
+        }
+
+        $rowsByUserId = [];
+
+        foreach ($participantRows as $row) {
+            $userId = trim((string) ($row['user_id'] ?? ''));
+
+            if (
+                $userId === ''
+                || $this->normalizeAttendanceStatus($row['attendance_status'] ?? null) !== 'checked_in'
+            ) {
+                continue;
+            }
+
+            $rowsByUserId[$userId] = [
+                'user_id' => $userId,
+                'ticket_id' => (string) ($row['ticket_id'] ?? ''),
+                'ticket_code' => (string) ($row['ticket_code'] ?? ''),
+            ];
+        }
+
+        if ($rowsByUserId === []) {
+            return $participantRows;
+        }
+
+        try {
+            $attendanceDailyRows = $this->repository->findAttendanceDailyByUserIds(array_keys($rowsByUserId));
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to hydrate admin attendance participant rows from attendance_daily.', [
+                'message' => $exception->getMessage(),
+                'user_ids' => array_keys($rowsByUserId),
+            ]);
+
+            return $participantRows;
+        }
+
+        $progressRows = $this->analytics->attachAttendanceProgress(
+            array_values($rowsByUserId),
+            $attendanceDailyRows,
+        );
+        $progressByUserId = [];
+        $latestAttendanceTimestampByUserId = [];
+
+        foreach ($progressRows as $progressRow) {
+            $userId = trim((string) ($progressRow['user_id'] ?? ''));
+
+            if ($userId === '') {
+                continue;
+            }
+
+            $progressByUserId[$userId] = [
+                'attendance_days_count' => max(0, (int) ($progressRow['attendance_days_count'] ?? 0)),
+                'attendance_total_days' => max(0, (int) ($progressRow['attendance_total_days'] ?? 0)),
+                'attendance_progress_percent' => max(0, min(100, (int) ($progressRow['attendance_progress_percent'] ?? 0))),
+            ];
+        }
+
+        foreach ($attendanceDailyRows as $attendanceDailyRow) {
+            if (! is_array($attendanceDailyRow)) {
+                continue;
+            }
+
+            $userId = trim((string) ($attendanceDailyRow['user_id'] ?? ''));
+            $attendanceTimestamp = $this->attendanceTimestamp($attendanceDailyRow);
+
+            if (
+                $userId === ''
+                || $attendanceTimestamp === null
+                || strcmp($attendanceTimestamp, (string) ($latestAttendanceTimestampByUserId[$userId] ?? '')) <= 0
+            ) {
+                continue;
+            }
+
+            $latestAttendanceTimestampByUserId[$userId] = $attendanceTimestamp;
+        }
+
+        return array_map(function (array $row) use ($progressByUserId, $latestAttendanceTimestampByUserId): array {
+            $userId = trim((string) ($row['user_id'] ?? ''));
+
+            if (
+                $userId === ''
+                || $this->normalizeAttendanceStatus($row['attendance_status'] ?? null) !== 'checked_in'
+            ) {
+                return $row;
+            }
+
+            if (! isset($progressByUserId[$userId])) {
+                $row['attendance_days_count'] = 0;
+                $row['attendance_progress_percent'] = 0;
+                $row['attendance_status'] = 'not_checked_in';
+                $row['checked_in_at'] = null;
+
+                return $row;
+            }
+
+            $row = array_merge($row, $progressByUserId[$userId]);
+            $row['attendance_status'] = ($progressByUserId[$userId]['attendance_days_count'] ?? 0) > 0
+                ? 'checked_in'
+                : 'not_checked_in';
+
+            if ($row['attendance_status'] !== 'checked_in') {
+                $row['checked_in_at'] = null;
+
+                return $row;
+            }
+
+            if (isset($latestAttendanceTimestampByUserId[$userId])) {
+                $row['checked_in_at'] = $latestAttendanceTimestampByUserId[$userId];
+            }
+
+            return $row;
+        }, $participantRows);
     }
 
     private function buildProjectedRowForScanLog(array $scanLog): ?array
@@ -1011,6 +1132,8 @@ class AdminAttendanceReadModel
         return [
             'participant_key' => (string) ($row['participant_key'] ?? ''),
             'user_id' => (string) ($row['user_id'] ?? ''),
+            'ticket_id' => (string) ($row['ticket_id'] ?? ''),
+            'ticket_code' => (string) ($row['ticket_code'] ?? ''),
             'full_name' => $fullName,
             'email' => $email,
             'initials' => $this->initials($labelSeed),
