@@ -312,7 +312,7 @@ class AdminAttendanceReadModel
         array $meta,
         array $syncStatus,
     ): array {
-        $participantRowsByKey = [];
+        $participantAggregatesByKey = [];
         $overview = $this->emptyOverviewAccumulator();
         $rangeStart = 0;
         $chunkSize = max(self::FILTER_SCAN_CHUNK_SIZE, $perPage);
@@ -342,24 +342,23 @@ class AdminAttendanceReadModel
 
                 $participantKey = trim((string) ($row['participant_key'] ?? ''));
 
-                if ($participantKey === '' || isset($participantRowsByKey[$participantKey])) {
+                if ($participantKey === '' || ! $this->rowHasParticipantIdentity($row)) {
                     continue;
                 }
 
-                $participantRow = $this->participantTableRowFromScanRow($row);
-
-                if ($participantRow === null) {
+                if (! isset($participantAggregatesByKey[$participantKey])) {
+                    $participantAggregatesByKey[$participantKey] = $this->participantAggregateFromRow($row);
                     continue;
                 }
 
-                $participantRowsByKey[$participantKey] = $participantRow;
+                $this->accumulateParticipantAggregate($participantAggregatesByKey[$participantKey], $row);
             }
 
             $rangeStart += $chunkSize;
         }
 
         return $this->buildPagePayload(
-            array_values($participantRowsByKey),
+            $this->participantRowsFromAggregates($participantAggregatesByKey),
             $this->finalizeOverviewAccumulator($overview),
             $meta,
             $syncStatus,
@@ -475,6 +474,7 @@ class AdminAttendanceReadModel
         $attendanceLogs ??= $userIds !== []
             ? $this->repository->findAttendanceDailyByUserIds($userIds)
             : [];
+        $attendanceLogsByLookupKey = $this->indexAttendanceLogsByLookupKey($attendanceLogs);
 
         $participantRows = $this->analytics->attachAttendanceProgress(
             $this->analytics->buildUserRows(array_values($usersById), array_values($ticketsById)),
@@ -493,7 +493,12 @@ class AdminAttendanceReadModel
         $rows = [];
 
         foreach ($scanLogs as $scanLog) {
-            $row = $this->buildProjectedRow($scanLog, $participantRowsByUserId, $ticketsById);
+            $row = $this->buildProjectedRow(
+                $scanLog,
+                $participantRowsByUserId,
+                $ticketsById,
+                $attendanceLogsByLookupKey,
+            );
 
             if ($row !== null) {
                 $rows[] = $row;
@@ -521,6 +526,7 @@ class AdminAttendanceReadModel
         array $scanLog,
         array $participantRowsByUserId,
         array $ticketsById,
+        array $attendanceLogsByLookupKey,
     ): ?array {
         $scanId = trim((string) ($scanLog['scan_id'] ?? $scanLog['__id'] ?? ''));
 
@@ -560,6 +566,11 @@ class AdminAttendanceReadModel
             $countryLabel = $this->analytics->countryLabel($country);
         }
 
+        $attendanceLookupKey = $this->attendanceLookupKey($ticketId, $userId, $ticketCode, $scanDate);
+        $activeAttendanceRow = $attendanceLookupKey !== ''
+            ? ($attendanceLogsByLookupKey[$attendanceLookupKey] ?? null)
+            : null;
+
         $row = [
             'scan_id' => $scanId,
             'participant_key' => $this->participantKey(
@@ -591,6 +602,10 @@ class AdminAttendanceReadModel
             'identity_number' => $identityNumber,
             'attendance_status' => $attendanceStatus,
             'checked_in_at' => $participantRow['checked_in_at'] ?? $ticket['checked_in_at'] ?? null,
+            'attendance_active_for_scan_date' => is_array($activeAttendanceRow),
+            'attendance_active_at' => is_array($activeAttendanceRow)
+                ? $this->attendanceTimestamp($activeAttendanceRow)
+                : null,
             'attendance_days_count' => (int) ($participantRow['attendance_days_count'] ?? 0),
             'attendance_total_days' => (int) ($participantRow['attendance_total_days'] ?? 0),
             'attendance_progress_percent' => (int) ($participantRow['attendance_progress_percent'] ?? 0),
@@ -631,6 +646,69 @@ class AdminAttendanceReadModel
         ];
     }
 
+    private function indexAttendanceLogsByLookupKey(array $attendanceLogs): array
+    {
+        $attendanceLogsByLookupKey = [];
+
+        foreach ($attendanceLogs as $attendanceLog) {
+            if (! is_array($attendanceLog)) {
+                continue;
+            }
+
+            $scanDate = trim((string) ($attendanceLog['scan_date'] ?? ''));
+
+            if ($scanDate === '') {
+                $scanDate = $this->resolveScanDate(
+                    $attendanceLog['first_scanned_at']
+                        ?? $attendanceLog['updated_at']
+                        ?? null,
+                );
+            }
+
+            $lookupKey = $this->attendanceLookupKey(
+                trim((string) ($attendanceLog['ticket_id'] ?? '')),
+                trim((string) ($attendanceLog['user_id'] ?? '')),
+                trim((string) ($attendanceLog['ticket_code'] ?? '')),
+                $scanDate,
+            );
+
+            if ($lookupKey === '') {
+                continue;
+            }
+
+            $attendanceLogsByLookupKey[$lookupKey] = $attendanceLog;
+        }
+
+        return $attendanceLogsByLookupKey;
+    }
+
+    private function attendanceLookupKey(
+        string $ticketId,
+        string $userId,
+        string $ticketCode,
+        string $scanDate,
+    ): string {
+        $scanDate = trim($scanDate);
+
+        if ($scanDate === '') {
+            return '';
+        }
+
+        if ($ticketId !== '') {
+            return 'ticket:'.$ticketId.':'.$scanDate;
+        }
+
+        if ($userId !== '') {
+            return 'user:'.$userId.':'.$scanDate;
+        }
+
+        $ticketCode = strtoupper(trim($ticketCode));
+
+        return $ticketCode !== ''
+            ? 'code:'.$ticketCode.':'.$scanDate
+            : '';
+    }
+
     private function buildMeta(array $rows): array
     {
         return [
@@ -656,7 +734,7 @@ class AdminAttendanceReadModel
             'total_scans' => 0,
             'repeat_scans' => 0,
             'needs_review' => 0,
-            'participant_keys' => [],
+            'attended_participant_keys' => [],
             'checked_in_keys' => [],
             'gate_counts' => [],
         ];
@@ -669,9 +747,10 @@ class AdminAttendanceReadModel
         $result = $this->normalizeScanResult($row['result'] ?? null);
         $participantKey = trim((string) ($row['participant_key'] ?? ''));
         $scannerName = trim((string) ($row['scanner_name'] ?? ''));
+        $hasActiveAttendanceForScanDate = $this->rowHasActiveAttendanceForScanDate($row);
 
-        if ($participantKey !== '' && $this->rowHasParticipantIdentity($row)) {
-            $overview['participant_keys'][$participantKey] = true;
+        if ($hasActiveAttendanceForScanDate && $participantKey !== '' && $this->rowHasParticipantIdentity($row)) {
+            $overview['attended_participant_keys'][$participantKey] = true;
         }
 
         if ($result === 'duplicate') {
@@ -680,7 +759,12 @@ class AdminAttendanceReadModel
             $overview['needs_review']++;
         }
 
-        if ($result === 'success' && $participantKey !== '' && $this->rowHasParticipantIdentity($row)) {
+        if (
+            $hasActiveAttendanceForScanDate
+            && in_array($result, ['success', 'duplicate'], true)
+            && $participantKey !== ''
+            && $this->rowHasParticipantIdentity($row)
+        ) {
             $overview['checked_in_keys'][$participantKey] = true;
         }
 
@@ -712,7 +796,7 @@ class AdminAttendanceReadModel
         });
 
         return [
-            'total_attendance' => count($overview['participant_keys'] ?? []),
+            'total_attendance' => count($overview['attended_participant_keys'] ?? []),
             'checked_in' => count($overview['checked_in_keys'] ?? []),
             'repeat_scans' => (int) ($overview['repeat_scans'] ?? 0),
             'needs_review' => (int) ($overview['needs_review'] ?? 0),
@@ -829,25 +913,89 @@ class AdminAttendanceReadModel
 
     private function uniqueParticipantRows(array $rows): array
     {
-        $participantRowsByKey = [];
+        $participantAggregatesByKey = [];
 
         foreach ($rows as $row) {
             $participantKey = trim((string) ($row['participant_key'] ?? ''));
 
-            if ($participantKey === '' || isset($participantRowsByKey[$participantKey])) {
+            if ($participantKey === '' || ! $this->rowHasParticipantIdentity($row)) {
                 continue;
             }
 
-            $participantRow = $this->participantTableRowFromScanRow($row);
-
-            if ($participantRow === null) {
+            if (! isset($participantAggregatesByKey[$participantKey])) {
+                $participantAggregatesByKey[$participantKey] = $this->participantAggregateFromRow($row);
                 continue;
             }
 
-            $participantRowsByKey[$participantKey] = $participantRow;
+            $this->accumulateParticipantAggregate($participantAggregatesByKey[$participantKey], $row);
         }
 
-        return array_values($participantRowsByKey);
+        return $this->participantRowsFromAggregates($participantAggregatesByKey);
+    }
+
+    private function participantRowsFromAggregates(array $participantAggregatesByKey): array
+    {
+        $participantRows = [];
+
+        foreach ($participantAggregatesByKey as $aggregate) {
+            $participantRow = $this->participantTableRowFromAggregate($aggregate);
+
+            if ($participantRow !== null) {
+                $participantRows[] = $participantRow;
+            }
+        }
+
+        return $participantRows;
+    }
+
+    private function participantAggregateFromRow(array $row): array
+    {
+        return [
+            'base_row' => $row,
+            'has_active_attendance' => $this->rowHasActiveAttendanceForScanDate($row),
+            'latest_active_attendance_at' => $this->rowActiveAttendanceAt($row),
+        ];
+    }
+
+    private function accumulateParticipantAggregate(array &$aggregate, array $row): void
+    {
+        if (! $this->rowHasActiveAttendanceForScanDate($row)) {
+            return;
+        }
+
+        $aggregate['has_active_attendance'] = true;
+        $candidateTimestamp = $this->rowActiveAttendanceAt($row);
+
+        if (
+            $candidateTimestamp !== null
+            && strcmp($candidateTimestamp, (string) ($aggregate['latest_active_attendance_at'] ?? '')) > 0
+        ) {
+            $aggregate['latest_active_attendance_at'] = $candidateTimestamp;
+        }
+    }
+
+    private function participantTableRowFromAggregate(array $aggregate): ?array
+    {
+        $participantRow = $this->participantTableRowFromScanRow($aggregate['base_row'] ?? []);
+
+        if ($participantRow === null) {
+            return null;
+        }
+
+        if (! ($aggregate['has_active_attendance'] ?? false)) {
+            $participantRow['attendance_status'] = 'not_checked_in';
+            $participantRow['checked_in_at'] = null;
+
+            return $participantRow;
+        }
+
+        $participantRow['attendance_status'] = 'checked_in';
+
+        if (($aggregate['latest_active_attendance_at'] ?? null) !== null) {
+            $participantRow['checked_in_at'] = $aggregate['latest_active_attendance_at'];
+        }
+
+        return $participantRow;
     }
 
     private function participantTableRowFromScanRow(array $row): ?array
@@ -942,6 +1090,18 @@ class AdminAttendanceReadModel
                 || trim((string) ($row['entry_code_display'] ?? '')) !== ''
                 || trim((string) ($row['user_id'] ?? '')) !== ''
             );
+    }
+
+    private function rowHasActiveAttendanceForScanDate(array $row): bool
+    {
+        return (bool) ($row['attendance_active_for_scan_date'] ?? false);
+    }
+
+    private function rowActiveAttendanceAt(array $row): ?string
+    {
+        $value = trim((string) ($row['attendance_active_at'] ?? ''));
+
+        return $value !== '' ? $value : null;
     }
 
     private function searchBlob(array $row): string
@@ -1051,6 +1211,19 @@ class AdminAttendanceReadModel
         } catch (\Throwable) {
             return '';
         }
+    }
+
+    private function attendanceTimestamp(array $attendanceRow): ?string
+    {
+        foreach (['first_scanned_at', 'updated_at', 'created_at'] as $field) {
+            $value = trim((string) ($attendanceRow[$field] ?? ''));
+
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     private function normalizeScanResult(mixed $result): string

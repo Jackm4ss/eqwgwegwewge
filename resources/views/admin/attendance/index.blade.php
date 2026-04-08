@@ -137,7 +137,7 @@
             <div>
               <span class="text-heading d-block mb-1">Total Attendance</span>
               <h3 class="card-title mb-1">{{ number_format($overview['total_attendance'] ?? 0) }}</h3>
-              <small>Participants with scan records in the selected range</small>
+              <small>Participants with active attendance in the selected range</small>
             </div>
             <div class="avatar">
               <span class="avatar-initial rounded bg-label-primary"><i class="icon-base ti tabler-users"></i></span>
@@ -154,7 +154,7 @@
             <div>
               <span class="text-heading d-block mb-1">Checked In</span>
               <h3 class="card-title mb-1">{{ number_format($overview['checked_in'] ?? 0) }}</h3>
-              <small>Unique participants with successful scans</small>
+              <small>Unique participants still counted as checked in for the selected range</small>
             </div>
             <div class="avatar">
               <span class="avatar-initial rounded bg-label-success"><i class="icon-base ti tabler-user-check"></i></span>

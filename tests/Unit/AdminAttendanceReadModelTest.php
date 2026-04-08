@@ -167,7 +167,7 @@ class AdminAttendanceReadModelTest extends TestCase
         $this->assertSame('Alya Putri', $page['rows']->items()[0]['full_name']);
         $this->assertSame('Gate A', $page['rows']->items()[0]['scanner_name']);
         $this->assertSame('duplicate', $page['rows']->items()[0]['latest_scan_result']);
-        $this->assertSame(2, $page['overview']['total_attendance']);
+        $this->assertSame(1, $page['overview']['total_attendance']);
         $this->assertSame(1, $page['overview']['checked_in']);
         $this->assertSame(1, $page['overview']['repeat_scans']);
         $this->assertSame(1, $page['overview']['needs_review']);
@@ -273,6 +273,8 @@ class AdminAttendanceReadModelTest extends TestCase
         $this->assertSame(11, $page['rows'][0]['attendance_total_days']);
         $this->assertSame(0, $page['rows'][0]['attendance_progress_percent']);
         $this->assertSame('not_checked_in', $page['rows'][0]['attendance_status']);
+        $this->assertSame(0, $page['meta']['overview']['total_attendance']);
+        $this->assertSame(0, $page['meta']['overview']['checked_in']);
     }
 
     public function test_page_filters_redis_projection_without_loading_all_rows_into_memory(): void
@@ -424,7 +426,8 @@ class AdminAttendanceReadModelTest extends TestCase
         $this->assertNotNull($page);
         $this->assertSame(1, $page['rows']->total());
         $this->assertSame('Rafi Hakim', $page['rows']->items()[0]['full_name']);
-        $this->assertSame(1, $page['overview']['total_attendance']);
+        $this->assertSame(0, $page['overview']['total_attendance']);
+        $this->assertSame(0, $page['overview']['checked_in']);
         $this->assertSame(1, $page['overview']['needs_review']);
         $this->assertSame('Gate B', $page['overview']['gate_counts'][0]['label']);
         $this->assertSame('fresh', $page['sync_status']['state']);
