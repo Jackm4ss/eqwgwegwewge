@@ -362,6 +362,36 @@ class AdminAnalyticsServiceTest extends TestCase
         $this->assertSame('Malaysia IC (MyKad)', $service->identityTypeLabel($filtered[0]['identity_type']));
     }
 
+    public function test_user_rows_include_entry_code_fields_from_active_ticket(): void
+    {
+        $service = new AdminAnalyticsService;
+
+        $rows = $service->buildUserRows(
+            users: [
+                [
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'full_name' => 'Alya Putri',
+                    'email' => 'alya@example.test',
+                    'created_at' => '2026-03-25T10:00:00Z',
+                ],
+            ],
+            tickets: [
+                [
+                    'ticket_id' => 'ticket-1',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-A',
+                    'entry_code' => '2W7QG9LC',
+                    'entry_code_display' => '2W7Q-G9LC',
+                    'attendance_status' => 'not_checked_in',
+                ],
+            ],
+        );
+
+        $this->assertSame('2W7QG9LC', $rows[0]['entry_code']);
+        $this->assertSame('2W7Q-G9LC', $rows[0]['entry_code_display']);
+    }
+
     public function test_user_rows_can_filter_suspected_email_typos(): void
     {
         EmailTypoInspector::fake([

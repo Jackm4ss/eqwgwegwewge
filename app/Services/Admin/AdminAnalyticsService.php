@@ -209,6 +209,8 @@ class AdminAnalyticsService
             $row = $this->decorateEmailQuality(
                 $this->decorateTrafficAttribution(array_merge($user, [
                     'ticket_code' => (string) ($ticket['ticket_code'] ?? ''),
+                    'entry_code' => (string) ($ticket['entry_code'] ?? ''),
+                    'entry_code_display' => (string) ($ticket['entry_code_display'] ?? ''),
                     'ticket_status' => (string) ($ticket['status'] ?? ''),
                     'qr_version' => (string) ($ticket['qr_version'] ?? ''),
                     'attendance_status' => $this->normalizeAttendanceStatus($ticket['attendance_status'] ?? null),
