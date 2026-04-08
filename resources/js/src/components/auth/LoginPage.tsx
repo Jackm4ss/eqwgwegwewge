@@ -449,15 +449,7 @@ export function LoginPage() {
                     >
                       <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
                       <p className="text-red-700 text-xs leading-relaxed">
-                        <strong>Login failed.</strong> Use one of the seeded admin accounts, for example{' '}
-                        <code className="bg-red-100 px-1 py-0.5 rounded text-red-800 font-mono">
-                          admin01@songkran.local
-                        </code>{' '}
-                        with password{' '}
-                        <code className="bg-red-100 px-1 py-0.5 rounded text-red-800 font-mono">
-                          00000000
-                        </code>{' '}
-                        for local development.
+                        <strong>Login failed.</strong>
                       </p>
                     </motion.div>
                   )}
