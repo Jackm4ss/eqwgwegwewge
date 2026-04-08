@@ -927,10 +927,6 @@ class AdminPanelService
 
     private function syncCachedUserManagementRow(array $user, ?array $ticket = null): void
     {
-        if (! Cache::has(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY)) {
-            return;
-        }
-
         $userId = trim((string) ($user['user_id'] ?? ''));
 
         if ($userId === '') {
@@ -987,10 +983,6 @@ class AdminPanelService
 
     private function removeCachedUserManagementRow(string $userId): void
     {
-        if (! Cache::has(self::USER_MANAGEMENT_DIRECTORY_CACHE_KEY)) {
-            return;
-        }
-
         $userId = trim($userId);
 
         if ($userId === '') {

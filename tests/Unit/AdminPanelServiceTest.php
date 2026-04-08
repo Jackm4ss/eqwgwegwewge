@@ -2303,6 +2303,65 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame('TICKET-123', $result['ticket']['ticket_code']);
     }
 
+    public function test_delete_user_by_admin_skips_inline_snapshot_removal_for_large_cached_directory(): void
+    {
+        config([
+            'admin.user_management.inline_snapshot_sync_max_rows' => 2000,
+        ]);
+
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_META_CACHE_KEY, [
+            'overview' => ['total_users' => 16016],
+            'filter_options' => [],
+        ]);
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [
+            [
+                'user_id' => 'user-123',
+                'ticket_id' => 'ticket-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'created_at' => '2026-04-05T07:00:00Z',
+            ],
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('deleteUserByAdmin')
+            ->once()
+            ->with('user-123')
+            ->andReturn([
+                'user' => [
+                    'user_id' => 'user-123',
+                    'full_name' => 'Alya',
+                    'email' => 'alya@example.test',
+                    'country' => 'ID',
+                ],
+                'ticket' => [
+                    'ticket_id' => 'ticket-123',
+                    'ticket_code' => 'TICKET-123',
+                ],
+            ]);
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldNotReceive('sendParticipantDeleted');
+
+        $service = $this->makeService($repository, $notifications);
+
+        $service->deleteUserByAdmin('user-123');
+
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_META_STALE_KEY));
+        $this->assertTrue(Cache::has(AdminPanelService::USER_MANAGEMENT_DIRECTORY_STALE_KEY));
+        $this->assertSame([
+            [
+                'user_id' => 'user-123',
+                'ticket_id' => 'ticket-123',
+                'full_name' => 'Alya',
+                'email' => 'alya@example.test',
+                'country' => 'ID',
+                'created_at' => '2026-04-05T07:00:00Z',
+            ],
+        ], Cache::get(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY));
+    }
+
     private function makeService(
         AdminFirestoreRepository $repository,
         AdminParticipantNotificationService $notifications,
