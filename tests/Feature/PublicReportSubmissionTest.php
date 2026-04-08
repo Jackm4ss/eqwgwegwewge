@@ -390,7 +390,7 @@ class PublicReportSubmissionTest extends TestCase
             ->assertSee('tabler-trash', false);
     }
 
-    public function test_admin_public_report_page_filters_reported_date_using_day_month_year_format(): void
+    public function test_admin_public_report_page_filters_reported_date_and_renders_native_date_picker_values(): void
     {
         $admin = Admin::query()->create([
             'name' => 'Admin',
@@ -447,7 +447,8 @@ class PublicReportSubmissionTest extends TestCase
             ->assertSee('Budi Santoso')
             ->assertDontSee('IS001')
             ->assertDontSee('Alya Putri')
-            ->assertSee('value="02/04/2026"', false);
+            ->assertSee('type="date"', false)
+            ->assertSee('value="2026-04-02"', false);
     }
 
     public function test_admin_can_update_public_report_action_status_and_note(): void

@@ -840,6 +840,7 @@ class AdminPanelService
                 'countries' => [],
                 'identity_types' => [],
                 'attendance_statuses' => [],
+                'scan_results' => [],
                 'scan_posts' => [],
             ],
         ];
@@ -1570,6 +1571,11 @@ class AdminPanelService
             return false;
         }
 
+        $scanResult = $this->attendanceManagementScanResultValue($filters['scan_result'] ?? null);
+        if ($scanResult !== '' && $this->attendanceManagementScanResultValue($row['result'] ?? null) !== $scanResult) {
+            return false;
+        }
+
         $scannerPost = trim((string) ($filters['scanner_post'] ?? ''));
         if ($scannerPost !== '' && trim((string) ($row['scanner_name'] ?? '')) !== $scannerPost) {
             return false;
@@ -1693,6 +1699,7 @@ class AdminPanelService
         $countries = [];
         $identityTypes = [];
         $attendanceStatuses = [];
+        $scanResults = [];
         $scanPosts = [];
 
         foreach ($participantRows as $row) {
@@ -1711,6 +1718,12 @@ class AdminPanelService
         }
 
         foreach ($rows as $row) {
+            $scanResult = $this->attendanceManagementScanResultValue($row['result'] ?? null);
+
+            if ($scanResult !== '') {
+                $scanResults[$scanResult] = (int) ($scanResults[$scanResult] ?? 0) + 1;
+            }
+
             $scanPost = trim((string) ($row['scanner_name'] ?? ''));
 
             if ($scanPost !== '') {
@@ -1753,6 +1766,16 @@ class AdminPanelService
             (string) ($right['label'] ?? ''),
         ));
 
+        $scanResultOptions = array_map(fn (string $scanResult, int $count): array => [
+            'value' => $scanResult,
+            'label' => $this->attendanceManagementScanResultLabel($scanResult),
+            'count' => $count,
+        ], array_keys($scanResults), array_values($scanResults));
+        usort($scanResultOptions, fn (array $left, array $right): int => strcasecmp(
+            (string) ($left['label'] ?? ''),
+            (string) ($right['label'] ?? ''),
+        ));
+
         $scanPostOptions = array_map(static fn (string $scanPost, int $count): array => [
             'value' => $scanPost,
             'label' => $scanPost,
@@ -1767,8 +1790,30 @@ class AdminPanelService
             'countries' => array_values($countryOptions),
             'identity_types' => array_values($identityTypeOptions),
             'attendance_statuses' => array_values($attendanceStatusOptions),
+            'scan_results' => array_values($scanResultOptions),
             'scan_posts' => array_values($scanPostOptions),
         ];
+    }
+
+    private function attendanceManagementScanResultValue(mixed $result): string
+    {
+        $normalized = strtolower(trim((string) $result));
+
+        return match ($normalized) {
+            'success' => 'success',
+            'duplicate' => 'duplicate',
+            'invalid', 'needs_review' => 'needs_review',
+            default => $normalized !== '' ? 'needs_review' : '',
+        };
+    }
+
+    private function attendanceManagementScanResultLabel(string $scanResult): string
+    {
+        return match ($scanResult) {
+            'success' => 'Checked In',
+            'duplicate' => 'Repeat Scans',
+            default => 'Needs Review',
+        };
     }
 
     private function attendanceManagementParticipantKey(

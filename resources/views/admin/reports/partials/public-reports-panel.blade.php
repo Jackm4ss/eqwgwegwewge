@@ -78,7 +78,7 @@
         $parsed = \Carbon\CarbonImmutable::createFromFormat($format, $date);
 
         if ($parsed !== false) {
-          return $parsed->format('d/m/Y');
+          return $parsed->format('Y-m-d');
         }
       } catch (\Throwable) {
         continue;
@@ -116,6 +116,7 @@
 
 @once
   @push('vendor-styles')
+    <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/libs/flatpickr/flatpickr.css') }}" />
     <style>
       .report-case-trigger {
         border: 0;
@@ -145,6 +146,10 @@
 
       .public-report-filter-date {
         min-width: 9.5rem;
+      }
+
+      .public-report-filter-date.flatpickr-input[readonly] {
+        background-color: var(--bs-body-bg);
       }
 
       .report-detail-modal .modal-dialog {
@@ -241,6 +246,12 @@
   @endpush
 @endonce
 
+@once
+  @push('vendor-scripts')
+    <script src="{{ asset('assets-vuexy/vendor/libs/flatpickr/flatpickr.js') }}"></script>
+  @endpush
+@endonce
+
 <div class="row g-6 mb-6">
   <div class="col-sm-6 col-xl-3">
     <div class="card h-100">
@@ -318,15 +329,13 @@
       </div>
       <div class="col-md-2">
         <label class="form-label" for="from">Reported from</label>
-        <input type="text" class="form-control public-report-filter-date" id="from" name="from"
-          value="{{ $formatFilterDate($filters['from'] ?? '') }}" placeholder="dd/mm/yyyy" inputmode="numeric"
-          autocomplete="off" pattern="\d{2}/\d{2}/\d{4}" data-date-display-input />
+        <input type="date" class="form-control public-report-filter-date" id="from" name="from"
+          value="{{ $formatFilterDate($filters['from'] ?? '') }}" />
       </div>
       <div class="col-md-2">
         <label class="form-label" for="to">Reported to</label>
-        <input type="text" class="form-control public-report-filter-date" id="to" name="to"
-          value="{{ $formatFilterDate($filters['to'] ?? '') }}" placeholder="dd/mm/yyyy" inputmode="numeric"
-          autocomplete="off" pattern="\d{2}/\d{2}/\d{4}" data-date-display-input />
+        <input type="date" class="form-control public-report-filter-date" id="to" name="to"
+          value="{{ $formatFilterDate($filters['to'] ?? '') }}" />
       </div>
       <div class="col-md-2 d-flex gap-2">
         <button type="submit" class="btn btn-primary flex-fill">Apply</button>
@@ -602,26 +611,81 @@
   @push('page-scripts')
     <script>
       document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('[data-date-display-input]').forEach(function (input) {
-          input.addEventListener('input', function () {
-            const digits = String(input.value || '').replace(/\D/g, '').slice(0, 8);
-            const parts = [];
+        const initializePublicReportDatePickers = function () {
+          if (typeof window.flatpickr !== 'function') {
+            return;
+          }
 
-            if (digits.length > 0) {
-              parts.push(digits.slice(0, 2));
+          const fromInput = document.querySelector('#from.public-report-filter-date');
+          const toInput = document.querySelector('#to.public-report-filter-date');
+
+          const applyAltInputAttributes = function (instance, label) {
+            const altInput = instance?.altInput;
+
+            if (!altInput) {
+              return;
             }
 
-            if (digits.length > 2) {
-              parts.push(digits.slice(2, 4));
-            }
+            altInput.classList.add('public-report-filter-date');
+            altInput.setAttribute('aria-label', label);
+            altInput.setAttribute('placeholder', 'Select date');
+          };
 
-            if (digits.length > 4) {
-              parts.push(digits.slice(4, 8));
+          const destroyPicker = function (input) {
+            if (input?._flatpickr) {
+              input._flatpickr.destroy();
             }
+          };
 
-            input.value = parts.join('/');
-          });
-        });
+          destroyPicker(fromInput);
+          destroyPicker(toInput);
+
+          if (fromInput) {
+            window.flatpickr(fromInput, {
+              altInput: true,
+              altFormat: 'd M Y',
+              allowInput: true,
+              clickOpens: true,
+              dateFormat: 'Y-m-d',
+              disableMobile: true,
+              maxDate: toInput?.value || null,
+              onReady: function (_, __, instance) {
+                applyAltInputAttributes(instance, 'Reported from');
+              },
+              onChange: function (selectedDates) {
+                if (!toInput?._flatpickr) {
+                  return;
+                }
+
+                toInput._flatpickr.set('minDate', selectedDates[0] ?? null);
+              },
+            });
+          }
+
+          if (toInput) {
+            window.flatpickr(toInput, {
+              altInput: true,
+              altFormat: 'd M Y',
+              allowInput: true,
+              clickOpens: true,
+              dateFormat: 'Y-m-d',
+              disableMobile: true,
+              minDate: fromInput?.value || null,
+              onReady: function (_, __, instance) {
+                applyAltInputAttributes(instance, 'Reported to');
+              },
+              onChange: function (selectedDates) {
+                if (!fromInput?._flatpickr) {
+                  return;
+                }
+
+                fromInput._flatpickr.set('maxDate', selectedDates[0] ?? null);
+              },
+            });
+          }
+        };
+
+        initializePublicReportDatePickers();
 
         document.querySelectorAll('.js-delete-public-report-form').forEach(function (deleteForm) {
           deleteForm.addEventListener('submit', function (event) {

@@ -723,6 +723,7 @@ class AdminAttendanceReadModel
         $countryCounts = [];
         $identityTypeCounts = [];
         $attendanceStatusCounts = [];
+        $scanResultCounts = [];
         $scanPostCounts = [];
 
         foreach ($participantRows as $row) {
@@ -740,6 +741,12 @@ class AdminAttendanceReadModel
         }
 
         foreach ($rows as $row) {
+            $scanResult = $this->scanResultFilterValue($row['result'] ?? null);
+
+            if ($scanResult !== '') {
+                $scanResultCounts[$scanResult] = (int) ($scanResultCounts[$scanResult] ?? 0) + 1;
+            }
+
             $scannerName = trim((string) ($row['scanner_name'] ?? ''));
 
             if ($scannerName !== '') {
@@ -783,6 +790,18 @@ class AdminAttendanceReadModel
             (string) ($right['label'] ?? ''),
         ));
 
+        $scanResults = array_map(function (string $scanResult, int $count): array {
+            return [
+                'value' => $scanResult,
+                'label' => $this->scanResultFilterLabel($scanResult),
+                'count' => $count,
+            ];
+        }, array_keys($scanResultCounts), array_values($scanResultCounts));
+        usort($scanResults, fn (array $left, array $right): int => strcasecmp(
+            (string) ($left['label'] ?? ''),
+            (string) ($right['label'] ?? ''),
+        ));
+
         $scanPosts = array_map(function (string $scannerName, int $count): array {
             return [
                 'value' => $scannerName,
@@ -799,6 +818,7 @@ class AdminAttendanceReadModel
             'countries' => array_values($countries),
             'identity_types' => array_values($identityTypes),
             'attendance_statuses' => array_values($attendanceStatuses),
+            'scan_results' => array_values($scanResults),
             'scan_posts' => array_values($scanPosts),
         ];
     }
@@ -881,6 +901,11 @@ class AdminAttendanceReadModel
 
         $attendanceStatus = trim((string) ($filters['attendance_status'] ?? ''));
         if ($attendanceStatus !== '' && $this->normalizeAttendanceStatus($row['attendance_status'] ?? null) !== $this->normalizeAttendanceStatus($attendanceStatus)) {
+            return false;
+        }
+
+        $scanResult = $this->scanResultFilterValue($filters['scan_result'] ?? null);
+        if ($scanResult !== '' && $this->scanResultFilterValue($row['result'] ?? null) !== $scanResult) {
             return false;
         }
 
@@ -1058,6 +1083,24 @@ class AdminAttendanceReadModel
             'cancelled' => 'Cancelled',
             'invalid' => 'Invalid',
             default => 'Not Checked In',
+        };
+    }
+
+    private function scanResultFilterValue(mixed $result): string
+    {
+        return match ($this->normalizeScanResult($result)) {
+            'success' => 'success',
+            'duplicate' => 'duplicate',
+            default => trim((string) $result) !== '' ? 'needs_review' : '',
+        };
+    }
+
+    private function scanResultFilterLabel(string $scanResult): string
+    {
+        return match ($scanResult) {
+            'success' => 'Checked In',
+            'duplicate' => 'Repeat Scans',
+            default => 'Needs Review',
         };
     }
 

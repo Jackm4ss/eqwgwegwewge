@@ -6,10 +6,17 @@
 
 @push('vendor-styles')
   <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/libs/apex-charts/apex-charts.css') }}" />
+  <link rel="stylesheet" href="{{ asset('assets-vuexy/vendor/libs/flatpickr/flatpickr.css') }}" />
+  <style>
+    .dashboard-filter-date.flatpickr-input[readonly] {
+      background-color: var(--bs-body-bg);
+    }
+  </style>
 @endpush
 
 @push('vendor-scripts')
   <script src="{{ asset('assets-vuexy/vendor/libs/apex-charts/apexcharts.js') }}"></script>
+  <script src="{{ asset('assets-vuexy/vendor/libs/flatpickr/flatpickr.js') }}"></script>
 @endpush
 
 @section('content')
@@ -178,11 +185,13 @@
       <form method="GET" action="{{ route('admin.dashboard') }}" class="row g-3 align-items-end">
         <div class="col-sm-6 col-lg-3">
           <label class="form-label" for="from">From date</label>
-          <input type="date" class="form-control" id="from" name="from" value="{{ $filters['from'] ?? '' }}" />
+          <input type="text" class="form-control dashboard-filter-date" id="from" name="from" value="{{ $filters['from'] ?? '' }}"
+            placeholder="Select date" autocomplete="off" />
         </div>
         <div class="col-sm-6 col-lg-3">
           <label class="form-label" for="to">To date</label>
-          <input type="date" class="form-control" id="to" name="to" value="{{ $filters['to'] ?? '' }}" />
+          <input type="text" class="form-control dashboard-filter-date" id="to" name="to" value="{{ $filters['to'] ?? '' }}"
+            placeholder="Select date" autocomplete="off" />
         </div>
         <div class="col-sm-6 col-lg-2 d-grid">
           <button type="submit" class="btn btn-primary">Apply</button>
@@ -305,6 +314,72 @@
 @push('page-scripts')
   <script>
     document.addEventListener('DOMContentLoaded', function () {
+      if (typeof window.flatpickr === 'function') {
+        const fromInput = document.querySelector('#from.dashboard-filter-date');
+        const toInput = document.querySelector('#to.dashboard-filter-date');
+
+        const destroyPicker = function (input) {
+          if (input?._flatpickr) {
+            input._flatpickr.destroy();
+          }
+        };
+
+        const applyAltInputAttributes = function (instance, label) {
+          const altInput = instance?.altInput;
+
+          if (!altInput) {
+            return;
+          }
+
+          altInput.classList.add('dashboard-filter-date');
+          altInput.setAttribute('aria-label', label);
+          altInput.setAttribute('placeholder', 'Select date');
+        };
+
+        destroyPicker(fromInput);
+        destroyPicker(toInput);
+
+        if (fromInput) {
+          window.flatpickr(fromInput, {
+            altInput: true,
+            altFormat: 'd M Y',
+            allowInput: true,
+            clickOpens: true,
+            dateFormat: 'Y-m-d',
+            disableMobile: true,
+            maxDate: toInput?.value || null,
+            onReady: function (_, __, instance) {
+              applyAltInputAttributes(instance, 'From date');
+            },
+            onChange: function (selectedDates) {
+              if (toInput?._flatpickr) {
+                toInput._flatpickr.set('minDate', selectedDates[0] ?? null);
+              }
+            },
+          });
+        }
+
+        if (toInput) {
+          window.flatpickr(toInput, {
+            altInput: true,
+            altFormat: 'd M Y',
+            allowInput: true,
+            clickOpens: true,
+            dateFormat: 'Y-m-d',
+            disableMobile: true,
+            minDate: fromInput?.value || null,
+            onReady: function (_, __, instance) {
+              applyAltInputAttributes(instance, 'To date');
+            },
+            onChange: function (selectedDates) {
+              if (fromInput?._flatpickr) {
+                fromInput._flatpickr.set('maxDate', selectedDates[0] ?? null);
+              }
+            },
+          });
+        }
+      }
+
       const chartEl = document.querySelector('#visitorChart');
 
       if (!chartEl || typeof ApexCharts === 'undefined') {

@@ -85,6 +85,7 @@
       $filters['country'] ?? null,
       $filters['identity_type'] ?? null,
       $filters['attendance_status'] ?? null,
+      $filters['scan_result'] ?? null,
       $filters['scanner_post'] ?? null,
       $filters['from'] ?? null,
       $filters['to'] ?? null,
@@ -246,6 +247,18 @@
               @foreach ($filterOptions['attendance_statuses'] ?? [] as $status)
                 <option value="{{ $status['value'] }}" @selected(($filters['attendance_status'] ?? '') === ($status['value'] ?? ''))>
                   {{ $status['label'] ?? '-' }} ({{ number_format($status['count'] ?? 0) }})
+                </option>
+              @endforeach
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <label for="scan_result" class="form-label">Scan Result</label>
+            <select class="form-select" id="scan_result" name="scan_result">
+              <option value="">All Scan Results</option>
+              @foreach ($filterOptions['scan_results'] ?? [] as $scanResult)
+                <option value="{{ $scanResult['value'] }}" @selected(($filters['scan_result'] ?? '') === ($scanResult['value'] ?? ''))>
+                  {{ $scanResult['label'] ?? '-' }} ({{ number_format($scanResult['count'] ?? 0) }})
                 </option>
               @endforeach
             </select>

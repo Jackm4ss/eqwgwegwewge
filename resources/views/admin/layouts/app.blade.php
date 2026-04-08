@@ -76,12 +76,14 @@
               <div>User Management</div>
             </a>
           </li>
+          {{--
           <li class="menu-item {{ request()->routeIs('admin.attendance.*') ? 'active' : '' }}">
             <a href="{{ route('admin.attendance.index') }}" class="menu-link">
               <i class="menu-icon icon-base ti tabler-user-check"></i>
               <div>Data Attendance</div>
             </a>
           </li>
+          --}}
           <li class="menu-item {{ request()->routeIs('admin.campaign-links.*') ? 'active' : '' }}">
             <a href="{{ route('admin.campaign-links.index') }}" class="menu-link">
               <i class="menu-icon icon-base ti tabler-badge"></i>

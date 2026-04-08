@@ -16,6 +16,7 @@ class AttendanceController extends Controller
             'country',
             'identity_type',
             'attendance_status',
+            'scan_result',
             'scanner_post',
             'from',
             'to',

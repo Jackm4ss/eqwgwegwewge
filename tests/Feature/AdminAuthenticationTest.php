@@ -940,6 +940,23 @@ class AdminAuthenticationTest extends TestCase
                                 'count' => 1,
                             ],
                         ],
+                        'scan_results' => [
+                            [
+                                'value' => 'duplicate',
+                                'label' => 'Repeat Scans',
+                                'count' => 1,
+                            ],
+                            [
+                                'value' => 'needs_review',
+                                'label' => 'Needs Review',
+                                'count' => 1,
+                            ],
+                            [
+                                'value' => 'success',
+                                'label' => 'Checked In',
+                                'count' => 1,
+                            ],
+                        ],
                         'scan_posts' => [
                             [
                                 'value' => 'Gate A',
@@ -988,12 +1005,15 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('Country')
             ->assertSee('Document Type')
             ->assertSee('Check-In Status')
+            ->assertSee('Scan Result')
             ->assertSee('Scan Post')
             ->assertSee('From Date')
             ->assertSee('To Date')
             ->assertSee('Search participant, entry code, passport/MyKad, phone')
             ->assertSee('Malaysia IC (MyKad) (1)')
             ->assertSee('Passport (1)')
+            ->assertSee('Repeat Scans (1)')
+            ->assertSee('Needs Review (1)')
             ->assertSee('Participant')
             ->assertSee('Entry Code')
             ->assertSee('Attendance')
@@ -1020,6 +1040,7 @@ class AdminAuthenticationTest extends TestCase
                         && ($filters['country'] ?? null) === 'MY'
                         && ($filters['identity_type'] ?? null) === 'national_id'
                         && ($filters['attendance_status'] ?? null) === 'checked_in'
+                        && ($filters['scan_result'] ?? null) === 'needs_review'
                         && ($filters['scanner_post'] ?? null) === 'Gate C'
                         && ($filters['from'] ?? null) === '2026-03-24'
                         && ($filters['to'] ?? null) === '2026-03-25'
@@ -1092,6 +1113,13 @@ class AdminAuthenticationTest extends TestCase
                                 'count' => 10,
                             ],
                         ],
+                        'scan_results' => [
+                            [
+                                'value' => 'needs_review',
+                                'label' => 'Needs Review',
+                                'count' => 1,
+                            ],
+                        ],
                         'scan_posts' => [
                             [
                                 'value' => 'Gate C',
@@ -1118,7 +1146,7 @@ class AdminAuthenticationTest extends TestCase
         });
 
         $response = $this->actingAs($admin, 'admin')
-            ->get('/admin/attendance?q=MYKAD-7788&country=MY&identity_type=national_id&attendance_status=checked_in&scanner_post=Gate%20C&from=2026-03-24&to=2026-03-25&page=2&per_page=10');
+            ->get('/admin/attendance?q=MYKAD-7788&country=MY&identity_type=national_id&attendance_status=checked_in&scan_result=needs_review&scanner_post=Gate%20C&from=2026-03-24&to=2026-03-25&page=2&per_page=10');
 
         $response->assertOk()
             ->assertSee('12 participants found')
@@ -1128,6 +1156,7 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('value="MYKAD-7788"', false)
             ->assertSee('value="2026-03-24"', false)
             ->assertSee('value="2026-03-25"', false)
+            ->assertSee('Needs Review (1)')
             ->assertSee('Malaysia IC (MyKad)')
             ->assertDontSee('No attendance data matches the current filters.');
     }

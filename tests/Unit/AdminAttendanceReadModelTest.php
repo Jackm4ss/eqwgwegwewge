@@ -145,6 +145,8 @@ class AdminAttendanceReadModelTest extends TestCase
         $payload = $readModel->rebuild();
         $page = $readModel->page([]);
         $filteredPage = $readModel->page(['q' => 'rafi']);
+        $repeatScanPage = $readModel->page(['scan_result' => 'duplicate']);
+        $needsReviewPage = $readModel->page(['scan_result' => 'needs_review']);
 
         $this->assertCount(3, $payload['rows']);
         $this->assertNotNull($page);
@@ -161,15 +163,28 @@ class AdminAttendanceReadModelTest extends TestCase
         $this->assertSame(2, $page['overview']['gate_counts'][0]['count']);
         $this->assertSame('Malaysia', $page['filter_options']['countries'][0]['label']);
         $this->assertSame('Passport', $page['filter_options']['identity_types'][1]['label']);
+        $this->assertSame('Checked In', $page['filter_options']['scan_results'][0]['label']);
+        $this->assertSame('Needs Review', $page['filter_options']['scan_results'][1]['label']);
+        $this->assertSame('Repeat Scans', $page['filter_options']['scan_results'][2]['label']);
         $this->assertSame('fresh', $page['sync_status']['state']);
         $this->assertTrue($readModel->supportsFilters([]));
         $this->assertTrue($readModel->supportsFilters(['q' => 'rafi']));
+        $this->assertTrue($readModel->supportsFilters(['scan_result' => 'duplicate']));
 
         $this->assertNotNull($filteredPage);
         $this->assertSame(1, $filteredPage['rows']->total());
         $this->assertSame('Rafi Hakim', $filteredPage['rows']->items()[0]['full_name']);
         $this->assertSame(1, $filteredPage['overview']['needs_review']);
         $this->assertSame(0, $filteredPage['overview']['repeat_scans']);
+
+        $this->assertNotNull($repeatScanPage);
+        $this->assertSame(1, $repeatScanPage['rows']->total());
+        $this->assertSame('Alya Putri', $repeatScanPage['rows']->items()[0]['full_name']);
+        $this->assertSame('duplicate', $repeatScanPage['rows']->items()[0]['latest_scan_result']);
+
+        $this->assertNotNull($needsReviewPage);
+        $this->assertSame(1, $needsReviewPage['rows']->total());
+        $this->assertSame('Rafi Hakim', $needsReviewPage['rows']->items()[0]['full_name']);
     }
 
     public function test_page_filters_redis_projection_without_loading_all_rows_into_memory(): void
@@ -214,6 +229,11 @@ class AdminAttendanceReadModelTest extends TestCase
                 'attendance_statuses' => [
                     ['value' => 'checked_in', 'label' => 'Checked In', 'count' => 1],
                     ['value' => 'not_checked_in', 'label' => 'Not Checked In', 'count' => 1],
+                ],
+                'scan_results' => [
+                    ['value' => 'success', 'label' => 'Checked In', 'count' => 0],
+                    ['value' => 'needs_review', 'label' => 'Needs Review', 'count' => 1],
+                    ['value' => 'duplicate', 'label' => 'Repeat Scans', 'count' => 1],
                 ],
                 'scan_posts' => [
                     ['value' => 'Gate A', 'label' => 'Gate A', 'count' => 2],
@@ -310,7 +330,7 @@ class AdminAttendanceReadModelTest extends TestCase
             new AdminAttendanceSyncStatusFactory,
         );
 
-        $page = $readModel->page(['q' => 'MYKAD-7788']);
+        $page = $readModel->page(['q' => 'MYKAD-7788', 'scan_result' => 'needs_review']);
 
         $this->assertTrue($readModel->supportsFilters(['q' => 'MYKAD-7788']));
         $this->assertNotNull($page);
@@ -322,5 +342,6 @@ class AdminAttendanceReadModelTest extends TestCase
         $this->assertSame('fresh', $page['sync_status']['state']);
         $this->assertSame(1, $page['filter_options']['attendance_statuses'][0]['count']);
         $this->assertSame(1, $page['filter_options']['attendance_statuses'][1]['count']);
+        $this->assertSame(1, $page['filter_options']['scan_results'][1]['count']);
     }
 }
