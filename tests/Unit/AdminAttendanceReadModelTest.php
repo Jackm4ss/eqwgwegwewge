@@ -81,6 +81,19 @@ class AdminAttendanceReadModelTest extends TestCase
                     'scanned_at' => '2026-04-10T09:03:00Z',
                 ],
             ]);
+        $repository->shouldReceive('allAttendanceDaily')
+            ->once()
+            ->andReturn([
+                [
+                    'attendance_id' => 'attendance-1',
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'ticket_code' => 'TICKET-001',
+                    'scan_date' => '2026-04-10',
+                    'first_scanned_at' => '2026-04-10T09:00:00Z',
+                    'updated_at' => '2026-04-10T09:00:00Z',
+                ],
+            ]);
         $repository->shouldReceive('findUsersByIds')
             ->once()
             ->withArgs(function (array $userIds): bool {
@@ -185,6 +198,81 @@ class AdminAttendanceReadModelTest extends TestCase
         $this->assertNotNull($needsReviewPage);
         $this->assertSame(1, $needsReviewPage['rows']->total());
         $this->assertSame('Rafi Hakim', $needsReviewPage['rows']->items()[0]['full_name']);
+    }
+
+    public function test_rebuild_uses_attendance_daily_for_progress_after_history_remains(): void
+    {
+        CarbonImmutable::setTestNow('2026-04-10 09:00:00 UTC');
+        config([
+            'cache.default' => 'array',
+            'admin.event.timezone' => 'Asia/Kuala_Lumpur',
+            'admin.event.start_date' => '2026-04-09',
+            'admin.event.end_date' => '2026-04-19',
+            'admin.attendance.read_model.enabled' => true,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allScanLogs')
+            ->once()
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-1',
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'ticket_code' => 'TICKET-001',
+                    'entry_code_display' => 'ABCD-1234',
+                    'scanner_name' => 'Gate A',
+                    'scanner_role' => 'staff',
+                    'scanner_id' => 'scanner-1',
+                    'result' => 'success',
+                    'scan_date' => '2026-04-10',
+                    'scanned_at' => '2026-04-10T09:00:00Z',
+                ],
+            ]);
+        $repository->shouldReceive('allAttendanceDaily')
+            ->once()
+            ->andReturn([]);
+        $repository->shouldReceive('findUsersByIds')
+            ->once()
+            ->with(['user-1'])
+            ->andReturn([
+                [
+                    'user_id' => 'user-1',
+                    'ticket_id' => 'ticket-1',
+                    'full_name' => 'Alya Putri',
+                    'email' => 'alya@example.test',
+                    'country' => 'MY',
+                    'identity_type' => 'national_id',
+                    'identity_number' => '901231101234',
+                ],
+            ]);
+        $repository->shouldReceive('findTicketsByIds')
+            ->once()
+            ->with(['ticket-1'])
+            ->andReturn([
+                [
+                    'ticket_id' => 'ticket-1',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-001',
+                    'entry_code_display' => 'ABCD-1234',
+                    'attendance_status' => 'not_checked_in',
+                    'checked_in_at' => null,
+                ],
+            ]);
+
+        $readModel = new AdminAttendanceReadModel(
+            $repository,
+            new AdminAnalyticsService,
+            new AdminAttendanceSyncStatusFactory,
+        );
+
+        $page = $readModel->rebuild();
+
+        $this->assertCount(1, $page['rows']);
+        $this->assertSame(0, $page['rows'][0]['attendance_days_count']);
+        $this->assertSame(11, $page['rows'][0]['attendance_total_days']);
+        $this->assertSame(0, $page['rows'][0]['attendance_progress_percent']);
+        $this->assertSame('not_checked_in', $page['rows'][0]['attendance_status']);
     }
 
     public function test_page_filters_redis_projection_without_loading_all_rows_into_memory(): void

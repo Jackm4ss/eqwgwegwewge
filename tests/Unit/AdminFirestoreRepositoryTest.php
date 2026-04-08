@@ -86,9 +86,29 @@ class AdminFirestoreRepositoryTest extends TestCase
         $restApi->shouldReceive('batchGet')->once()->with(['tickets/ticket-123'], 'txn-1')->andReturn([
             'tickets/ticket-123' => $ticketDocument,
         ]);
+        $restApi->shouldReceive('runQuery')
+            ->once()
+            ->withArgs(function (array $query): bool {
+                return ($query['from'][0]['collectionId'] ?? null) === 'attendance_daily'
+                    && ($query['where']['fieldFilter']['field']['fieldPath'] ?? null) === 'user_id'
+                    && ($query['where']['fieldFilter']['value']['stringValue'] ?? null) === 'user-123';
+            })
+            ->andReturn([
+                ['name' => 'attendance_daily/'.hash('sha256', '2026-03-29:ticket-123'), 'fields' => []],
+            ]);
         $restApi->shouldReceive('decodeDocument')->once()->with($userDocument)->andReturn($user);
         $restApi->shouldReceive('decodeDocument')->once()->with($ticketDocument)->andReturn($ticket);
-        $timestamps->shouldReceive('normalizeFromStorage')->twice()->andReturnUsing(fn (array $payload): array => $payload);
+        $restApi->shouldReceive('decodeDocument')
+            ->once()
+            ->with(['name' => 'attendance_daily/'.hash('sha256', '2026-03-29:ticket-123'), 'fields' => []])
+            ->andReturn([
+                'ticket_id' => 'ticket-123',
+                'user_id' => 'user-123',
+                'scan_date' => '2026-03-29',
+                'first_scanned_at' => '2026-03-29T08:15:00Z',
+                'updated_at' => '2026-03-29T08:15:00Z',
+            ]);
+        $timestamps->shouldReceive('normalizeFromStorage')->times(3)->andReturnUsing(fn (array $payload): array => $payload);
         $ticketQrCodeService->shouldReceive('resetAttendanceAttributes')->once()->with($ticket)->andReturn($updatedTicket);
         $restApi->shouldReceive('makeDeleteWrite')->once()->with($attendancePath)->andReturn(['delete_attendance']);
         $timestamps->shouldReceive('prepareForStorage')->once()->with($updatedTicket)->andReturn($updatedTicket);
@@ -101,6 +121,96 @@ class AdminFirestoreRepositoryTest extends TestCase
         $result = $repository->resetQrCode('user-123');
 
         $this->assertSame($updatedTicket, $result['ticket']);
+        $this->assertSame($user, $result['user']);
+    }
+
+    public function test_reset_qr_code_preserves_previous_attendance_days_when_only_latest_day_is_reset(): void
+    {
+        Carbon::setTestNow('2026-03-30 10:00:00');
+
+        $restApi = Mockery::mock(FirestoreRestApi::class);
+        $timestamps = Mockery::mock(FirestoreTimestampNormalizer::class);
+        $ticketQrCodeService = Mockery::mock(TicketQrCodeService::class);
+
+        $repository = $this->makeRepository($restApi, $timestamps, $ticketQrCodeService);
+
+        $userDocument = ['name' => 'users/user-123', 'fields' => []];
+        $ticketDocument = ['name' => 'tickets/ticket-123', 'fields' => []];
+        $dayOneDocument = ['name' => 'attendance_daily/'.hash('sha256', '2026-03-29:ticket-123'), 'fields' => []];
+        $dayTwoDocument = ['name' => 'attendance_daily/'.hash('sha256', '2026-03-30:ticket-123'), 'fields' => []];
+        $user = [
+            'user_id' => 'user-123',
+            'ticket_id' => 'ticket-123',
+        ];
+        $ticket = [
+            'ticket_id' => 'ticket-123',
+            'user_id' => 'user-123',
+            'ticket_code' => 'TICKET-123',
+            'attendance_status' => 'checked_in',
+            'checked_in_at' => '2026-03-29T09:00:00Z',
+            'last_scanned_at' => '2026-03-30T08:15:00Z',
+        ];
+        $resetTicket = [
+            'ticket_id' => 'ticket-123',
+            'user_id' => 'user-123',
+            'ticket_code' => 'TICKET-123',
+            'attendance_status' => 'not_checked_in',
+            'checked_in_at' => null,
+            'last_scanned_at' => null,
+            'updated_at' => '2026-03-30T10:00:00Z',
+        ];
+        $expectedTicket = array_merge($resetTicket, [
+            'attendance_status' => 'checked_in',
+            'checked_in_at' => '2026-03-29T09:00:00+00:00',
+            'last_scanned_at' => '2026-03-29T09:00:00+00:00',
+        ]);
+        $attendancePath = 'attendance_daily/'.hash('sha256', '2026-03-30:ticket-123');
+
+        $restApi->shouldReceive('available')->atLeast()->once()->andReturnTrue();
+        $restApi->shouldReceive('beginTransaction')->once()->andReturn('txn-keep-day-one');
+        $restApi->shouldReceive('batchGet')->once()->with(['users/user-123'], 'txn-keep-day-one')->andReturn([
+            'users/user-123' => $userDocument,
+        ]);
+        $restApi->shouldReceive('batchGet')->once()->with(['tickets/ticket-123'], 'txn-keep-day-one')->andReturn([
+            'tickets/ticket-123' => $ticketDocument,
+        ]);
+        $restApi->shouldReceive('runQuery')
+            ->once()
+            ->withArgs(function (array $query): bool {
+                return ($query['from'][0]['collectionId'] ?? null) === 'attendance_daily'
+                    && ($query['where']['fieldFilter']['field']['fieldPath'] ?? null) === 'user_id'
+                    && ($query['where']['fieldFilter']['value']['stringValue'] ?? null) === 'user-123';
+            })
+            ->andReturn([$dayOneDocument, $dayTwoDocument]);
+        $restApi->shouldReceive('decodeDocument')->once()->with($userDocument)->andReturn($user);
+        $restApi->shouldReceive('decodeDocument')->once()->with($ticketDocument)->andReturn($ticket);
+        $restApi->shouldReceive('decodeDocument')->once()->with($dayOneDocument)->andReturn([
+            'ticket_id' => 'ticket-123',
+            'user_id' => 'user-123',
+            'scan_date' => '2026-03-29',
+            'first_scanned_at' => '2026-03-29T09:00:00Z',
+            'updated_at' => '2026-03-29T09:00:00Z',
+        ]);
+        $restApi->shouldReceive('decodeDocument')->once()->with($dayTwoDocument)->andReturn([
+            'ticket_id' => 'ticket-123',
+            'user_id' => 'user-123',
+            'scan_date' => '2026-03-30',
+            'first_scanned_at' => '2026-03-30T08:15:00Z',
+            'updated_at' => '2026-03-30T08:15:00Z',
+        ]);
+        $timestamps->shouldReceive('normalizeFromStorage')->times(4)->andReturnUsing(fn (array $payload): array => $payload);
+        $ticketQrCodeService->shouldReceive('resetAttendanceAttributes')->once()->with($ticket)->andReturn($resetTicket);
+        $restApi->shouldReceive('makeDeleteWrite')->once()->with($attendancePath)->andReturn(['delete_attendance']);
+        $timestamps->shouldReceive('prepareForStorage')->once()->with($expectedTicket)->andReturn($expectedTicket);
+        $restApi->shouldReceive('makeSetWrite')->once()->with('tickets/ticket-123', $expectedTicket, true)->andReturn(['set_ticket']);
+        $restApi->shouldReceive('commit')->once()->with([
+            ['delete_attendance'],
+            ['set_ticket'],
+        ], 'txn-keep-day-one');
+
+        $result = $repository->resetQrCode('user-123');
+
+        $this->assertSame($expectedTicket, $result['ticket']);
         $this->assertSame($user, $result['user']);
     }
 

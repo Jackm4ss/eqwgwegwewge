@@ -1060,10 +1060,15 @@ class AdminFirestoreRepository
             }
 
             $ticket = $this->timestamps->normalizeFromStorage($this->restApi->decodeDocument($ticketDocument));
-            $updatedTicket = $this->ticketQrCodeService->resetAttendanceAttributes($ticket);
+            $attendanceResetPaths = $this->attendanceResetPaths($ticket);
+            $updatedTicket = $this->ticketAfterAttendanceReset(
+                $ticket,
+                $this->findAttendanceDailyByUserIds([(string) ($user['user_id'] ?? '')]),
+                $attendanceResetPaths,
+            );
             $writes = array_map(
                 fn (string $attendancePath): array => $this->restApi->makeDeleteWrite($attendancePath),
-                $this->attendanceResetPaths($ticket),
+                $attendanceResetPaths,
             );
             $writes[] = $this->restApi->makeSetWrite(
                 $ticketPath,
@@ -1113,9 +1118,14 @@ class AdminFirestoreRepository
             }
 
             $ticket = $this->timestamps->normalizeFromStorage($ticketSnapshot->data());
-            $updatedTicket = $this->ticketQrCodeService->resetAttendanceAttributes($ticket);
+            $attendanceResetPaths = $this->attendanceResetPaths($ticket);
+            $updatedTicket = $this->ticketAfterAttendanceReset(
+                $ticket,
+                $this->findAttendanceDailyByUserIds([(string) ($user['user_id'] ?? '')]),
+                $attendanceResetPaths,
+            );
 
-            foreach ($this->attendanceResetPaths($ticket) as $attendancePath) {
+            foreach ($attendanceResetPaths as $attendancePath) {
                 $transaction->delete($this->documentReference($client, $attendancePath));
             }
 
@@ -3007,15 +3017,125 @@ class AdminFirestoreRepository
 
         $dates = [$this->currentScannerDate()];
         $lastScannedDate = $this->scanDateFromTimestamp($ticket['last_scanned_at'] ?? null);
+        $checkedInDate = $this->scanDateFromTimestamp($ticket['checked_in_at'] ?? null);
 
         if ($lastScannedDate !== null) {
             $dates[] = $lastScannedDate;
+        } elseif ($checkedInDate !== null) {
+            $dates[] = $checkedInDate;
         }
 
         return array_map(
             fn (string $scanDate): string => $this->attendanceDailyPath($ticketId, $scanDate),
             array_values(array_unique(array_filter($dates))),
         );
+    }
+
+    private function ticketAfterAttendanceReset(
+        array $ticket,
+        array $attendanceRows,
+        array $attendanceResetPaths,
+    ): array {
+        $updatedTicket = $this->ticketQrCodeService->resetAttendanceAttributes($ticket);
+        $remainingAttendanceRows = $this->remainingAttendanceRowsAfterReset(
+            $ticket,
+            $attendanceRows,
+            $attendanceResetPaths,
+        );
+
+        if ($remainingAttendanceRows === []) {
+            return $updatedTicket;
+        }
+
+        [$checkedInAt, $lastScannedAt] = $this->attendanceBounds($remainingAttendanceRows);
+
+        return array_merge($updatedTicket, [
+            'attendance_status' => 'checked_in',
+            'checked_in_at' => $checkedInAt,
+            'last_scanned_at' => $lastScannedAt,
+        ]);
+    }
+
+    private function remainingAttendanceRowsAfterReset(
+        array $ticket,
+        array $attendanceRows,
+        array $attendanceResetPaths,
+    ): array {
+        $ticketId = trim((string) ($ticket['ticket_id'] ?? ''));
+
+        if ($ticketId === '') {
+            return [];
+        }
+
+        $resetPaths = array_fill_keys($attendanceResetPaths, true);
+
+        return array_values(array_filter($attendanceRows, function (array $attendanceRow) use ($ticketId, $resetPaths): bool {
+            $rowTicketId = trim((string) ($attendanceRow['ticket_id'] ?? ''));
+
+            if ($rowTicketId !== '' && $rowTicketId !== $ticketId) {
+                return false;
+            }
+
+            $rowPath = trim((string) ($attendanceRow['__path'] ?? ''));
+
+            if ($rowPath === '') {
+                $scanDate = trim((string) ($attendanceRow['scan_date'] ?? ''));
+
+                if ($scanDate !== '') {
+                    $rowPath = $this->attendanceDailyPath($ticketId, $scanDate);
+                }
+            }
+
+            return $rowPath === '' || ! isset($resetPaths[$rowPath]);
+        }));
+    }
+
+    private function attendanceBounds(array $attendanceRows): array
+    {
+        $timestamps = array_values(array_filter(array_map(
+            fn (array $attendanceRow): ?string => $this->attendanceTimestamp($attendanceRow),
+            $attendanceRows,
+        )));
+
+        if ($timestamps === []) {
+            return [null, null];
+        }
+
+        sort($timestamps);
+
+        return [$timestamps[0], $timestamps[array_key_last($timestamps)]];
+    }
+
+    private function attendanceTimestamp(array $attendanceRow): ?string
+    {
+        foreach (['first_scanned_at', 'updated_at', 'created_at'] as $field) {
+            $timestamp = trim((string) ($attendanceRow[$field] ?? ''));
+
+            if ($timestamp === '') {
+                continue;
+            }
+
+            try {
+                return CarbonImmutable::parse($timestamp)->utc()->toIso8601String();
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        $scanDate = trim((string) ($attendanceRow['scan_date'] ?? ''));
+
+        if ($scanDate === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::parse($scanDate, $this->eventTimezone())
+                ->startOfDay()
+                ->utc()
+                ->toIso8601String();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function currentScannerDate(): string

@@ -90,7 +90,10 @@ class AdminAttendanceReadModel
 
         try {
             $allScanLogs = $this->repository->allScanLogs();
-            $rows = $this->buildProjectedRows($allScanLogs, $allScanLogs);
+            $rows = $this->buildProjectedRows(
+                $allScanLogs,
+                $this->repository->allAttendanceDaily(),
+            );
             $rowsById = [];
             $orderedScanIds = [];
 
@@ -172,6 +175,7 @@ class AdminAttendanceReadModel
 
         try {
             $scanLogs = $this->repository->findScanLogsByUserIds([$userId]);
+            $attendanceLogs = $this->repository->findAttendanceDailyByUserIds([$userId]);
 
             if ($scanLogs === []) {
                 $this->storeSync($this->rawSyncPayload('fresh'));
@@ -179,7 +183,7 @@ class AdminAttendanceReadModel
                 return;
             }
 
-            foreach ($this->buildProjectedRows($scanLogs, $scanLogs) as $row) {
+            foreach ($this->buildProjectedRows($scanLogs, $attendanceLogs) as $row) {
                 $this->upsertRow($row);
             }
 
@@ -424,8 +428,8 @@ class AdminAttendanceReadModel
     {
         $userId = trim((string) ($scanLog['user_id'] ?? ''));
         $attendanceLogs = $userId !== ''
-            ? $this->repository->findScanLogsByUserIds([$userId])
-            : [$scanLog];
+            ? $this->repository->findAttendanceDailyByUserIds([$userId])
+            : [];
 
         return $this->buildProjectedRows([$scanLog], $attendanceLogs)[0] ?? null;
     }
@@ -469,7 +473,7 @@ class AdminAttendanceReadModel
         }
 
         $attendanceLogs ??= $userIds !== []
-            ? $this->repository->findScanLogsByUserIds($userIds)
+            ? $this->repository->findAttendanceDailyByUserIds($userIds)
             : [];
 
         $participantRows = $this->analytics->attachAttendanceProgress(
