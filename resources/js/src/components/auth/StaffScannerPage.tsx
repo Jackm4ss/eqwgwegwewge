@@ -959,6 +959,10 @@ function cameraOptionLabel(camera: CameraDevice, index: number) {
   return `Camera ${index + 1}`;
 }
 
+function supportsManualCameraSelection(platform: CameraPlatform) {
+  return platform !== 'ios';
+}
+
 async function buildCameraStartTargets(
   platform: CameraPlatform,
   selectedCameraId?: string,
@@ -978,6 +982,12 @@ async function buildCameraStartTargets(
       targets.push(target);
     }
   };
+
+  if (!supportsManualCameraSelection(platform)) {
+    addTarget({ facingMode: { exact: 'environment' } });
+    addTarget({ facingMode: 'environment' });
+    return targets;
+  }
 
   if (selectedCameraId) {
     addTarget(selectedCameraId);
@@ -1104,6 +1114,13 @@ export function StaffScannerPage() {
     return alertQueueRef.current;
   }, []);
   const refreshAvailableCameras = useCallback(async () => {
+    if (!supportsManualCameraSelection(cameraPlatform)) {
+      setAvailableCameras([]);
+      setSelectedCameraId('');
+      setCameraDiscoveryBusy(false);
+      return;
+    }
+
     setCameraDiscoveryBusy(true);
 
     try {
@@ -1838,13 +1855,16 @@ export function StaffScannerPage() {
   const LatestIcon = latestMeta.icon;
   const cameraSurface = detectCameraSurface();
   const cameraPlatform = detectCameraPlatform();
+  const manualCameraSelectionSupported = supportsManualCameraSelection(cameraPlatform);
   const cameraSelectValue = selectedCameraId || CAMERA_AUTO_VALUE;
   const hasSelectableCameras = availableCameras.length > 0;
-  const cameraSelectionHelpText = cameraDiscoveryBusy
-    ? 'Checking camera devices on this device...'
-    : hasSelectableCameras
-      ? 'Automatic keeps the current behavior and prefers the best rear camera. Choosing a device restarts the live scanner when it is active.'
-      : 'No named camera devices are exposed yet. Grant camera permission first or reconnect the external camera, then refresh this list.';
+  const cameraSelectionHelpText = !manualCameraSelectionSupported
+    ? 'iPhone / iPad uses automatic camera selection so Safari does not expose multiple confusing camera choices.'
+    : cameraDiscoveryBusy
+      ? 'Checking camera devices on this device...'
+      : hasSelectableCameras
+        ? 'Automatic keeps the current behavior and prefers the best rear camera. Choosing a device restarts the live scanner when it is active.'
+        : 'No named camera devices are exposed yet. Grant camera permission first or reconnect the external camera, then refresh this list.';
   const permissionNotice = describeCameraPermission(
     cameraPermissionState,
     cameraSurface,
@@ -1966,43 +1986,54 @@ export function StaffScannerPage() {
                   </div>
 
                   <div className="mt-4 rounded-[1.4rem] border border-sky-100 bg-white px-4 py-4 shadow-[0_12px_35px_rgba(2,132,199,0.08)]">
-                    <div className="flex items-start justify-between gap-3">
+                    {manualCameraSelectionSupported ? (
+                      <>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Camera Source</p>
+                            <p className="mt-2 text-sm leading-relaxed text-slate-600">Choose a specific camera when the phone, dock, or external camera exposes more than one camera device.</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void refreshAvailableCameras()}
+                            disabled={cameraDiscoveryBusy || scannerPending}
+                            className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition-all ${(cameraDiscoveryBusy || scannerPending)
+                              ? 'cursor-wait border-sky-100 bg-sky-50 text-sky-400'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                              }`}
+                            aria-label="Refresh available cameras"
+                          >
+                            <RefreshCcw className={`h-4.5 w-4.5 ${cameraDiscoveryBusy ? 'animate-spin' : ''}`} aria-hidden="true" />
+                          </button>
+                        </div>
+
+                        <div className="mt-4">
+                          <label htmlFor="staff-camera-source" className="mb-1.5 block text-sm font-semibold text-slate-700">Detected Camera</label>
+                          <select
+                            id="staff-camera-source"
+                            value={cameraSelectValue}
+                            onChange={(event) => handleCameraSelectionChange(event.target.value)}
+                            disabled={cameraDiscoveryBusy || scannerPending}
+                            className={authInputClass(false, { withIcon: false })}
+                          >
+                            <option value={CAMERA_AUTO_VALUE}>Automatic (Recommended)</option>
+                            {availableCameras.map((camera, index) => (
+                              <option key={camera.id} value={camera.id}>
+                                {cameraOptionLabel(camera, index)}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-2 text-xs leading-relaxed text-slate-500">{cameraSelectionHelpText}</p>
+                        </div>
+                      </>
+                    ) : (
                       <div>
                         <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Camera Source</p>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600">Choose a specific camera when the phone, dock, or external camera exposes more than one camera device.</p>
+                        <p className="mt-2 text-sm font-semibold text-slate-700">Automatic on iPhone / iPad</p>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600">Start Scan will use the device automatic rear-camera flow so staff do not need to choose from multiple Safari camera entries.</p>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-500">{cameraSelectionHelpText}</p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => void refreshAvailableCameras()}
-                        disabled={cameraDiscoveryBusy || scannerPending}
-                        className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition-all ${(cameraDiscoveryBusy || scannerPending)
-                          ? 'cursor-wait border-sky-100 bg-sky-50 text-sky-400'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                          }`}
-                        aria-label="Refresh available cameras"
-                      >
-                        <RefreshCcw className={`h-4.5 w-4.5 ${cameraDiscoveryBusy ? 'animate-spin' : ''}`} aria-hidden="true" />
-                      </button>
-                    </div>
-
-                    <div className="mt-4">
-                      <label htmlFor="staff-camera-source" className="mb-1.5 block text-sm font-semibold text-slate-700">Detected Camera</label>
-                      <select
-                        id="staff-camera-source"
-                        value={cameraSelectValue}
-                        onChange={(event) => handleCameraSelectionChange(event.target.value)}
-                        disabled={cameraDiscoveryBusy || scannerPending}
-                        className={authInputClass(false, { withIcon: false })}
-                      >
-                        <option value={CAMERA_AUTO_VALUE}>Automatic (Recommended)</option>
-                        {availableCameras.map((camera, index) => (
-                          <option key={camera.id} value={camera.id}>
-                            {cameraOptionLabel(camera, index)}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-2 text-xs leading-relaxed text-slate-500">{cameraSelectionHelpText}</p>
-                    </div>
+                    )}
                   </div>
 
                   <div className="mt-5 space-y-4">
