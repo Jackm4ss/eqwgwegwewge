@@ -18,6 +18,7 @@ class StaffLoginRequest extends FormRequest
             'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string', 'max:255'],
             'remember' => ['nullable', 'boolean'],
+            'scanner_device_profile' => ['required', 'string', 'in:laptop,android,iphone'],
             'scanner_post' => [
                 'required',
                 'string',
@@ -39,6 +40,7 @@ class StaffLoginRequest extends FormRequest
         $this->merge([
             'email' => strtolower(trim((string) $this->input('email'))),
             'remember' => $this->boolean('remember'),
+            'scanner_device_profile' => trim(strtolower((string) $this->input('scanner_device_profile'))),
             'scanner_post' => $gateService->normalizeName($this->input('scanner_post')),
         ]);
     }

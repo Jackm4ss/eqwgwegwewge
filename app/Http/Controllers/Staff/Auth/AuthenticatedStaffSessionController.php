@@ -39,7 +39,9 @@ class AuthenticatedStaffSessionController extends Controller
 
         $request->session()->regenerate();
         $scannerPost = (string) $request->validated('scanner_post');
+        $scannerDeviceProfile = (string) $request->validated('scanner_device_profile');
         $request->session()->put((string) config('scanner.session_post_key', 'staff.scanner_post'), $scannerPost);
+        $request->session()->put((string) config('scanner.session_device_profile_key', 'staff.scanner_device_profile'), $scannerDeviceProfile);
 
         /** @var Admin $admin */
         $admin = Auth::guard('admin')->user();
@@ -54,6 +56,7 @@ class AuthenticatedStaffSessionController extends Controller
             [
                 'remember' => $request->boolean('remember'),
                 'scanner_post' => $scannerPost,
+                'scanner_device_profile' => $scannerDeviceProfile,
             ],
             $request->ip(),
         );
@@ -65,6 +68,7 @@ class AuthenticatedStaffSessionController extends Controller
                 'message' => 'Login successful.',
                 'redirect' => $redirect,
                 'scanner_post' => $scannerPost,
+                'scanner_device_profile' => $scannerDeviceProfile,
             ]);
         }
 

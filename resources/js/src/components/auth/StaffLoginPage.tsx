@@ -1,7 +1,21 @@
 import { useCallback, useRef, useState, type MouseEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowUpRight, CheckCircle2, Eye, EyeOff, Loader2, Lock, Mail, MapPin, ScanLine, ShieldCheck } from 'lucide-react';
+import {
+  Apple,
+  ArrowUpRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Laptop,
+  Loader2,
+  Lock,
+  Mail,
+  MapPin,
+  ScanLine,
+  ShieldCheck,
+  Smartphone,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -15,16 +29,20 @@ import {
 import { getSpaUrl } from '../../lib/spaRouting';
 import { cn } from '../../lib/utils';
 
+type ScannerDeviceProfile = 'laptop' | 'android' | 'iphone';
+
 type StaffLoginFormData = {
   email: string;
   password: string;
   scanner_post: string;
+  scanner_device_profile: ScannerDeviceProfile;
   remember: boolean;
 };
 
 type StaffLoginResponse = {
   message?: string;
   redirect?: string;
+  scanner_device_profile?: ScannerDeviceProfile;
 };
 
 const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
@@ -33,6 +51,24 @@ const STAFF_HOME_URL = getSpaUrl('staffHome', '/staff');
 
 function csrfToken() {
   return (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content ?? '';
+}
+
+function detectDefaultScannerDeviceProfile(): ScannerDeviceProfile {
+  if (typeof navigator === 'undefined') {
+    return 'laptop';
+  }
+
+  const userAgent = navigator.userAgent.toLowerCase();
+
+  if (/iphone|ipad|ipod/.test(userAgent)) {
+    return 'iphone';
+  }
+
+  if (/android/.test(userAgent)) {
+    return 'android';
+  }
+
+  return 'laptop';
 }
 
 function staffScannerPosts() {
@@ -64,6 +100,40 @@ export function StaffLoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const scannerPosts = staffScannerPosts();
+  const defaultScannerDeviceProfile = detectDefaultScannerDeviceProfile();
+  const scannerDeviceOptions: Array<{
+    value: ScannerDeviceProfile;
+    label: string;
+    eyebrow: string;
+    description: string;
+    accent: string;
+    icon: typeof Laptop;
+  }> = [
+    {
+      value: 'laptop',
+      label: 'Laptop',
+      eyebrow: 'Desktop / Notebook',
+      description: 'Support barcode scanner HID, webcam USB, built-in webcam, and manual camera selection.',
+      accent: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+      icon: Laptop,
+    },
+    {
+      value: 'android',
+      label: 'Android',
+      eyebrow: 'Phone / Tablet / PWA',
+      description: 'Shows available cameras so staff can switch between rear camera, webcam, bluetooth camera, and other sources.',
+      accent: 'border-sky-200 bg-sky-50 text-sky-700',
+      icon: Smartphone,
+    },
+    {
+      value: 'iphone',
+      label: 'iPhone',
+      eyebrow: 'Safari Automatic',
+      description: 'Keeps the current automatic camera flow because iPhone works best with automatic rear-camera handling.',
+      accent: 'border-slate-200 bg-slate-50 text-slate-700',
+      icon: Apple,
+    },
+  ];
 
   const {
     register,
@@ -77,10 +147,12 @@ export function StaffLoginPage() {
       email: '',
       password: '',
       scanner_post: scannerPosts[0] ?? '',
+      scanner_device_profile: defaultScannerDeviceProfile,
       remember: true,
     },
   });
   const selectedScannerPost = watch('scanner_post') || scannerPosts[0] || '';
+  const selectedScannerDeviceProfile = watch('scanner_device_profile') || defaultScannerDeviceProfile;
 
   const handleCanvasReady = useCallback((fn: (x: number, y: number) => void) => {
     addRippleRef.current = fn;
@@ -106,6 +178,7 @@ export function StaffLoginPage() {
           email: data.email.trim(),
           password: data.password,
           scanner_post: data.scanner_post,
+          scanner_device_profile: data.scanner_device_profile,
           remember: data.remember,
         }),
       });
@@ -228,6 +301,145 @@ export function StaffLoginPage() {
                   <AuthInlineError message={errors.password?.message} />
                 </AnimatePresence>
               </div>
+
+              <fieldset className="rounded-[1.7rem] border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-cyan-50 p-4 shadow-[0_18px_40px_rgba(14,165,233,0.08)]">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/90 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.26em] text-sky-700 shadow-sm">
+                      <ScanLine className="h-3.5 w-3.5" aria-hidden="true" />
+                      Scanner Device
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">
+                        Choose the device mode <span className="text-red-500">*</span>
+                      </p>
+                      <p className="text-xs leading-relaxed text-slate-500">
+                        This decides whether the scanner page should use HID + webcam flow, manual camera selection, or iPhone automatic camera mode.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-full border border-sky-100 bg-white/85 px-3 py-1.5 text-[11px] font-semibold text-sky-700 shadow-sm">
+                    Saved for this sign-in
+                  </div>
+                </div>
+
+                <input
+                  type="hidden"
+                  {...register('scanner_device_profile', {
+                    required: 'Choose the device mode for this scanner.',
+                  })}
+                />
+
+                <div className="mt-4 grid gap-3">
+                  {scannerDeviceOptions.map((option) => {
+                    const isSelected = selectedScannerDeviceProfile === option.value;
+                    const Icon = option.icon;
+
+                    return (
+                      <motion.button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        whileHover={{ y: isSubmitting ? 0 : -2 }}
+                        whileTap={{ scale: isSubmitting ? 1 : 0.995 }}
+                        onClick={() => {
+                          setValue('scanner_device_profile', option.value, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                        className={cn(
+                          'group relative overflow-hidden rounded-[1.45rem] border px-4 py-4 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2',
+                          isSelected
+                            ? 'border-sky-500 bg-sky-950 text-white shadow-[0_20px_45px_rgba(2,132,199,0.28)]'
+                            : 'border-sky-100 bg-white/95 text-slate-800 shadow-[0_14px_30px_rgba(15,23,42,0.06)] hover:border-sky-300 hover:bg-white',
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'absolute inset-x-0 top-0 h-1.5',
+                            isSelected
+                              ? 'bg-gradient-to-r from-cyan-300 via-sky-200 to-white/80'
+                              : 'bg-gradient-to-r from-sky-200 via-cyan-100 to-transparent',
+                          )}
+                          aria-hidden="true"
+                        />
+
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 gap-3">
+                            <div
+                              className={cn(
+                                'flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border',
+                                isSelected
+                                  ? 'border-white/20 bg-white/12 text-cyan-100'
+                                  : 'border-sky-100 bg-sky-50 text-sky-600',
+                              )}
+                              aria-hidden="true"
+                            >
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0 space-y-2">
+                              <div
+                                className={cn(
+                                  'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.24em]',
+                                  isSelected ? 'bg-white/14 text-sky-100' : option.accent,
+                                )}
+                              >
+                                {option.eyebrow}
+                              </div>
+                              <div>
+                                <p className="text-base font-black tracking-tight" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                                  {option.label}
+                                </p>
+                                <p className={cn('mt-1 text-xs leading-relaxed', isSelected ? 'text-sky-100/85' : 'text-slate-500')}>
+                                  {option.description}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div
+                            className={cn(
+                              'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border transition-colors',
+                              isSelected
+                                ? 'border-white/20 bg-white/12 text-cyan-100'
+                                : 'border-sky-100 bg-sky-50 text-sky-600 group-hover:border-sky-200 group-hover:bg-sky-100',
+                            )}
+                            aria-hidden="true"
+                          >
+                            {isSelected ? <CheckCircle2 className="h-5 w-5" /> : <ArrowUpRight className="h-4.5 w-4.5" />}
+                          </div>
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 rounded-[1.35rem] border border-sky-100 bg-white/90 px-4 py-3 shadow-sm">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-600 to-cyan-500 text-white shadow-[0_12px_28px_rgba(14,165,233,0.24)]">
+                      {selectedScannerDeviceProfile === 'laptop' ? <Laptop className="h-5 w-5" aria-hidden="true" /> : null}
+                      {selectedScannerDeviceProfile === 'android' ? <Smartphone className="h-5 w-5" aria-hidden="true" /> : null}
+                      {selectedScannerDeviceProfile === 'iphone' ? <Apple className="h-5 w-5" aria-hidden="true" /> : null}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.26em] text-sky-600">Selected Device Mode</p>
+                      <p className="truncate text-base font-black tracking-tight text-slate-900" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                        {selectedScannerDeviceProfile === 'laptop' ? 'Laptop' : selectedScannerDeviceProfile === 'android' ? 'Android' : 'iPhone'}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        The scanner dashboard will load with camera and barcode behavior that matches this selected device mode.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <AnimatePresence>
+                  <AuthInlineError message={errors.scanner_device_profile?.message} className="mt-3" />
+                </AnimatePresence>
+              </fieldset>
 
               <fieldset className="rounded-[1.7rem] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-cyan-50 p-4 shadow-[0_18px_40px_rgba(14,165,233,0.08)]">
                 <div className="flex flex-wrap items-start justify-between gap-3">

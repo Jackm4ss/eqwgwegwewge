@@ -38,12 +38,14 @@ import { ensureSweetAlert } from '../../lib/sweetAlert';
 type StaffSession = {
   user: { email: string };
   scanner_post: string | null;
+  scanner_device_profile?: CameraPlatform | null;
 };
 
 type CameraPermissionState = 'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported';
 type CameraSurface = 'browser' | 'pwa';
-type CameraPlatform = 'ios' | 'android' | 'other';
-type CameraStartTarget = string | { facingMode: 'environment' | { exact: 'environment' } };
+type CameraPlatform = 'laptop' | 'android' | 'iphone';
+type CameraFacingMode = 'environment' | 'user' | { exact: 'environment' | 'user' };
+type CameraStartTarget = string | { facingMode: CameraFacingMode };
 
 type ScannerStats = {
   total_scans: number;
@@ -142,6 +144,8 @@ const SONGKRAN_LOGO_URL = '/images/Songkran%20logo.png';
 const PWA_APP_ICON_URL = '/pwa/icons/icon-192.png';
 const SCANNER_REGION_ID = 'staff-html5-qrcode-region';
 const CAMERA_AUTO_VALUE = '__auto__';
+const HID_RESET_DELAY_MS = 120;
+const HID_MIN_PAYLOAD_LENGTH = 4;
 const DEFAULT_HISTORY_PER_PAGE = 5;
 const EMPTY_STATS: ScannerStats = { total_scans: 0, successful_scans: 0, duplicate_scans: 0, invalid_scans: 0 };
 const EMPTY_HISTORY_META: HistoryMeta = {
@@ -613,20 +617,107 @@ function detectCameraSurface(): CameraSurface {
 
 function detectCameraPlatform(): CameraPlatform {
   if (typeof navigator === 'undefined') {
-    return 'other';
+    return 'laptop';
   }
 
   const userAgent = navigator.userAgent.toLowerCase();
 
   if (/iphone|ipad|ipod/.test(userAgent)) {
-    return 'ios';
+    return 'iphone';
   }
 
   if (/android/.test(userAgent)) {
     return 'android';
   }
 
-  return 'other';
+  return 'laptop';
+}
+
+function isCameraPlatform(value: unknown): value is CameraPlatform {
+  return value === 'laptop' || value === 'android' || value === 'iphone';
+}
+
+function cameraPlatformLabel(platform: CameraPlatform) {
+  if (platform === 'iphone') {
+    return 'iPhone';
+  }
+
+  if (platform === 'android') {
+    return 'Android';
+  }
+
+  return 'Laptop';
+}
+
+function supportsHidBarcodeScanner(platform: CameraPlatform) {
+  return platform === 'laptop';
+}
+
+function isTextInputElement(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target.isContentEditable) {
+    return true;
+  }
+
+  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName);
+}
+
+function normalizeDiscoveredCameras(cameras: CameraDevice[]) {
+  const normalized = new Map<string, CameraDevice>();
+
+  for (const camera of cameras) {
+    const id = camera.id.trim();
+    if (!id) {
+      continue;
+    }
+
+    const current = normalized.get(id);
+    const nextLabel = camera.label.trim();
+
+    if (!current) {
+      normalized.set(id, { id, label: nextLabel });
+      continue;
+    }
+
+    normalized.set(id, {
+      id,
+      label: current.label.trim() || nextLabel,
+    });
+  }
+
+  return [...normalized.values()];
+}
+
+async function discoverAvailableCameras() {
+  const discovered: CameraDevice[] = [];
+
+  try {
+    const cameras = await Html5Qrcode.getCameras();
+    discovered.push(...cameras);
+  } catch {
+    // Continue with enumerateDevices fallback below.
+  }
+
+  if (navigator.mediaDevices?.enumerateDevices) {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      discovered.push(
+        ...devices
+          .filter((device) => device.kind === 'videoinput')
+          .map((device) => ({
+            id: device.deviceId,
+            label: device.label,
+          })),
+      );
+    } catch {
+      // Ignore enumerateDevices failures and return whatever we already discovered.
+    }
+  }
+
+  return normalizeDiscoveredCameras(discovered);
 }
 
 function cameraDeniedGuidance(surface: CameraSurface, platform: CameraPlatform) {
@@ -634,7 +725,7 @@ function cameraDeniedGuidance(surface: CameraSurface, platform: CameraPlatform) 
     return 'Camera is blocked. Allow Camera in Android app permissions, then reopen the scanner.';
   }
 
-  if (platform === 'ios') {
+  if (platform === 'iphone') {
     return 'Camera is blocked. Allow Camera in Safari or iPhone Settings, then reload.';
   }
 
@@ -669,7 +760,7 @@ function describeCameraPermission(
       title: waitingForPermission ? 'Waiting for camera' : 'Allow camera',
       body: surface === 'pwa' && platform === 'android'
         ? 'Tap Start Scan, then tap Allow in the Android dialog.'
-        : platform === 'ios'
+        : platform === 'iphone'
           ? 'Tap Start Scan, then allow camera in Safari.'
           : 'Tap Start Scan, then allow camera.',
     };
@@ -905,7 +996,7 @@ async function configureActiveScannerCamera(
   return zoomState;
 }
 
-function pickPreferredBackCamera(cameras: CameraDevice[]) {
+function pickPreferredCamera(cameras: CameraDevice[], platform: CameraPlatform) {
   if (cameras.length === 0) {
     return null;
   }
@@ -913,6 +1004,8 @@ function pickPreferredBackCamera(cameras: CameraDevice[]) {
   const frontCameraPattern = /\b(front|user|face)\b/i;
   const preferredBackCameraPattern = /\b(back|rear|environment)\b/i;
   const avoidCloseRangePattern = /\b(ultra|wide|macro|depth|tele|zoom)\b/i;
+  const externalCameraPattern = /\b(usb|webcam|hd webcam|logitech|camera|capture)\b/i;
+  const integratedCameraPattern = /\b(integrated|built-in|builtin|facetime)\b/i;
 
   return [...cameras]
     .sort((left, right) => {
@@ -924,6 +1017,14 @@ function pickPreferredBackCamera(cameras: CameraDevice[]) {
 
         if (preferredBackCameraPattern.test(label)) {
           value += 120;
+        }
+
+        if (platform === 'laptop' && externalCameraPattern.test(label)) {
+          value += 70;
+        }
+
+        if (platform === 'laptop' && integratedCameraPattern.test(label)) {
+          value -= 10;
         }
 
         if (!frontCameraPattern.test(label)) {
@@ -960,7 +1061,7 @@ function cameraOptionLabel(camera: CameraDevice, index: number) {
 }
 
 function supportsManualCameraSelection(platform: CameraPlatform) {
-  return platform !== 'ios';
+  return platform !== 'iphone';
 }
 
 async function buildCameraStartTargets(
@@ -995,8 +1096,8 @@ async function buildCameraStartTargets(
   }
 
   try {
-    const cameras = await Html5Qrcode.getCameras();
-    const preferredCamera = pickPreferredBackCamera(cameras);
+    const cameras = await discoverAvailableCameras();
+    const preferredCamera = pickPreferredCamera(cameras, platform);
 
     if (preferredCamera?.id) {
       addTarget(preferredCamera.id);
@@ -1009,6 +1110,11 @@ async function buildCameraStartTargets(
 
   if (platform === 'android') {
     addTarget({ facingMode: { exact: 'environment' } });
+  }
+
+  if (platform === 'laptop') {
+    addTarget({ facingMode: 'user' });
+    return targets;
   }
 
   addTarget({ facingMode: 'environment' });
@@ -1027,8 +1133,11 @@ export function StaffScannerPage() {
   const pendingAlertCountRef = useRef(0);
   const zoomUpdateQueueRef = useRef<Promise<void>>(Promise.resolve());
   const dashboardRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hidBufferRef = useRef('');
+  const hidLastKeyAtRef = useRef(0);
 
   const [session, setSession] = useState<StaffSession | null>(null);
+  const [cameraPlatform, setCameraPlatform] = useState<CameraPlatform>(() => detectCameraPlatform());
   const [scannerPost, setScannerPost] = useState('');
   const [stats, setStats] = useState<ScannerStats>(EMPTY_STATS);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -1124,7 +1233,7 @@ export function StaffScannerPage() {
     setCameraDiscoveryBusy(true);
 
     try {
-      const cameras = await Html5Qrcode.getCameras();
+      const cameras = await discoverAvailableCameras();
       setAvailableCameras(cameras);
       setSelectedCameraId((current) => (
         current && cameras.some((camera) => camera.id === current)
@@ -1136,7 +1245,7 @@ export function StaffScannerPage() {
     } finally {
       setCameraDiscoveryBusy(false);
     }
-  }, []);
+  }, [cameraPlatform]);
   const handleCameraZoomChange = useCallback((rawValue: number) => {
     if (!cameraZoom) {
       return;
@@ -1358,6 +1467,9 @@ export function StaffScannerPage() {
         const payload = (await response.json()) as StaffSession;
         setSession(payload);
         setScannerPost(payload.scanner_post ?? '');
+        if (isCameraPlatform(payload.scanner_device_profile)) {
+          setCameraPlatform(payload.scanner_device_profile);
+        }
 
         if (payload.scanner_post) {
           void refreshDashboard().catch(async () => {
@@ -1386,11 +1498,10 @@ export function StaffScannerPage() {
     };
 
     void load();
-    void refreshAvailableCameras();
     return () => {
       void stopScanner();
     };
-  }, [redirectToLogin, refreshAvailableCameras, refreshDashboard, showScannerAlert, stopScanner]);
+  }, [redirectToLogin, refreshDashboard, showScannerAlert, stopScanner]);
 
   useEffect(() => {
     if (!session) {
@@ -1489,6 +1600,26 @@ export function StaffScannerPage() {
   }, [cameraPermissionState, refreshAvailableCameras]);
 
   useEffect(() => {
+    void refreshAvailableCameras();
+  }, [refreshAvailableCameras]);
+
+  useEffect(() => {
+    if (!navigator.mediaDevices?.addEventListener) {
+      return;
+    }
+
+    const handleDeviceChange = () => {
+      void refreshAvailableCameras();
+    };
+
+    navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+
+    return () => {
+      navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+    };
+  }, [refreshAvailableCameras]);
+
+  useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
       const promptEvent = event as BeforeInstallPromptEvent;
       promptEvent.preventDefault();
@@ -1572,6 +1703,86 @@ export function StaffScannerPage() {
     }
   }, [applyResult, redirectToLogin, showScannerAlert, stats]);
 
+  const queueScannedPayload = useCallback(async (rawValue: string) => {
+    const normalizedValue = rawValue.trim();
+    if (!normalizedValue || detectingRef.current || scanBusy || pendingAlertCountRef.current > 0) {
+      return;
+    }
+
+    const now = Date.now();
+    if (lastValueRef.current === normalizedValue && now - lastValueAtRef.current < 2000) {
+      return;
+    }
+
+    detectingRef.current = true;
+
+    try {
+      lastValueRef.current = normalizedValue;
+      lastValueAtRef.current = now;
+      await submitScan(normalizedValue);
+    } finally {
+      detectingRef.current = false;
+    }
+  }, [scanBusy, submitScan]);
+
+  useEffect(() => {
+    if (!supportsHidBarcodeScanner(cameraPlatform)) {
+      hidBufferRef.current = '';
+      hidLastKeyAtRef.current = 0;
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing || event.repeat || event.ctrlKey || event.altKey || event.metaKey) {
+        return;
+      }
+
+      if (isTextInputElement(event.target)) {
+        return;
+      }
+
+      const now = Date.now();
+
+      if (now - hidLastKeyAtRef.current > HID_RESET_DELAY_MS) {
+        hidBufferRef.current = '';
+      }
+
+      hidLastKeyAtRef.current = now;
+
+      if (event.key === 'Escape') {
+        hidBufferRef.current = '';
+        return;
+      }
+
+      if (event.key === 'Enter') {
+        const payload = hidBufferRef.current.trim();
+        hidBufferRef.current = '';
+
+        if (payload.length >= HID_MIN_PAYLOAD_LENGTH) {
+          event.preventDefault();
+          void queueScannedPayload(payload);
+        }
+
+        return;
+      }
+
+      if (event.key === 'Backspace') {
+        hidBufferRef.current = hidBufferRef.current.slice(0, -1);
+        return;
+      }
+
+      if (event.key.length === 1) {
+        hidBufferRef.current += event.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [cameraPlatform, queueScannedPayload]);
+
   const startScanner = async (nextSelectedCameraId?: string) => {
     if (!scannerPost.trim()) {
       void showScannerAlert({
@@ -1622,28 +1833,7 @@ export function StaffScannerPage() {
       };
 
       const onDecode = async (decodedText: string) => {
-        if (detectingRef.current || scanBusy || pendingAlertCountRef.current > 0) {
-          return;
-        }
-
-        const rawValue = decodedText.trim();
-        if (!rawValue) {
-          return;
-        }
-
-        const now = Date.now();
-        if (lastValueRef.current === rawValue && now - lastValueAtRef.current < 2000) {
-          return;
-        }
-
-        detectingRef.current = true;
-        try {
-          lastValueRef.current = rawValue;
-          lastValueAtRef.current = now;
-          await submitScan(rawValue);
-        } finally {
-          detectingRef.current = false;
-        }
+        await queueScannedPayload(decodedText);
       };
 
       const onDecodeError = () => {
@@ -1854,17 +2044,19 @@ export function StaffScannerPage() {
   const latestMeta = statusMeta(latest.status);
   const LatestIcon = latestMeta.icon;
   const cameraSurface = detectCameraSurface();
-  const cameraPlatform = detectCameraPlatform();
   const manualCameraSelectionSupported = supportsManualCameraSelection(cameraPlatform);
+  const hidScannerSupported = supportsHidBarcodeScanner(cameraPlatform);
   const cameraSelectValue = selectedCameraId || CAMERA_AUTO_VALUE;
   const hasSelectableCameras = availableCameras.length > 0;
   const cameraSelectionHelpText = !manualCameraSelectionSupported
-    ? 'iPhone / iPad uses automatic camera selection so Safari does not expose multiple confusing camera choices.'
+    ? 'iPhone keeps automatic camera selection because Safari does not expose stable multi-camera choices.'
     : cameraDiscoveryBusy
       ? 'Checking camera devices on this device...'
       : hasSelectableCameras
-        ? 'Automatic keeps the current behavior and prefers the best rear camera. Choosing a device restarts the live scanner when it is active.'
-        : 'No named camera devices are exposed yet. Grant camera permission first or reconnect the external camera, then refresh this list.';
+        ? cameraPlatform === 'laptop'
+          ? 'Automatic picks the best available webcam first. You can switch to another webcam, USB camera, or capture device at any time.'
+          : 'Automatic keeps the current behavior and prefers the best rear camera. Choosing a device restarts the live scanner when it is active.'
+        : 'No named camera devices are exposed yet. Grant camera permission first or reconnect the external camera, webcam, or bluetooth camera, then refresh this list.';
   const permissionNotice = describeCameraPermission(
     cameraPermissionState,
     cameraSurface,
@@ -1980,7 +2172,8 @@ export function StaffScannerPage() {
                       </div>
                       <div className="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-[0.2em] opacity-75">
                         <span className="rounded-full border border-current/15 bg-white/55 px-3 py-1">{cameraSurface === 'pwa' ? 'PWA' : 'Browser'}</span>
-                        <span className="rounded-full border border-current/15 bg-white/55 px-3 py-1">{cameraPlatform === 'ios' ? 'iPhone / iPad' : cameraPlatform === 'android' ? 'Android' : 'Desktop'}</span>
+                        <span className="rounded-full border border-current/15 bg-white/55 px-3 py-1">{cameraPlatformLabel(cameraPlatform)}</span>
+                        {hidScannerSupported ? <span className="rounded-full border border-current/15 bg-white/55 px-3 py-1">HID Ready</span> : null}
                       </div>
                     </div>
                   </div>
@@ -2016,7 +2209,9 @@ export function StaffScannerPage() {
                             disabled={cameraDiscoveryBusy || scannerPending}
                             className={authInputClass(false, { withIcon: false })}
                           >
-                            <option value={CAMERA_AUTO_VALUE}>Automatic (Recommended)</option>
+                            <option value={CAMERA_AUTO_VALUE}>
+                              {cameraPlatform === 'laptop' ? 'Automatic Webcam Choice' : 'Automatic (Recommended)'}
+                            </option>
                             {availableCameras.map((camera, index) => (
                               <option key={camera.id} value={camera.id}>
                                 {cameraOptionLabel(camera, index)}
@@ -2029,7 +2224,7 @@ export function StaffScannerPage() {
                     ) : (
                       <div>
                         <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">Camera Source</p>
-                        <p className="mt-2 text-sm font-semibold text-slate-700">Automatic on iPhone / iPad</p>
+                        <p className="mt-2 text-sm font-semibold text-slate-700">Automatic on iPhone</p>
                         <p className="mt-2 text-sm leading-relaxed text-slate-600">Start Scan will use the device automatic rear-camera flow so staff do not need to choose from multiple Safari camera entries.</p>
                         <p className="mt-2 text-xs leading-relaxed text-slate-500">{cameraSelectionHelpText}</p>
                       </div>
@@ -2037,6 +2232,14 @@ export function StaffScannerPage() {
                   </div>
 
                   <div className="mt-5 space-y-4">
+                    {hidScannerSupported ? (
+                      <div className="rounded-[1.4rem] border border-emerald-100 bg-emerald-50/80 px-4 py-4 shadow-[0_12px_35px_rgba(16,185,129,0.08)]">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-700">Barcode Scanner HID</p>
+                        <p className="mt-2 text-sm font-semibold text-slate-900">Laptop mode is listening for HID / keyboard-wedge barcode scans.</p>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600">You can scan directly with the HID scanner without clicking into any field. Camera scanning and webcam selection remain available below.</p>
+                      </div>
+                    ) : null}
+
                     <div className="overflow-hidden rounded-[1.6rem] border border-slate-200 bg-slate-950">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3 text-sm text-sky-50"><span className="font-semibold">Live Camera Feed</span><span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] ${scannerActive ? 'border-emerald-300/40 bg-emerald-400/10 text-emerald-200' : 'border-white/15 bg-white/5 text-sky-100/80'}`}>{scannerActive ? 'Active' : 'Standby'}</span></div>
                       <div className="relative aspect-[5/6] min-h-[20rem] max-[380px]:min-h-[17.5rem] sm:aspect-[4/3] sm:min-h-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.18),_transparent_55%),linear-gradient(135deg,_rgba(12,74,110,0.92),_rgba(15,23,42,0.96))]">
@@ -2045,7 +2248,7 @@ export function StaffScannerPage() {
                           ref={scannerRegionRef}
                           className="h-full w-full [&_canvas]:h-full [&_canvas]:w-full [&_canvas]:object-cover [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
                         />
-                        {!scannerActive ? <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 px-5 text-center text-sky-100 max-[380px]:gap-3 max-[380px]:px-3.5"><div className="rounded-full border border-white/15 bg-white/10 p-5 max-[380px]:p-4"><Camera className="h-10 w-10 max-[380px]:h-8 max-[380px]:w-8" aria-hidden="true" /></div><div className="max-w-[18rem] max-[380px]:max-w-[12rem]"><p className="text-lg font-black tracking-tight max-[380px]:text-base" style={{ fontFamily: '"Kanit", sans-serif' }}>Camera waiting</p><p className="mt-2 text-sm leading-relaxed text-sky-100/80 max-[380px]:mt-1.5 max-[380px]:text-[13px] max-[380px]:leading-5">Start Scan to open the camera. Use Manual Entry below if this device cannot decode QR live.</p></div></div> : null}
+                        {!scannerActive ? <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 px-5 text-center text-sky-100 max-[380px]:gap-3 max-[380px]:px-3.5"><div className="rounded-full border border-white/15 bg-white/10 p-5 max-[380px]:p-4"><Camera className="h-10 w-10 max-[380px]:h-8 max-[380px]:w-8" aria-hidden="true" /></div><div className="max-w-[18rem] max-[380px]:max-w-[12rem]"><p className="text-lg font-black tracking-tight max-[380px]:text-base" style={{ fontFamily: '"Kanit", sans-serif' }}>Camera waiting</p><p className="mt-2 text-sm leading-relaxed text-sky-100/80 max-[380px]:mt-1.5 max-[380px]:text-[13px] max-[380px]:leading-5">{hidScannerSupported ? 'Start Scan to open the camera, or use the HID barcode scanner directly. Manual Entry remains available below.' : 'Start Scan to open the camera. Use Manual Entry below if this device cannot decode QR live.'}</p></div></div> : null}
                         <div className="pointer-events-none absolute inset-x-[8%] inset-y-[12%] z-0 rounded-[1.4rem] border-2 border-dashed border-white/35 shadow-[0_0_0_9999px_rgba(2,6,23,0.12)] max-[380px]:inset-x-[6%] max-[380px]:inset-y-[10%] sm:inset-[15%]" />
                       </div>
                     </div>
@@ -2166,6 +2369,17 @@ export function StaffScannerPage() {
                       <div className="rounded-[1.3rem] border border-sky-100 bg-sky-50/70 px-4 py-4">
                         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Post Scanner Gate</p>
                         <p className="mt-2 text-sm font-semibold text-slate-900">{scannerPost || 'No gate assigned'}</p>
+                      </div>
+                      <div className="rounded-[1.3rem] border border-sky-100 bg-sky-50/70 px-4 py-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Scanner Device Mode</p>
+                        <p className="mt-2 text-sm font-semibold text-slate-900">{cameraPlatformLabel(cameraPlatform)}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                          {hidScannerSupported
+                            ? 'Laptop mode keeps HID barcode scanner support active and still allows webcam selection.'
+                            : manualCameraSelectionSupported
+                              ? 'This mode keeps manual camera selection available for the scanner operator.'
+                              : 'This mode keeps the iPhone automatic camera flow active.'}
+                        </p>
                       </div>
                       <div className="rounded-[1.3rem] border border-sky-100 bg-sky-50/70 px-4 py-4">
                         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500">Gate Locked</p>

@@ -9,6 +9,8 @@ use Illuminate\Http\JsonResponse;
 
 class StaffScannerSessionController extends Controller
 {
+    private const DEVICE_PROFILES = ['laptop', 'android', 'iphone'];
+
     public function __construct(
         private readonly ScannerGateService $gateService,
     ) {}
@@ -27,6 +29,14 @@ class StaffScannerSessionController extends Controller
             session()->forget((string) config('scanner.session_post_key', 'staff.scanner_post'));
         }
 
+        $scannerDeviceProfile = $this->normalizeDeviceProfile(
+            session((string) config('scanner.session_device_profile_key', 'staff.scanner_device_profile'))
+        );
+
+        if ($scannerDeviceProfile === null) {
+            session()->forget((string) config('scanner.session_device_profile_key', 'staff.scanner_device_profile'));
+        }
+
         return response()->json([
             'user' => [
                 'id' => (string) $admin->getKey(),
@@ -35,6 +45,7 @@ class StaffScannerSessionController extends Controller
                 'role' => (string) $admin->role,
             ],
             'scanner_post' => $scannerPost !== '' ? $scannerPost : null,
+            'scanner_device_profile' => $scannerDeviceProfile,
         ]);
     }
 
@@ -43,5 +54,12 @@ class StaffScannerSessionController extends Controller
         return response()->json([
             'message' => 'Scanner gate is locked after sign-in. Log out and sign in again to use another gate.',
         ], 403);
+    }
+
+    private function normalizeDeviceProfile(mixed $value): ?string
+    {
+        $profile = trim(strtolower((string) $value));
+
+        return in_array($profile, self::DEVICE_PROFILES, true) ? $profile : null;
     }
 }
