@@ -237,6 +237,38 @@ class AdminUserManagementReadModel
         }
     }
 
+    public function rebuildFromDirectory(array $rows): array
+    {
+        if (! $this->enabled()) {
+            return [];
+        }
+
+        $this->markRebuilding();
+
+        try {
+            $rows = array_values(array_filter($rows, fn (mixed $row): bool => is_array($row)));
+            $rowsByUserId = $this->rowsByUserId($rows);
+            $orderedUserIds = array_values(array_map(
+                fn (array $row): string => (string) ($row['user_id'] ?? ''),
+                array_values(array_filter($rows, fn (array $row): bool => trim((string) ($row['user_id'] ?? '')) !== '')),
+            ));
+            $meta = $this->buildMeta(array_values($rowsByUserId));
+            $sync = $this->rawSyncPayload('fresh');
+
+            $this->storeModel($rowsByUserId, $orderedUserIds, $meta, $sync);
+
+            return [
+                'directory' => array_values($rowsByUserId),
+                'meta' => $meta,
+                'sync_status' => $this->syncStatus(),
+            ];
+        } catch (\Throwable $exception) {
+            $this->markFailed();
+
+            throw $exception;
+        }
+    }
+
     public function syncUser(string $userId): void
     {
         if (! $this->enabled() || trim($userId) === '') {

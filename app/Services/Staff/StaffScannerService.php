@@ -10,6 +10,7 @@ use App\Services\Admin\AdminUserManagementReadModelDispatcher;
 use App\Services\Tickets\TicketQrCodeService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -206,6 +207,45 @@ class StaffScannerService
         return $this->refreshDashboardSnapshot($scannerPost);
     }
 
+    /**
+     * @param array<int, string> $scannerPosts
+     * @return array<string, array<string, mixed>>
+     */
+    public function warmDashboardCaches(array $scannerPosts): array
+    {
+        $scannerPosts = array_values(array_unique(array_filter(array_map(
+            static fn (mixed $scannerPost): string => trim((string) $scannerPost),
+            $scannerPosts,
+        ))));
+
+        if ($scannerPosts === []) {
+            return [];
+        }
+
+        if (! $this->warmCacheOptimizedEnabled()) {
+            return array_reduce($scannerPosts, function (array $snapshots, string $scannerPost): array {
+                $snapshots[$scannerPost] = $this->warmDashboardCache($scannerPost);
+
+                return $snapshots;
+            }, []);
+        }
+
+        try {
+            return $this->refreshDashboardSnapshots($scannerPosts);
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to reuse a shared scan-log query while warming scanner dashboard caches.', [
+                'message' => $exception->getMessage(),
+                'scanner_posts' => $scannerPosts,
+            ]);
+
+            return array_reduce($scannerPosts, function (array $snapshots, string $scannerPost): array {
+                $snapshots[$scannerPost] = $this->warmDashboardCache($scannerPost);
+
+                return $snapshots;
+            }, []);
+        }
+    }
+
     private function buildScanResponse(
         string $status,
         array $ticket,
@@ -320,6 +360,62 @@ class StaffScannerService
         Cache::forget(StaffScannerDashboardCache::staleKey($scannerPost, $scopeDate));
 
         return $snapshot;
+    }
+
+    /**
+     * @param array<int, string> $scannerPosts
+     * @return array<string, array<string, mixed>>
+     */
+    private function refreshDashboardSnapshots(array $scannerPosts, ?string $scopeDate = null): array
+    {
+        $scopeDate ??= $this->scannerScopeDate();
+        $scannerPosts = array_values(array_unique(array_filter(array_map(
+            static fn (mixed $scannerPost): string => trim((string) $scannerPost),
+            $scannerPosts,
+        ))));
+
+        if ($scannerPosts === []) {
+            return [];
+        }
+
+        $requestedScannerPosts = array_fill_keys($scannerPosts, true);
+        $rowsByScannerPost = array_fill_keys($scannerPosts, []);
+
+        foreach ($this->repository->queryScanLogs([
+            'from' => $scopeDate,
+            'to' => $scopeDate,
+        ]) as $log) {
+            $scannerPost = trim((string) ($log['scanner_name'] ?? ''));
+
+            if ($scannerPost === '' || ! isset($requestedScannerPosts[$scannerPost])) {
+                continue;
+            }
+
+            $rowsByScannerPost[$scannerPost][] = $this->dashboardActivityRow($log);
+        }
+
+        $snapshots = [];
+
+        foreach ($scannerPosts as $scannerPost) {
+            $snapshot = [
+                'scanner_post' => $scannerPost,
+                'scope_date' => $scopeDate,
+                'rows' => array_values($rowsByScannerPost[$scannerPost] ?? []),
+                'stats' => $this->statsFromRows($rowsByScannerPost[$scannerPost] ?? []),
+                'generated_at' => now()->toIso8601String(),
+            ];
+
+            Cache::put(
+                StaffScannerDashboardCache::snapshotKey($scannerPost, $scopeDate),
+                $snapshot,
+                now()->addDays(self::DASHBOARD_CACHE_TTL_DAYS),
+            );
+            Cache::forget(StaffScannerDashboardCache::staleKey($scannerPost, $scopeDate));
+
+            $snapshots[$scannerPost] = $snapshot;
+        }
+
+        return $snapshots;
     }
 
     private function historyFromSnapshot(array $snapshot, int $page = 1, int $perPage = 5): array
@@ -718,5 +814,10 @@ class StaffScannerService
     private function attendanceReadModelDispatcher(): AdminAttendanceReadModelDispatcher
     {
         return $this->attendanceReadModelDispatcher ?? app(AdminAttendanceReadModelDispatcher::class);
+    }
+
+    private function warmCacheOptimizedEnabled(): bool
+    {
+        return (bool) config('admin.warm_cache.optimized_enabled', true);
     }
 }

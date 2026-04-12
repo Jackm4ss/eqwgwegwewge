@@ -418,4 +418,64 @@ class StaffScannerServiceTest extends TestCase
         ], $stats);
         $this->assertSame($stats, $cachedStats);
     }
+
+    public function test_warm_dashboard_caches_uses_single_daily_query_for_multiple_scanner_posts(): void
+    {
+        Carbon::setTestNow('2026-03-31 09:15:00');
+        config([
+            'admin.event.timezone' => 'Asia/Jakarta',
+            'admin.warm_cache.optimized_enabled' => true,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $analytics = Mockery::mock(AdminAnalyticsService::class);
+        $ticketQrCodeService = app(TicketQrCodeService::class);
+
+        $repository->shouldReceive('queryScanLogs')
+            ->once()
+            ->with([
+                'from' => '2026-03-31',
+                'to' => '2026-03-31',
+            ])
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-a-1',
+                    'result' => 'success',
+                    'ticket_code' => 'TICKET-A1',
+                    'entry_code_display' => 'A1',
+                    'scanner_name' => 'Gate A',
+                    'scanned_at' => '2026-03-31T09:10:00Z',
+                    'participant_snapshot' => [
+                        'full_name' => 'Gate A User',
+                        'email' => 'gate-a@example.com',
+                        'ticket_code' => 'TICKET-A1',
+                        'entry_code_display' => 'A1',
+                    ],
+                ],
+                [
+                    'scan_id' => 'scan-b-1',
+                    'result' => 'duplicate',
+                    'ticket_code' => 'TICKET-B1',
+                    'entry_code_display' => 'B1',
+                    'scanner_name' => 'Gate B',
+                    'scanned_at' => '2026-03-31T09:08:00Z',
+                    'participant_snapshot' => [
+                        'full_name' => 'Gate B User',
+                        'email' => 'gate-b@example.com',
+                        'ticket_code' => 'TICKET-B1',
+                        'entry_code_display' => 'B1',
+                    ],
+                ],
+            ]);
+
+        $service = new StaffScannerService($repository, $analytics, $ticketQrCodeService);
+        $snapshots = $service->warmDashboardCaches(['Gate A', 'Gate B']);
+
+        $this->assertSame(1, data_get($snapshots, 'Gate A.stats.total_scans'));
+        $this->assertSame(1, data_get($snapshots, 'Gate A.stats.successful_scans'));
+        $this->assertSame(1, data_get($snapshots, 'Gate B.stats.total_scans'));
+        $this->assertSame(1, data_get($snapshots, 'Gate B.stats.duplicate_scans'));
+        $this->assertTrue(Cache::has(StaffScannerDashboardCache::snapshotKey('Gate A', '2026-03-31')));
+        $this->assertTrue(Cache::has(StaffScannerDashboardCache::snapshotKey('Gate B', '2026-03-31')));
+    }
 }

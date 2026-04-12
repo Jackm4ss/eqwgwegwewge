@@ -126,6 +126,50 @@ class AdminAttendanceReadModel
         }
     }
 
+    public function rebuildFromWarmCache(
+        array $scanLogs,
+        array $attendanceLogs,
+        array $userDirectory,
+    ): array {
+        if (! $this->enabled()) {
+            return [];
+        }
+
+        $this->markRebuilding();
+
+        try {
+            $rows = $this->buildProjectedRowsFromWarmCache($scanLogs, $attendanceLogs, $userDirectory);
+            $rowsById = [];
+            $orderedScanIds = [];
+
+            foreach ($rows as $row) {
+                $scanId = trim((string) ($row['scan_id'] ?? ''));
+
+                if ($scanId === '') {
+                    continue;
+                }
+
+                $rowsById[$scanId] = $row;
+                $orderedScanIds[] = $scanId;
+            }
+
+            $meta = $this->buildMeta(array_values($rowsById));
+            $sync = $this->rawSyncPayload('fresh');
+
+            $this->storeModel($rowsById, $orderedScanIds, $meta, $sync);
+
+            return [
+                'rows' => array_values($rowsById),
+                'meta' => $meta,
+                'sync_status' => $this->syncStatus(),
+            ];
+        } catch (\Throwable $exception) {
+            $this->markFailed();
+
+            throw $exception;
+        }
+    }
+
     public function syncScan(string $scanId): void
     {
         if (! $this->enabled() || trim($scanId) === '') {
@@ -573,6 +617,80 @@ class AdminAttendanceReadModel
             : [];
 
         return $this->buildProjectedRows([$scanLog], $attendanceLogs)[0] ?? null;
+    }
+
+    private function buildProjectedRowsFromWarmCache(
+        array $scanLogs,
+        array $attendanceLogs,
+        array $userDirectory,
+    ): array {
+        $scanLogs = array_values(array_filter($scanLogs, static fn (mixed $scanLog): bool => is_array($scanLog)));
+
+        if ($scanLogs === []) {
+            return [];
+        }
+
+        $participantRowsByUserId = [];
+        $ticketsById = [];
+
+        foreach ($userDirectory as $directoryRow) {
+            if (! is_array($directoryRow)) {
+                continue;
+            }
+
+            $userId = trim((string) ($directoryRow['user_id'] ?? ''));
+
+            if ($userId !== '') {
+                $participantRowsByUserId[$userId] = $directoryRow;
+            }
+
+            $ticketId = trim((string) ($directoryRow['ticket_id'] ?? ''));
+
+            if ($ticketId === '') {
+                continue;
+            }
+
+            $ticketsById[$ticketId] = [
+                'ticket_id' => $ticketId,
+                'user_id' => trim((string) ($directoryRow['user_id'] ?? '')),
+                'ticket_code' => trim((string) ($directoryRow['ticket_code'] ?? '')),
+                'entry_code_display' => trim((string) ($directoryRow['entry_code_display'] ?? '')),
+                'attendance_status' => $directoryRow['attendance_status'] ?? null,
+                'checked_in_at' => $directoryRow['checked_in_at'] ?? null,
+            ];
+        }
+
+        $attendanceLogsByLookupKey = $this->indexAttendanceLogsByLookupKey($attendanceLogs);
+        $rows = [];
+
+        foreach ($scanLogs as $scanLog) {
+            $row = $this->buildProjectedRow(
+                $scanLog,
+                $participantRowsByUserId,
+                $ticketsById,
+                $attendanceLogsByLookupKey,
+            );
+
+            if ($row !== null) {
+                $rows[] = $row;
+            }
+        }
+
+        usort($rows, function (array $left, array $right): int {
+            $leftTimestamp = $this->scoreForRow($left);
+            $rightTimestamp = $this->scoreForRow($right);
+
+            if ($leftTimestamp === $rightTimestamp) {
+                return strcmp(
+                    (string) ($right['scan_id'] ?? ''),
+                    (string) ($left['scan_id'] ?? ''),
+                );
+            }
+
+            return $rightTimestamp <=> $leftTimestamp;
+        });
+
+        return $rows;
     }
 
     private function buildProjectedRows(array $scanLogs, ?array $attendanceLogs = null): array

@@ -146,7 +146,7 @@ class AdminPanelService
         $payload = $this->refreshUserManagementCaches();
 
         if ($this->userManagementReadModelEnabled()) {
-            $payload['read_model'] = $this->userManagementReadModel()->rebuild();
+            $payload['read_model'] = $this->warmUserManagementReadModel($payload['directory']);
         }
 
         return $payload;
@@ -170,10 +170,14 @@ class AdminPanelService
 
     public function warmAttendanceMonitoringCache(): array
     {
-        $rows = $this->refreshAttendanceDirectoryCache();
+        $attendanceWarmCacheSource = $this->attendanceWarmCacheSource();
+        $rows = $this->refreshAttendanceDirectoryCache(
+            $attendanceWarmCacheSource['user_directory'],
+            $attendanceWarmCacheSource['scan_logs'],
+        );
 
         if ($this->attendanceReadModelEnabled()) {
-            $this->attendanceReadModel()->rebuild();
+            $this->warmAttendanceReadModel($attendanceWarmCacheSource);
         }
 
         return $rows;
@@ -1127,9 +1131,9 @@ class AdminPanelService
         return $rows;
     }
 
-    private function refreshAttendanceDirectoryCache(): array
+    private function refreshAttendanceDirectoryCache(?array $userDirectory = null, ?array $scanLogs = null): array
     {
-        $userDirectory = $this->cachedUserManagementDirectory();
+        $userDirectory ??= $this->cachedUserManagementDirectory();
 
         if ($userDirectory === [] && app()->runningInConsole() && ! app()->environment('testing')) {
             $userDirectory = $this->refreshUserManagementDirectoryCache();
@@ -1163,7 +1167,7 @@ class AdminPanelService
                 $participantsByUserId,
                 $participantsByTicketCode,
             ),
-            $this->repository->allScanLogs(),
+            $scanLogs ?? $this->repository->allScanLogs(),
         )));
 
         Cache::forever(self::ATTENDANCE_DIRECTORY_CACHE_KEY, $rows);
@@ -1194,6 +1198,67 @@ class AdminPanelService
         Cache::forget(self::USER_MANAGEMENT_META_STALE_KEY);
 
         return $snapshot;
+    }
+
+    private function warmUserManagementReadModel(array $directoryRows): array
+    {
+        if (! $this->warmCacheOptimizedEnabled()) {
+            return $this->userManagementReadModel()->rebuild();
+        }
+
+        try {
+            return $this->userManagementReadModel()->rebuildFromDirectory($directoryRows);
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to reuse the warmed user management directory for the read model rebuild.', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return $this->userManagementReadModel()->rebuild();
+        }
+    }
+
+    /**
+     * @return array{attendance_daily: array<int, array<string, mixed>>, scan_logs: array<int, array<string, mixed>>, user_directory: array<int, array<string, mixed>>}
+     */
+    private function attendanceWarmCacheSource(): array
+    {
+        $userDirectory = $this->cachedUserManagementDirectory();
+
+        if ($userDirectory === [] && app()->runningInConsole() && ! app()->environment('testing')) {
+            $userDirectory = $this->refreshUserManagementDirectoryCache();
+        }
+
+        return [
+            'user_directory' => $userDirectory,
+            'scan_logs' => $this->repository->allScanLogs(),
+            'attendance_daily' => $this->warmCacheOptimizedEnabled() && $this->attendanceReadModelEnabled()
+                ? $this->repository->allAttendanceDaily()
+                : [],
+        ];
+    }
+
+    /**
+     * @param array{attendance_daily: array<int, array<string, mixed>>, scan_logs: array<int, array<string, mixed>>, user_directory: array<int, array<string, mixed>>} $attendanceWarmCacheSource
+     */
+    private function warmAttendanceReadModel(array $attendanceWarmCacheSource): array
+    {
+        if (! $this->warmCacheOptimizedEnabled()) {
+            return $this->attendanceReadModel()->rebuild();
+        }
+
+        try {
+            return $this->attendanceReadModel()->rebuildFromWarmCache(
+                $attendanceWarmCacheSource['scan_logs'],
+                $attendanceWarmCacheSource['attendance_daily'],
+                $attendanceWarmCacheSource['user_directory'],
+            );
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to reuse the warmed attendance source data for the read model rebuild.', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return $this->attendanceReadModel()->rebuild();
+        }
     }
 
     private function emptyUserManagementPage(array $filters): array
@@ -2450,5 +2515,10 @@ class AdminPanelService
         );
 
         return $payload;
+    }
+
+    private function warmCacheOptimizedEnabled(): bool
+    {
+        return (bool) config('admin.warm_cache.optimized_enabled', true);
     }
 }

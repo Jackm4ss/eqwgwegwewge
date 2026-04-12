@@ -3,11 +3,12 @@
 namespace Tests\Unit;
 
 use App\Services\Admin\AdminAnalyticsService;
+use App\Services\Admin\AdminAttendanceReadModel;
 use App\Services\Admin\AdminFirestoreRepository;
 use App\Services\Admin\AdminPanelService;
 use App\Services\Admin\AdminParticipantNotificationService;
-use App\Services\Admin\AdminUserManagementReadModelDispatcher;
 use App\Services\Admin\AdminUserManagementReadModel;
+use App\Services\Admin\AdminUserManagementReadModelDispatcher;
 use App\Support\EmailTypoInspector;
 use App\Services\Scanner\ScannerGateService;
 use Carbon\CarbonImmutable;
@@ -591,6 +592,84 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame(2, data_get($result, 'meta.overview.total_users'));
         $this->assertSame(1, data_get($result, 'meta.overview.checked_in_users'));
         $this->assertSame(1, data_get($result, 'meta.filter_options.verification_statuses.1.count'));
+    }
+
+    public function test_warm_user_management_cache_reuses_directory_rows_for_read_model_rebuild_when_optimized(): void
+    {
+        config([
+            'admin.user_management.read_model.enabled' => true,
+            'admin.warm_cache.optimized_enabled' => true,
+        ]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allUsers')
+            ->once()
+            ->andReturn([
+                [
+                    'user_id' => 'user-1',
+                    'country' => 'MY',
+                    'email' => 'first@example.test',
+                    'identity_type' => 'passport',
+                    'verification_status' => 'verified',
+                    'account_status' => 'active',
+                    'ticket_id' => 'ticket-1',
+                ],
+            ]);
+        $repository->shouldReceive('allTickets')
+            ->once()
+            ->andReturn([
+                [
+                    'ticket_id' => 'ticket-1',
+                    'user_id' => 'user-1',
+                    'ticket_code' => 'TICKET-1',
+                    'attendance_status' => 'not_checked_in',
+                ],
+            ]);
+        $repository->shouldReceive('allAttendanceDaily')
+            ->once()
+            ->andReturn([]);
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $scannerGates = Mockery::mock(ScannerGateService::class);
+        $scannerGates->shouldReceive('names')->andReturn(['Gate A']);
+
+        $readModel = Mockery::mock(AdminUserManagementReadModel::class);
+        $readModel->shouldReceive('rebuildFromDirectory')
+            ->once()
+            ->with(Mockery::on(function (array $rows): bool {
+                return count($rows) === 1
+                    && (string) ($rows[0]['user_id'] ?? '') === 'user-1'
+                    && (string) ($rows[0]['ticket_code'] ?? '') === 'TICKET-1';
+            }))
+            ->andReturn([
+                'directory' => [
+                    ['user_id' => 'user-1'],
+                ],
+                'meta' => [
+                    'overview' => [
+                        'total_users' => 1,
+                    ],
+                ],
+                'sync_status' => [
+                    'state' => 'fresh',
+                ],
+            ]);
+        $readModel->shouldNotReceive('rebuild');
+
+        $service = new AdminPanelService(
+            $repository,
+            new AdminAnalyticsService,
+            $notifications,
+            $scannerGates,
+            $readModel,
+        );
+
+        $result = $service->warmUserManagementCache();
+
+        $this->assertCount(1, $result['directory']);
+        $this->assertSame(1, data_get($result, 'read_model.meta.overview.total_users'));
     }
 
     public function test_optimized_user_management_page_uses_live_overview_counts_while_meta_snapshot_is_stale(): void
@@ -1610,6 +1689,111 @@ class AdminPanelServiceTest extends TestCase
         $this->assertSame('scan-1', $rows[0]['scan_id']);
         $this->assertSame('Gate AB', $rows[0]['scanner_name']);
         $this->assertTrue(Cache::has(AdminPanelService::ATTENDANCE_DIRECTORY_CACHE_KEY));
+    }
+
+    public function test_warm_attendance_monitoring_cache_reuses_warmed_sources_for_read_model_rebuild_when_optimized(): void
+    {
+        config([
+            'admin.attendance.read_model.enabled' => true,
+            'admin.warm_cache.optimized_enabled' => true,
+        ]);
+
+        Cache::forever(AdminPanelService::USER_MANAGEMENT_DIRECTORY_CACHE_KEY, [[
+            'user_id' => 'user-123',
+            'ticket_id' => 'ticket-123',
+            'ticket_code' => 'TICKET-123',
+            'entry_code_display' => 'ABCD-1234',
+            'full_name' => 'Warm Cache User',
+            'email' => 'warm@example.test',
+            'phone_number' => '+628123456789',
+            'country' => 'ID',
+            'country_label' => 'Indonesia',
+            'identity_type' => 'passport',
+            'identity_number' => 'P123',
+            'attendance_status' => 'checked_in',
+            'checked_in_at' => '2026-03-30T05:15:38Z',
+            'attendance_days_count' => 1,
+            'attendance_total_days' => 3,
+            'attendance_progress_percent' => 33,
+        ]]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldReceive('allScanLogs')
+            ->once()
+            ->andReturn([
+                [
+                    'scan_id' => 'scan-1',
+                    'ticket_id' => 'ticket-123',
+                    'ticket_code' => 'TICKET-123',
+                    'user_id' => 'user-123',
+                    'scanner_id' => 'scanner-post:gate-ab',
+                    'scanner_name' => 'Gate AB',
+                    'scanner_role' => 'staff',
+                    'scanned_at' => '2026-03-30T05:15:38Z',
+                    'scan_date' => '2026-03-30',
+                    'result' => 'success',
+                    'entry_code_display' => 'ABCD-1234',
+                ],
+            ]);
+        $repository->shouldReceive('allAttendanceDaily')
+            ->once()
+            ->andReturn([
+                [
+                    'user_id' => 'user-123',
+                    'ticket_id' => 'ticket-123',
+                    'ticket_code' => 'TICKET-123',
+                    'scan_date' => '2026-03-30',
+                    'first_scanned_at' => '2026-03-30T05:15:38Z',
+                ],
+            ]);
+        $repository->shouldNotReceive('queryScanLogs');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $scannerGates = Mockery::mock(ScannerGateService::class);
+        $scannerGates->shouldReceive('names')->andReturn(['Gate AB']);
+
+        $readModel = Mockery::mock(AdminAttendanceReadModel::class);
+        $readModel->shouldReceive('rebuildFromWarmCache')
+            ->once()
+            ->with(
+                Mockery::type('array'),
+                Mockery::type('array'),
+                Mockery::on(fn (array $directory): bool => count($directory) === 1 && (string) ($directory[0]['user_id'] ?? '') === 'user-123'),
+            )
+            ->andReturn([
+                'rows' => [
+                    ['scan_id' => 'scan-1'],
+                ],
+                'meta' => [
+                    'overview' => [
+                        'checked_in' => 1,
+                    ],
+                ],
+                'sync_status' => [
+                    'state' => 'fresh',
+                ],
+            ]);
+        $readModel->shouldNotReceive('rebuild');
+
+        $service = new AdminPanelService(
+            $repository,
+            new AdminAnalyticsService,
+            $notifications,
+            $scannerGates,
+            null,
+            null,
+            null,
+            $readModel,
+        );
+
+        $rows = $service->warmAttendanceMonitoringCache();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('scan-1', $rows[0]['scan_id']);
     }
 
     public function test_attendance_data_defaults_to_latest_non_future_scan_date_when_opened_without_date_filters(): void

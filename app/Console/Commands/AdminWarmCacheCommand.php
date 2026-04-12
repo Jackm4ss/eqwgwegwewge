@@ -6,6 +6,7 @@ use App\Services\Admin\AdminPanelService;
 use App\Services\Scanner\ScannerGateService;
 use App\Services\Staff\StaffScannerService;
 use Illuminate\Console\Command;
+use RuntimeException;
 
 class AdminWarmCacheCommand extends Command
 {
@@ -70,9 +71,16 @@ class AdminWarmCacheCommand extends Command
                 $this->warn('Scanner cache warm skipped: no scanner posts are configured.');
             }
 
+            $snapshots = $this->staffScanner->warmDashboardCaches($scannerPosts);
+
             foreach ($scannerPosts as $scannerPost) {
                 try {
-                    $snapshot = $this->staffScanner->warmDashboardCache($scannerPost);
+                    $snapshot = $snapshots[$scannerPost] ?? null;
+
+                    if (! is_array($snapshot)) {
+                        throw new RuntimeException('Scanner dashboard snapshot was not returned.');
+                    }
+
                     $stats = (array) data_get($snapshot, 'stats', []);
 
                     $this->line(sprintf(

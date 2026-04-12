@@ -37,28 +37,27 @@ class AdminWarmCacheCommandTest extends TestCase
             ]);
 
         $staffScanner = Mockery::mock(StaffScannerService::class);
-        $staffScanner->shouldReceive('warmDashboardCache')
+        $staffScanner->shouldReceive('warmDashboardCaches')
             ->once()
-            ->with('Gate A')
+            ->with(['Gate A', 'Gate B'])
             ->andReturn([
-                'scope_date' => '2026-04-05',
-                'stats' => [
-                    'total_scans' => 3,
-                    'successful_scans' => 2,
-                    'duplicate_scans' => 1,
-                    'invalid_scans' => 0,
+                'Gate A' => [
+                    'scope_date' => '2026-04-05',
+                    'stats' => [
+                        'total_scans' => 3,
+                        'successful_scans' => 2,
+                        'duplicate_scans' => 1,
+                        'invalid_scans' => 0,
+                    ],
                 ],
-            ]);
-        $staffScanner->shouldReceive('warmDashboardCache')
-            ->once()
-            ->with('Gate B')
-            ->andReturn([
-                'scope_date' => '2026-04-05',
-                'stats' => [
-                    'total_scans' => 1,
-                    'successful_scans' => 1,
-                    'duplicate_scans' => 0,
-                    'invalid_scans' => 0,
+                'Gate B' => [
+                    'scope_date' => '2026-04-05',
+                    'stats' => [
+                        'total_scans' => 1,
+                        'successful_scans' => 1,
+                        'duplicate_scans' => 0,
+                        'invalid_scans' => 0,
+                    ],
                 ],
             ]);
 
@@ -89,16 +88,18 @@ class AdminWarmCacheCommandTest extends TestCase
         $adminPanel->shouldNotReceive('warmAttendanceMonitoringCache');
 
         $staffScanner = Mockery::mock(StaffScannerService::class);
-        $staffScanner->shouldReceive('warmDashboardCache')
+        $staffScanner->shouldReceive('warmDashboardCaches')
             ->once()
-            ->with('Gate C')
+            ->with(['Gate C'])
             ->andReturn([
-                'scope_date' => '2026-04-05',
-                'stats' => [
-                    'total_scans' => 5,
-                    'successful_scans' => 4,
-                    'duplicate_scans' => 1,
-                    'invalid_scans' => 0,
+                'Gate C' => [
+                    'scope_date' => '2026-04-05',
+                    'stats' => [
+                        'total_scans' => 5,
+                        'successful_scans' => 4,
+                        'duplicate_scans' => 1,
+                        'invalid_scans' => 0,
+                    ],
                 ],
             ]);
 

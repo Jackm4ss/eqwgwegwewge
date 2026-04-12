@@ -9,6 +9,9 @@ return [
     'dashboard' => [
         'attendance_analytics_enabled' => env('ADMIN_DASHBOARD_ATTENDANCE_ANALYTICS_ENABLED', false),
     ],
+    'warm_cache' => [
+        'optimized_enabled' => env('ADMIN_WARM_CACHE_OPTIMIZED_ENABLED', true),
+    ],
     'per_page' => (int) env('ADMIN_PER_PAGE', 10),
     'report_default_days' => (int) env('ADMIN_REPORT_DEFAULT_DAYS', 7),
     'presence' => [
