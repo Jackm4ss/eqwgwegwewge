@@ -21,10 +21,12 @@ class DashboardController extends Controller
     ): View
     {
         $filters = $request->only(['from', 'to']);
+        $showAttendanceAnalytics = (bool) config('admin.dashboard.attendance_analytics_enabled', false);
 
         return view('admin.dashboard', [
-            'dashboard' => $adminPanel->dashboardData($filters),
+            'dashboard' => $showAttendanceAnalytics ? $adminPanel->dashboardData($filters) : [],
             'filters' => $filters,
+            'showAttendanceAnalytics' => $showAttendanceAnalytics,
             'firestoreAvailable' => $adminPanel->firestoreAvailable(),
             'campaignLinkSummary' => $campaignLinkService->dashboardSummary(),
             'publicReportSummary' => $publicReportService->summary(),

@@ -147,36 +147,11 @@ class AdminAuthenticationTest extends TestCase
     {
         $admin = Admin::query()->firstOrFail();
 
+        config(['admin.dashboard.attendance_analytics_enabled' => false]);
+
         $this->mock(AdminPanelService::class, function ($mock): void {
             $mock->shouldReceive('dashboardData')
-                ->once()
-                ->with([
-                    'from' => '2026-03-24',
-                    'to' => '2026-03-25',
-                ])
-                ->andReturn([
-                    'total_registrations' => 3,
-                    'daily_scan_statistics' => [
-                        'total_scans' => 4,
-                        'successful_scans' => 3,
-                        'unique_visitors' => 3,
-                        'duplicate_scans' => 1,
-                        'invalid_scans' => 0,
-                    ],
-                    'visitor_chart' => [
-                        'labels' => ['24 Mar', '25 Mar'],
-                        'series' => [1, 2],
-                    ],
-                    'date_range' => [
-                        'from' => '2026-03-24',
-                        'to' => '2026-03-25',
-                        'days' => 2,
-                        'is_filtered' => true,
-                        'label' => '24 Mar 2026 - 25 Mar 2026',
-                        'badge' => 'Selected Range',
-                        'registration_badge' => 'Selected Range',
-                    ],
-                ]);
+                ->never();
 
             $mock->shouldReceive('firestoreAvailable')
                 ->once()

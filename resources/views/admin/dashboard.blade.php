@@ -2,7 +2,7 @@
 
 @php
   $title = 'Dashboard';
-  $showAttendanceAnalytics = false;
+  $showAttendanceAnalytics = (bool) ($showAttendanceAnalytics ?? config('admin.dashboard.attendance_analytics_enabled', false));
 @endphp
 
 @if ($showAttendanceAnalytics)
