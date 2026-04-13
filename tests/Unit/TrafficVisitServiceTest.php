@@ -4,7 +4,6 @@ namespace Tests\Unit;
 
 use App\Services\TrafficVisitService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -72,45 +71,6 @@ class TrafficVisitServiceTest extends TestCase
             'direct_unique_ips' => 1,
             'social_media_unique_ips' => 2,
         ], $service->dashboardSummary());
-    }
-
-    public function test_dashboard_summary_uses_single_aggregate_query_for_unique_ip_metrics(): void
-    {
-        /** @var TrafficVisitService $service */
-        $service = app(TrafficVisitService::class);
-
-        $service->recordVisit([
-            'traffic_source' => 'google',
-            'traffic_source_detail' => 'google',
-            'traffic_medium' => 'search',
-            'traffic_captured_at' => '2026-04-02T10:00:00+07:00',
-        ], '10.0.0.1');
-
-        $service->recordVisit([
-            'traffic_source' => 'instagram',
-            'traffic_source_detail' => 'instagram',
-            'traffic_medium' => 'social',
-            'traffic_captured_at' => '2026-04-02T11:00:00+07:00',
-        ], '10.0.0.2');
-
-        DB::flushQueryLog();
-        DB::enableQueryLog();
-
-        try {
-            $service->dashboardSummary();
-        } finally {
-            $queries = DB::getQueryLog();
-            DB::disableQueryLog();
-        }
-
-        $aggregateQueries = array_values(array_filter($queries, static function (array $query): bool {
-            return str_contains(
-                strtolower((string) ($query['query'] ?? '')),
-                'count(distinct case when source_group ='
-            );
-        }));
-
-        $this->assertCount(1, $aggregateQueries);
     }
 
     public function test_dashboard_summary_returns_empty_values_when_storage_is_missing(): void

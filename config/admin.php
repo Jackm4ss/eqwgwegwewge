@@ -8,6 +8,10 @@ return [
     'dashboard_days' => (int) env('ADMIN_DASHBOARD_DAYS', 7),
     'dashboard' => [
         'attendance_analytics_enabled' => env('ADMIN_DASHBOARD_ATTENDANCE_ANALYTICS_ENABLED', false),
+        'snapshot_enabled' => env('ADMIN_DASHBOARD_SNAPSHOT_ENABLED', true),
+        'snapshot_fresh_seconds' => max(5, (int) env('ADMIN_DASHBOARD_SNAPSHOT_FRESH_SECONDS', 30)),
+        'snapshot_ttl_seconds' => max(6, (int) env('ADMIN_DASHBOARD_SNAPSHOT_TTL_SECONDS', 900)),
+        'snapshot_refresh_lock_seconds' => max(10, (int) env('ADMIN_DASHBOARD_SNAPSHOT_REFRESH_LOCK_SECONDS', 180)),
     ],
     'warm_cache' => [
         'optimized_enabled' => env('ADMIN_WARM_CACHE_OPTIMIZED_ENABLED', true),

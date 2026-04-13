@@ -23,6 +23,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule) {
         $schedule->command('admin:backup-data')->everySixHours();
+        $schedule->command('admin:warm-dashboard-snapshot')->everyMinute()->withoutOverlapping();
         $schedule->command('admin:warm-cache')->everyFifteenMinutes()->withoutOverlapping();
 
         if ((bool) config('admin.user_management.read_model.enabled', false)) {

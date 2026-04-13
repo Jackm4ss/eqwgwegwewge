@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\TrafficVisit;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Schema;
 
 class TrafficVisitService
@@ -66,31 +67,28 @@ class TrafficVisitService
             ];
         }
 
-        $summary = TrafficVisit::query()
+        $baseQuery = TrafficVisit::query()
             ->whereNotNull('ip_address')
-            ->where('ip_address', '!=', '')
-            ->selectRaw('COUNT(DISTINCT ip_address) as total_unique_ips')
-            ->selectRaw(
-                'COUNT(DISTINCT CASE WHEN source_group = ? THEN ip_address END) as google_search_unique_ips',
-                ['google_search'],
-            )
-            ->selectRaw(
-                'COUNT(DISTINCT CASE WHEN source_group = ? THEN ip_address END) as direct_unique_ips',
-                ['direct'],
-            )
-            ->selectRaw(
-                'COUNT(DISTINCT CASE WHEN source_group = ? THEN ip_address END) as social_media_unique_ips',
-                ['social_media'],
-            )
-            ->first();
+            ->where('ip_address', '!=', '');
 
         return [
             'storage_ready' => true,
-            'total_unique_ips' => (int) ($summary->total_unique_ips ?? 0),
-            'google_search_unique_ips' => (int) ($summary->google_search_unique_ips ?? 0),
-            'direct_unique_ips' => (int) ($summary->direct_unique_ips ?? 0),
-            'social_media_unique_ips' => (int) ($summary->social_media_unique_ips ?? 0),
+            'total_unique_ips' => $this->countDistinctIps(clone $baseQuery),
+            'google_search_unique_ips' => $this->countDistinctIps(
+                (clone $baseQuery)->where('source_group', 'google_search')
+            ),
+            'direct_unique_ips' => $this->countDistinctIps(
+                (clone $baseQuery)->where('source_group', 'direct')
+            ),
+            'social_media_unique_ips' => $this->countDistinctIps(
+                (clone $baseQuery)->where('source_group', 'social_media')
+            ),
         ];
+    }
+
+    private function countDistinctIps(Builder $query): int
+    {
+        return (int) $query->distinct('ip_address')->count('ip_address');
     }
 
     private function resolveVisitedAt(mixed $value): CarbonImmutable
