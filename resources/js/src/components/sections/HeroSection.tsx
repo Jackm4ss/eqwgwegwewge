@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion, useMotionValue, useSpring } from "motion/react";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, ArrowRight, ShieldAlert } from "lucide-react";
 import { buildRegisterUrl } from "@/lib/trafficAttribution";
 import { LazyImage } from "../ui/LazyImage";
+import { getSpaPaths } from "@/lib/spaRouting";
 
 const TARGET = new Date("2026-04-09T12:00:00+08:00");
 
@@ -53,6 +54,16 @@ function ScribbleUnderline({ color = "#2FA7D8", width = 160 }: { color?: string;
 const SYNE: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 const SG: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 const TW: React.CSSProperties = { fontFamily: "'Tilt Warp', system-ui, sans-serif" };
+const TILT: React.CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
+const HELP_DESK_CARD_BACKGROUND =
+  "linear-gradient(145deg, rgba(240, 249, 255, 0.92), rgba(224, 242, 254, 0.82))";
+const HELP_DESK_CARD_BORDER = "rgba(14, 116, 144, 0.18)";
+const HELP_DESK_CARD_SHADOW = "0 20px 44px rgba(15,23,42,0.14)";
+const HELP_DESK_BADGE_BACKGROUND = "rgba(255, 255, 255, 0.66)";
+const HELP_DESK_BADGE_BORDER = "1px solid rgba(8, 47, 73, 0.12)";
+const HELP_DESK_BADGE_TEXT = "rgba(15, 23, 42, 0.72)";
+const HELP_DESK_ACCENT = "#389DD2";
+const HELP_DESK_ICON = "#0f766e";
 
 export function HeroSection() {
   const mouseX = useMotionValue(0);
@@ -65,6 +76,7 @@ export function HeroSection() {
   const py2 = useSpring(py2Source, { stiffness: 50, damping: 25 });
   const { days, hours, minutes, seconds, live } = useCountdown();
   const [heroViewport, setHeroViewport] = useState({ width: 0, height: 0 });
+  const helpDeskUrl = getSpaPaths("report")[0] ?? "/report";
 
   useEffect(() => {
     const syncHeroViewport = () => {
@@ -93,6 +105,10 @@ export function HeroSection() {
 
   const goToRegister = () => {
     window.location.assign(buildRegisterUrl());
+  };
+
+  const goToHelpDesk = () => {
+    window.location.assign(helpDeskUrl);
   };
 
   const goToNextSection = () => {
@@ -128,22 +144,22 @@ export function HeroSection() {
     ? "relative z-10 flex h-full flex-col items-center justify-center py-8 lg:py-10"
     : isCompactTabletHero
       ? "relative z-10 flex h-full flex-col items-center justify-center py-7 md:py-8"
-    : "relative z-10 flex h-full flex-col items-center justify-start pt-10 md:justify-center md:py-10 lg:py-14";
+      : "relative z-10 flex h-full flex-col items-center justify-start pt-10 md:justify-center md:py-10 lg:py-14";
   const heroContentClassName = isCompactDesktopHero
     ? "flex w-full flex-col items-center gap-2 px-4 md:gap-3"
     : isCompactTabletHero
       ? "flex w-full flex-col items-center gap-2 px-4 md:gap-3"
-    : "flex w-full flex-col items-center gap-3 px-4 md:gap-5";
+      : "flex w-full flex-col items-center gap-3 px-4 md:gap-5";
   const logoBlockClassName = isCompactDesktopHero
     ? "relative mt-3 mb-1 flex items-center justify-center"
     : isCompactTabletHero
       ? "relative mt-2 mb-1 flex items-center justify-center md:mt-2 md:mb-3"
-    : "relative mt-0 mb-2 flex items-start justify-center md:mt-4 md:mb-5 md:items-center lg:mt-6 lg:mb-6";
+      : "relative mt-0 mb-2 flex items-start justify-center md:mt-4 md:mb-5 md:items-center lg:mt-6 lg:mb-6";
   const registerWrapClassName = isCompactDesktopHero
     ? "relative z-20 mt-4 px-4 pb-5 md:px-8 lg:px-14"
     : isCompactTabletHero
       ? "relative z-20 mt-4 px-4 pb-6 md:px-8"
-    : "relative z-20 mt-6 px-4 md:mb-8 md:px-8 lg:px-14";
+      : "relative z-20 mt-6 px-4 md:mb-8 md:px-8 lg:px-14";
   const steamHeight = isCompactDesktopHero
     ? "clamp(145px, 22vh, 250px)"
     : isCompactTabletHero
@@ -312,31 +328,151 @@ export function HeroSection() {
           transition={{ delay: 1.2, duration: 0.5, type: "spring" }}
           className={registerWrapClassName}
         >
-          <button
-            onClick={goToRegister}
-            className="group relative overflow-hidden rounded-full px-8 py-3.5 transition-all hover:scale-105 active:scale-95 md:px-10 md:py-4"
-            style={{
-              background: "linear-gradient(135deg, #0284C7, #0EA5E9)",
-              boxShadow: "0 4px 14px rgba(2,132,199,0.35)",
-            }}
-          >
-            <div className="absolute inset-0 bg-black/10 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100" />
-            <div className="absolute inset-0 bg-black/20 opacity-0 transition-opacity duration-100 ease-out group-active:opacity-100" />
-            <span
+          <div className="flex flex-col items-center gap-4">
+            {/* Register button */}
+            <button
+              onClick={goToRegister}
+              className="group relative overflow-hidden rounded-full px-8 py-3.5 transition-all hover:scale-105 active:scale-95 md:px-10 md:py-4"
               style={{
-                ...TW,
-                fontSize: "1rem",
-                letterSpacing: "0.12em",
-                color: "#ffffff",
-                position: "relative",
-                zIndex: 10,
+                background: "linear-gradient(135deg, #0284C7, #0EA5E9)",
+                boxShadow: "0 4px 14px rgba(2,132,199,0.35)",
               }}
             >
-              REGISTER NOW
-            </span>
-          </button>
+              <div className="absolute inset-0 bg-black/10 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100" />
+              <div className="absolute inset-0 bg-black/20 opacity-0 transition-opacity duration-100 ease-out group-active:opacity-100" />
+              <span
+                style={{
+                  ...TW,
+                  fontSize: "1rem",
+                  letterSpacing: "0.12em",
+                  color: "#ffffff",
+                  position: "relative",
+                  zIndex: 10,
+                }}
+              >
+                REGISTER NOW
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={goToHelpDesk}
+              aria-label="Open Help Desk"
+              className="group lg:hidden w-full max-w-xs text-center transition-all hover:scale-[1.02] active:scale-[0.97]"
+              style={{ background: "none", border: "none", padding: 0 }}
+            >
+              <div
+                className="flex items-center gap-3 rounded-2xl border px-3.5 py-3 backdrop-blur-xl"
+                style={{
+                  background: HELP_DESK_CARD_BACKGROUND,
+                  borderColor: HELP_DESK_CARD_BORDER,
+                  boxShadow: HELP_DESK_CARD_SHADOW,
+                }}
+              >
+                <div
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+                  style={{
+                    background: HELP_DESK_BADGE_BACKGROUND,
+                    border: HELP_DESK_BADGE_BORDER,
+                  }}
+                >
+                  <ShieldAlert size={15} style={{ color: HELP_DESK_ICON }} />
+                </div>
+                <div className="flex-1 min-w-0 text-center">
+                  <p
+                    style={{
+                      ...TILT,
+                      fontSize: "0.65rem",
+                      letterSpacing: "0.07em",
+                      color: HELP_DESK_BADGE_TEXT,
+                      marginBottom: "1px",
+                    }}
+                  >
+                    Lost item · Report · Complaint
+                  </p>
+                  <p
+                    style={{
+                      ...TILT,
+                      fontSize: "0.78rem",
+                      lineHeight: 1.25,
+                      color: HELP_DESK_ACCENT,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Go to Help Desk
+                  </p>
+                </div>
+                <ArrowRight
+                  size={17}
+                  style={{ color: HELP_DESK_ACCENT, flexShrink: 0 }}
+                  className="transition-transform duration-200 group-hover:translate-x-1"
+                />
+              </div>
+            </button>
+
+          </div>
         </motion.div>
       </motion.div>
+      <motion.button
+        type="button"
+        onClick={goToHelpDesk}
+        initial={{ opacity: 0, x: -16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 1.5, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        className="group absolute bottom-10 left-6 z-30 hidden text-center transition-all hover:scale-[1.03] active:scale-[0.97] lg:flex"
+        aria-label="Open Help Desk"
+      >
+        <div
+          className="flex items-center gap-3 rounded-2xl border px-3.5 py-2.5 backdrop-blur-xl"
+          style={{
+            background: HELP_DESK_CARD_BACKGROUND,
+            borderColor: HELP_DESK_CARD_BORDER,
+            boxShadow: HELP_DESK_CARD_SHADOW,
+            maxWidth: "260px",
+          }}
+        >
+          <div
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+            style={{
+              background: HELP_DESK_BADGE_BACKGROUND,
+              border: HELP_DESK_BADGE_BORDER,
+            }}
+          >
+            <ShieldAlert size={15} style={{ color: HELP_DESK_ICON }} />
+          </div>
+          <div className="min-w-0 text-center">
+            <p
+              style={{
+                ...TILT,
+                fontSize: "0.65rem",
+                letterSpacing: "0.07em",
+                color: HELP_DESK_BADGE_TEXT,
+                marginBottom: "1px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Lost item · Report · Complaint
+            </p>
+            <p
+              style={{
+                ...TILT,
+                fontSize: "0.78rem",
+                lineHeight: 1.25,
+                color: HELP_DESK_ACCENT,
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Go to Help Desk
+            </p>
+          </div>
+          <ArrowRight
+            size={17}
+            style={{ color: HELP_DESK_ACCENT, flexShrink: 0 }}
+            className="transition-transform duration-200 group-hover:translate-x-1"
+          />
+        </div>
+      </motion.button>
 
       <motion.button
         type="button"

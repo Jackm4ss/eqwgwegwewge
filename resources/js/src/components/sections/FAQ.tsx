@@ -1,6 +1,7 @@
 import { memo, useCallback, useState, type CSSProperties } from "react";
 import { motion } from "motion/react";
 import { SECTION_BACKGROUND } from "./sectionContrastTheme";
+import { HelpDeskCta } from "./HelpDeskCta";
 
 const TILT: CSSProperties = { fontFamily: "'Tilt Warp', sans-serif" };
 
@@ -421,6 +422,8 @@ export function FAQ() {
               />
             ))}
           </div>
+
+          <HelpDeskCta tone="light" layout="inline" className="mt-10 md:mt-12" />
         </div>
       </div>
     </section>
