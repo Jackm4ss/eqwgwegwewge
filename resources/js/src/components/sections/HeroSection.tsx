@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion, useMotionValue, useSpring } from "motion/react";
+import { motion, useMotionValue, useSpring, AnimatePresence } from "motion/react";
 import { ArrowDown, ArrowRight, ShieldAlert } from "lucide-react";
 import { buildRegisterUrl } from "@/lib/trafficAttribution";
 import { LazyImage } from "../ui/LazyImage";
@@ -77,6 +77,7 @@ export function HeroSection() {
   const { days, hours, minutes, seconds, live } = useCountdown();
   const [heroViewport, setHeroViewport] = useState({ width: 0, height: 0 });
   const helpDeskUrl = getSpaPaths("report")[0] ?? "/report";
+  const [helpDeskExpanded, setHelpDeskExpanded] = useState(false);
 
   useEffect(() => {
     const syncHeroViewport = () => {
@@ -220,6 +221,72 @@ export function HeroSection() {
       </motion.div>
 
       <motion.div className={heroShellClassName} style={{ minHeight: heroViewportHeight }}>
+        {false ? (
+          <motion.div
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1.45, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="relative z-20 mb-4 flex w-full justify-start px-4 md:mb-5 md:px-6"
+          >
+            <button
+              type="button"
+              onClick={goToHelpDesk}
+              className="group text-center transition-all hover:scale-[1.03] active:scale-[0.97]"
+              aria-label="Open Help Desk"
+            >
+              <div
+                className="flex items-center gap-3 rounded-2xl border px-3.5 py-3 backdrop-blur-xl"
+                style={{
+                  background: HELP_DESK_CARD_BACKGROUND,
+                  borderColor: HELP_DESK_CARD_BORDER,
+                  boxShadow: HELP_DESK_CARD_SHADOW,
+                  maxWidth: "min(260px, calc(100vw - 2rem))",
+                }}
+              >
+                <div
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+                  style={{
+                    background: HELP_DESK_BADGE_BACKGROUND,
+                    border: HELP_DESK_BADGE_BORDER,
+                  }}
+                >
+                  <ShieldAlert size={15} style={{ color: HELP_DESK_ICON }} />
+                </div>
+                <div className="min-w-0 text-center">
+                  <p
+                    style={{
+                      ...TILT,
+                      fontSize: "0.65rem",
+                      letterSpacing: "0.07em",
+                      color: HELP_DESK_BADGE_TEXT,
+                      marginBottom: "1px",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Lost item Â· Report Â· Complaint
+                  </p>
+                  <p
+                    style={{
+                      ...TILT,
+                      fontSize: "0.78rem",
+                      lineHeight: 1.25,
+                      color: HELP_DESK_ACCENT,
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Go to Help Desk
+                  </p>
+                </div>
+                <ArrowRight
+                  size={17}
+                  style={{ color: HELP_DESK_ACCENT, flexShrink: 0 }}
+                  className="transition-transform duration-200 group-hover:translate-x-1"
+                />
+              </div>
+            </button>
+          </motion.div>
+        ) : null}
         <div className={heroContentClassName}>
           <div
             className={logoBlockClassName}
@@ -356,67 +423,144 @@ export function HeroSection() {
               </span>
             </button>
 
-            {showInlineHelpDeskCard ? (
-            <button
-              type="button"
-              onClick={goToHelpDesk}
-              aria-label="Open Help Desk"
-              className="group w-full max-w-xs text-center transition-all hover:scale-[1.02] active:scale-[0.97]"
-              style={{ background: "none", border: "none", padding: 0 }}
-            >
-              <div
-                className="flex items-center gap-3 rounded-2xl border px-3.5 py-3 backdrop-blur-xl"
-                style={{
-                  background: HELP_DESK_CARD_BACKGROUND,
-                  borderColor: HELP_DESK_CARD_BORDER,
-                  boxShadow: HELP_DESK_CARD_SHADOW,
-                }}
-              >
-                <div
-                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
-                  style={{
-                    background: HELP_DESK_BADGE_BACKGROUND,
-                    border: HELP_DESK_BADGE_BORDER,
-                  }}
-                >
-                  <ShieldAlert size={15} style={{ color: HELP_DESK_ICON }} />
-                </div>
-                <div className="flex-1 min-w-0 text-center">
-                  <p
-                    style={{
-                      ...TILT,
-                      fontSize: "0.65rem",
-                      letterSpacing: "0.07em",
-                      color: HELP_DESK_BADGE_TEXT,
-                      marginBottom: "1px",
-                    }}
-                  >
-                    Lost item · Report · Complaint
-                  </p>
-                  <p
-                    style={{
-                      ...TILT,
-                      fontSize: "0.78rem",
-                      lineHeight: 1.25,
-                      color: HELP_DESK_ACCENT,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Go to Help Desk
-                  </p>
-                </div>
-                <ArrowRight
-                  size={17}
-                  style={{ color: HELP_DESK_ACCENT, flexShrink: 0 }}
-                  className="transition-transform duration-200 group-hover:translate-x-1"
-                />
-              </div>
-            </button>
-            ) : null}
-
           </div>
         </motion.div>
       </motion.div>
+      {showInlineHelpDeskCard ? (
+        <motion.div
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 1.45, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute bottom-10 left-4 z-30 md:bottom-10 md:left-6"
+        >
+          <motion.button
+            type="button"
+            layout
+            onClick={() => {
+              if (helpDeskExpanded) {
+                goToHelpDesk();
+              } else {
+                setHelpDeskExpanded(true);
+              }
+            }}
+            aria-label={helpDeskExpanded ? "Go to Help Desk" : "Open Help Desk"}
+            style={{
+              background: HELP_DESK_CARD_BACKGROUND,
+              borderColor: helpDeskExpanded ? HELP_DESK_CARD_BORDER : "rgba(234,179,8,0.45)",
+              boxShadow: helpDeskExpanded
+                ? HELP_DESK_CARD_SHADOW
+                : "0 4px 18px rgba(234,179,8,0.25)",
+              borderWidth: 1,
+              borderStyle: "solid",
+              borderRadius: 16,
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              padding: helpDeskExpanded ? "12px 14px" : "10px",
+              gap: helpDeskExpanded ? 10 : 0,
+              cursor: "pointer",
+              transition: "padding 0.35s cubic-bezier(0.22,1,0.36,1), gap 0.35s cubic-bezier(0.22,1,0.36,1), border-color 0.3s, box-shadow 0.3s",
+            }}
+          >
+            {/* Shield icon — yellow pulsing when collapsed */}
+            <motion.div
+              layout
+              onClick={(event) => {
+                event.stopPropagation();
+                setHelpDeskExpanded((current) => !current);
+              }}
+              style={{
+                flexShrink: 0,
+                width: 34,
+                height: 34,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: helpDeskExpanded ? HELP_DESK_BADGE_BACKGROUND : "rgba(234,179,8,0.18)",
+                border: helpDeskExpanded ? HELP_DESK_BADGE_BORDER : "1px solid rgba(234,179,8,0.5)",
+                cursor: "pointer",
+                transition: "background 0.35s, border 0.35s",
+              }}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                {helpDeskExpanded ? (
+                  <motion.span
+                    key="expanded-icon"
+                    initial={{ opacity: 0, scale: 0.7 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.7 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ShieldAlert size={15} style={{ color: HELP_DESK_ICON }} />
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="collapsed-icon"
+                    animate={{
+                      opacity: [1, 0.35, 1],
+                      scale: [1, 1.15, 1],
+                    }}
+                    transition={{
+                      duration: 1.4,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    style={{ display: "flex", alignItems: "center" }}
+                  >
+                    <ShieldAlert size={16} style={{ color: "#EAB308" }} />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Expandable content */}
+            <AnimatePresence initial={false}>
+              {helpDeskExpanded && (
+                <motion.div
+                  key="help-desk-content"
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ overflow: "hidden", display: "flex", alignItems: "center", gap: 8 }}
+                >
+                  <div style={{ whiteSpace: "nowrap" }}>
+                    <p
+                      style={{
+                        ...TILT,
+                        fontSize: "0.63rem",
+                        letterSpacing: "0.07em",
+                        color: HELP_DESK_BADGE_TEXT,
+                        marginBottom: "2px",
+                      }}
+                    >
+                      Lost item · Report · Complaint
+                    </p>
+                    <p
+                      style={{
+                        ...TILT,
+                        fontSize: "0.78rem",
+                        lineHeight: 1.25,
+                        color: HELP_DESK_ACCENT,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Go to Help Desk
+                    </p>
+                  </div>
+                  <ArrowRight
+                    size={16}
+                    style={{ color: HELP_DESK_ACCENT, flexShrink: 0 }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </motion.div>
+      ) : null}
       {showFloatingHelpDeskCard ? (
       <motion.button
         type="button"
