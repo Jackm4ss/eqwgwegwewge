@@ -185,6 +185,8 @@ export function HeroSection() {
     : isCompactTabletHero
       ? "w-full max-w-[640px]"
       : "w-full max-w-[820px]";
+  const showFloatingHelpDeskCard = heroViewport.width >= 1280;
+  const showInlineHelpDeskCard = !showFloatingHelpDeskCard;
 
   return (
     <section
@@ -354,11 +356,12 @@ export function HeroSection() {
               </span>
             </button>
 
+            {showInlineHelpDeskCard ? (
             <button
               type="button"
               onClick={goToHelpDesk}
               aria-label="Open Help Desk"
-              className="group lg:hidden w-full max-w-xs text-center transition-all hover:scale-[1.02] active:scale-[0.97]"
+              className="group w-full max-w-xs text-center transition-all hover:scale-[1.02] active:scale-[0.97]"
               style={{ background: "none", border: "none", padding: 0 }}
             >
               <div
@@ -409,17 +412,19 @@ export function HeroSection() {
                 />
               </div>
             </button>
+            ) : null}
 
           </div>
         </motion.div>
       </motion.div>
+      {showFloatingHelpDeskCard ? (
       <motion.button
         type="button"
         onClick={goToHelpDesk}
         initial={{ opacity: 0, x: -16 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 1.5, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className="group absolute bottom-10 left-6 z-30 hidden text-center transition-all hover:scale-[1.03] active:scale-[0.97] lg:flex"
+        className="group absolute bottom-10 left-6 z-30 text-center transition-all hover:scale-[1.03] active:scale-[0.97]"
         aria-label="Open Help Desk"
       >
         <div
@@ -473,6 +478,7 @@ export function HeroSection() {
           />
         </div>
       </motion.button>
+      ) : null}
 
       <motion.button
         type="button"
