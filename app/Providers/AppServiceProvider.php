@@ -142,5 +142,14 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(6)->by($request->ip().'|'.$landingPath),
             ];
         });
+
+        RateLimiter::for('found-items-read', function (Request $request) {
+            $page = max(1, (int) $request->query('page', 1));
+
+            return [
+                Limit::perMinute(60)->by($request->ip()),
+                Limit::perMinute(20)->by($request->ip().'|page:'.$page),
+            ];
+        });
     }
 }

@@ -131,6 +131,7 @@ const ENABLE_LEGACY_SUCCESS_SCREEN = true;
 const TICKET_HEADER_FONT_FAMILY = '"Tilt Warp", sans-serif';
 const PUBLIC_HOME_URL = getSpaUrl('publicHome', '/');
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const GMAIL_DOMAIN = 'gmail.com';
 const REGISTER_EXCLUDED_COUNTRY_CODES = new Set(['IL']);
 
 const NATIONALITY_OPTIONS = [
@@ -187,6 +188,12 @@ function normalizeEmailValue(value: string) {
   return value.trim();
 }
 
+function getEmailDomain(email: string) {
+  const [, domain = ''] = normalizeEmailValue(email).split('@');
+
+  return domain.toLowerCase();
+}
+
 function getEmailTypoSuggestion(email: string) {
   const normalizedEmail = normalizeEmailValue(email);
 
@@ -194,7 +201,13 @@ function getEmailTypoSuggestion(email: string) {
     return null;
   }
 
-  return emailSpellChecker.run({ email: normalizedEmail }) ?? null;
+  const suggestion = emailSpellChecker.run({ email: normalizedEmail }) ?? null;
+
+  if (!suggestion || getEmailDomain(suggestion.full) !== GMAIL_DOMAIN) {
+    return null;
+  }
+
+  return suggestion;
 }
 
 function buildEmailTypoMessage(suggestedEmail: string) {

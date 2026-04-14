@@ -3,6 +3,7 @@ export type SpaContext = 'public' | 'admin' | 'staff';
 export type SpaPathKey =
   | 'landing'
   | 'register'
+  | 'found'
   | 'forgotQr'
   | 'report'
   | 'reportTracking'
@@ -13,6 +14,7 @@ export type SpaPathKey =
 export type SpaUrlKey =
   | 'publicHome'
   | 'registerForm'
+  | 'foundItemsApi'
   | 'reportTrackingForm'
   | 'registerApi'
   | 'forgotQrLookupApi'
@@ -56,6 +58,7 @@ const FALLBACK_CONFIG: SpaConfig = {
   paths: {
     landing: ['/'],
     register: ['/register'],
+    found: ['/found'],
     forgotQr: ['/forgot-qr'],
     report: ['/report'],
     reportTracking: ['/report-tracking'],
@@ -66,6 +69,7 @@ const FALLBACK_CONFIG: SpaConfig = {
   urls: {
     publicHome: '/',
     registerForm: '/register',
+    foundItemsApi: '/api/found-items',
     reportTrackingForm: '/report-tracking',
     registerApi: '/api/register',
     forgotQrLookupApi: '/api/forgot-qr/lookup',
@@ -151,6 +155,7 @@ function buildConfig(): SpaConfig {
   const paths: Partial<Record<SpaPathKey, string[]>> = {
     landing: normalizePaths(rawPaths.landing),
     register: normalizePaths(rawPaths.register),
+    found: normalizePaths(rawPaths.found),
     forgotQr: normalizePaths(rawPaths.forgotQr),
     report: normalizePaths(rawPaths.report),
     reportTracking: normalizePaths(rawPaths.reportTracking),

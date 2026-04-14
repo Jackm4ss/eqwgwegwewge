@@ -16,6 +16,7 @@
         $currentHost !== '' && $currentHost === $adminHost => 'admin',
         $currentHost !== '' && $currentHost === $staffHost => 'staff',
         $currentRouteName === 'register.form' || request()->is('register') => 'register',
+        $currentRouteName === 'found.index' || request()->is('found') => 'found',
         $currentRouteName === 'report.form' || request()->is('report') => 'help',
         $currentRouteName === 'report-tracking.form' || request()->is('report-tracking') => 'help',
         ($spaContext ?? null) === 'admin' => 'admin',
@@ -27,6 +28,10 @@
         'register' => [
             'title' => 'Register Songkran Festival 2026',
             'description' => 'Free Registration Now!',
+        ],
+        'found' => [
+            'title' => 'Found Items | Songkran Festival 2026',
+            'description' => 'Browse found belongings posted by the official Songkran Festival help desk team.',
         ],
         'help' => [
             'title' => 'Helpdesk Songkran Festival 2026',

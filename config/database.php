@@ -2,12 +2,27 @@
 
 use Illuminate\Support\Str;
 
+$sqliteDatabasePath = env('DB_DATABASE', database_path('database.sqlite'));
+
+if (is_string($sqliteDatabasePath)) {
+    $trimmedSqliteDatabasePath = trim($sqliteDatabasePath);
+
+    $isAbsoluteWindowsPath = preg_match('/^[A-Za-z]:[\\\\\\/]/', $trimmedSqliteDatabasePath) === 1;
+    $isUncPath = str_starts_with($trimmedSqliteDatabasePath, '\\\\');
+    $isUnixAbsolutePath = str_starts_with($trimmedSqliteDatabasePath, '/');
+    $isSpecialSqlitePath = in_array($trimmedSqliteDatabasePath, [':memory:', ''], true);
+
+    if (! $isAbsoluteWindowsPath && ! $isUncPath && ! $isUnixAbsolutePath && ! $isSpecialSqlitePath) {
+        $sqliteDatabasePath = base_path($trimmedSqliteDatabasePath);
+    }
+}
+
 return [
     'default' => env('DB_CONNECTION', 'sqlite'),
     'connections' => [
         'sqlite' => [
             'driver' => 'sqlite',
-            'database' => env('DB_DATABASE', database_path('database.sqlite')),
+            'database' => $sqliteDatabasePath,
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
         ],

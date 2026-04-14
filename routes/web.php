@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\Auth\AuthenticatedAdminSessionController;
 use App\Http\Controllers\Admin\CampaignLinkController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExportController;
+use App\Http\Controllers\Admin\LostFoundItemController;
 use App\Http\Controllers\Admin\PublicReportController;
 use App\Http\Controllers\Admin\QrManagementController;
 use App\Http\Controllers\Admin\ReportController;
@@ -199,6 +200,9 @@ $publicRoutes = static function () use ($renderSpa, $isSubdomainMode, $adminLogi
 
     Route::get('/register', static fn () => $renderSpa('public'))
         ->name('register.form');
+
+    Route::get('/found', static fn () => $renderSpa('public'))
+        ->name('found.index');
 
     Route::get('/forgot-qr', static fn () => $renderSpa('public'))
         ->name('forgot-qr.form');
@@ -413,6 +417,18 @@ if ($isSubdomainMode) {
                     ->name('public-reports.update');
                 Route::delete('/public-reports/{publicReport}', [PublicReportController::class, 'destroy'])
                     ->name('public-reports.destroy');
+                Route::get('/lost-found', [LostFoundItemController::class, 'index'])
+                    ->name('lost-found.index');
+                Route::get('/lost-found/create', [LostFoundItemController::class, 'create'])
+                    ->name('lost-found.create');
+                Route::post('/lost-found', [LostFoundItemController::class, 'store'])
+                    ->name('lost-found.store');
+                Route::get('/lost-found/{lostFoundItem}/edit', [LostFoundItemController::class, 'edit'])
+                    ->name('lost-found.edit');
+                Route::put('/lost-found/{lostFoundItem}', [LostFoundItemController::class, 'update'])
+                    ->name('lost-found.update');
+                Route::delete('/lost-found/{lostFoundItem}', [LostFoundItemController::class, 'destroy'])
+                    ->name('lost-found.destroy');
 
                 Route::get('/exports/{type}/{format}', ExportController::class)
                     ->whereIn('type', ['users', 'attendance', 'admin-logs', 'daily-report', 'overall-report', 'public-reports'])
@@ -526,6 +542,18 @@ if ($isSubdomainMode) {
                     ->name('public-reports.update');
                 Route::delete('/public-reports/{publicReport}', [PublicReportController::class, 'destroy'])
                     ->name('public-reports.destroy');
+                Route::get('/lost-found', [LostFoundItemController::class, 'index'])
+                    ->name('lost-found.index');
+                Route::get('/lost-found/create', [LostFoundItemController::class, 'create'])
+                    ->name('lost-found.create');
+                Route::post('/lost-found', [LostFoundItemController::class, 'store'])
+                    ->name('lost-found.store');
+                Route::get('/lost-found/{lostFoundItem}/edit', [LostFoundItemController::class, 'edit'])
+                    ->name('lost-found.edit');
+                Route::put('/lost-found/{lostFoundItem}', [LostFoundItemController::class, 'update'])
+                    ->name('lost-found.update');
+                Route::delete('/lost-found/{lostFoundItem}', [LostFoundItemController::class, 'destroy'])
+                    ->name('lost-found.destroy');
 
                 Route::get('/exports/{type}/{format}', ExportController::class)
                     ->whereIn('type', ['users', 'attendance', 'admin-logs', 'daily-report', 'overall-report', 'public-reports'])

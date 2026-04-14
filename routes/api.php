@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Auth\RegisterController;
+use App\Http\Controllers\Api\FoundItemController;
 use App\Http\Controllers\Api\Auth\ForgotQrLookupController;
 use App\Http\Controllers\Api\Auth\ResendVerificationController;
 use App\Http\Controllers\Api\PublicReportLookupController;
@@ -15,6 +16,7 @@ Route::middleware('throttle:resend-verification')->post('/email/resend-verificat
 Route::middleware('throttle:public-report-submit')->post('/report', PublicReportController::class);
 Route::middleware('throttle:public-report-lookup')->post('/report/lookup', PublicReportLookupController::class);
 Route::middleware('throttle:traffic-visit')->post('/traffic/visit', TrafficVisitController::class);
+Route::middleware('throttle:found-items-read')->get('/found-items', FoundItemController::class);
 
 Route::post('/login', function (Request $request) {
     return response()->json([

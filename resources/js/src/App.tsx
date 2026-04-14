@@ -11,6 +11,9 @@ const LoginPage = lazy(() =>
 const RegisterPage = lazy(() =>
   import('./components/auth/RegisterPage').then((module) => ({ default: module.RegisterPage }))
 );
+const FoundItemsPage = lazy(() =>
+  import('./components/pages/FoundItemsPage').then((module) => ({ default: module.FoundItemsPage }))
+);
 const ForgotQrPage = lazy(() =>
   import('./components/auth/ForgotQrPage').then((module) => ({ default: module.ForgotQrPage }))
 );
@@ -58,6 +61,7 @@ export default function App() {
       <Routes>
         {renderRoutes(getSpaPaths('landing'), <LandingPage />, 'landing')}
         {renderRoutes(getSpaPaths('register'), withRouteSuspense(<RegisterPage />), 'register')}
+        {renderRoutes(getSpaPaths('found'), withRouteSuspense(<FoundItemsPage />), 'found')}
         {renderRoutes(getSpaPaths('forgotQr'), withRouteSuspense(<ForgotQrPage />), 'forgotQr')}
         {renderRoutes(getSpaPaths('report'), withRouteSuspense(<ReportPage />), 'report')}
         {renderRoutes(

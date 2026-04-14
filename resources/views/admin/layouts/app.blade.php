@@ -60,7 +60,9 @@
           $scannerManagementOpen = request()->routeIs('admin.scanner-users.*')
             || request()->routeIs('admin.gates.*')
             || request()->routeIs('admin.qr-management.*');
-          $reportManagementOpen = request()->routeIs('admin.reports.*') || request()->routeIs('admin.public-reports.*');
+          $reportManagementOpen = request()->routeIs('admin.reports.*')
+            || request()->routeIs('admin.public-reports.*')
+            || request()->routeIs('admin.lost-found.*');
         @endphp
 
         <ul class="menu-inner py-1">
@@ -143,6 +145,11 @@
               <li class="menu-item {{ request()->routeIs('admin.public-reports.*') ? 'active' : '' }}">
                 <a href="{{ route('admin.public-reports.index') }}" class="menu-link">
                   <div>Public Report</div>
+                </a>
+              </li>
+              <li class="menu-item {{ request()->routeIs('admin.lost-found.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.lost-found.index') }}" class="menu-link">
+                  <div>Lost &amp; Found Management</div>
                 </a>
               </li>
             </ul>

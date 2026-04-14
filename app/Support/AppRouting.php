@@ -108,6 +108,7 @@ final class AppRouting
                 default => [
                     'landing' => ['/'],
                     'register' => [self::routePath('register.form')],
+                    'found' => [self::routePath('found.index')],
                     'forgotQr' => [self::routePath('forgot-qr.form')],
                     'report' => [self::routePath('report.form')],
                     'reportTracking' => [self::routePath('report-tracking.form')],
@@ -116,6 +117,7 @@ final class AppRouting
             'urls' => [
                 'publicHome' => route('landing.home'),
                 'registerForm' => route('register.form'),
+                'foundItemsApi' => url('/api/found-items'),
                 'reportTrackingForm' => route('report-tracking.form'),
                 'registerApi' => url('/api/register'),
                 'forgotQrLookupApi' => url('/api/forgot-qr/lookup'),

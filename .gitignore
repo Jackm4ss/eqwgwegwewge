@@ -20,12 +20,15 @@
 !/storage/framework/sessions/.gitignore
 /storage/framework/views/*
 !/storage/framework/views/.gitignore
+/storage/app/public/*
+!/storage/app/public/.gitignore
 /storage/app/local_firestore_users.json
 /storage/app/private/admin-backups/*
 /storage/app/private/admin-cache/*
 /storage/app/private/test-admin-backups/*
 /database/*.sqlite
 /public/database/*.sqlite
+/public/storage
 
 # OS junk
 .DS_Store
