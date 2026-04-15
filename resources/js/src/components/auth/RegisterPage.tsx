@@ -924,7 +924,7 @@ export function RegisterPage() {
     watch,
     reset,
     trigger,
-    formState: { errors, dirtyFields },
+    formState: { errors },
   } = useForm<FormData>({
     mode: 'onTouched',
     defaultValues: {
@@ -1072,26 +1072,6 @@ export function RegisterPage() {
       setSelectedPhoneOptionValue(resolvedPhoneOption.value);
     }
   }, [countryVal, phoneCountryCodeVal, selectedPhoneOptionValue]);
-
-  useEffect(() => {
-    if (dirtyFields.phone_country_code) {
-      return;
-    }
-
-    const suggestedPhoneOption = findPrimarySearchablePhoneOption(countryVal);
-
-    if (suggestedPhoneOption) {
-      setValue('phone_country_code', suggestedPhoneOption.dialCode, {
-        shouldDirty: false,
-        shouldTouch: false,
-        shouldValidate: false,
-      });
-
-      if (suggestedPhoneOption.value !== selectedPhoneOptionValue) {
-        setSelectedPhoneOptionValue(suggestedPhoneOption.value);
-      }
-    }
-  }, [countryVal, dirtyFields.phone_country_code, selectedPhoneOptionValue, setValue]);
 
   useEffect(() => {
     const previousCountry = previousCountryRef.current;
