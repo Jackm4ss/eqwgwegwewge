@@ -11,6 +11,7 @@ import {
   Phone,
   SearchX,
   ShieldCheck,
+  ZoomIn,
 } from 'lucide-react';
 
 import {
@@ -20,6 +21,12 @@ import {
   AuthSectionHeading,
   authPrimaryButtonClass,
 } from '../auth/AuthShared';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '../ui/Dialog';
 import { LazyImage } from '../ui/LazyImage';
 import { cn } from '../../lib/utils';
 import { getSpaPaths, getSpaUrl } from '../../lib/spaRouting';
@@ -160,6 +167,7 @@ export function FoundItemsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [previewItem, setPreviewItem] = useState<FoundItem | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -397,24 +405,53 @@ export function FoundItemsPage() {
                           whileHover={{ y: -4 }}
                           className="group flex h-full flex-col overflow-hidden rounded-[1.7rem] border border-sky-100 bg-gradient-to-b from-white via-white to-sky-50/75 shadow-[0_18px_45px_rgba(12,74,110,0.1)]"
                         >
-                          <div className="relative overflow-hidden bg-slate-100">
-                            <LazyImage
-                              src={item.thumbnail_url || item.image_url || undefined}
-                              alt={item.title}
-                              wrapperClassName="block aspect-[4/3]"
-                              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                              skeletonClassName="rounded-none"
-                            />
+                          {(() => {
+                            const previewUrl = item.image_url || item.thumbnail_url || undefined;
+                            const imageBlock = (
+                              <div className="relative overflow-hidden bg-slate-100">
+                                <LazyImage
+                                  src={item.thumbnail_url || item.image_url || undefined}
+                                  alt={item.title}
+                                  wrapperClassName="block aspect-[4/3]"
+                                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                  skeletonClassName="rounded-none"
+                                />
 
-                            <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-4">
-                              <span className="inline-flex rounded-full border border-white/20 bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-700 shadow-sm">
-                                {item.status_label}
-                              </span>
-                              <span className="rounded-full border border-white/20 bg-slate-950/70 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-white backdrop-blur-sm">
-                                Item #{item.id}
-                              </span>
-                            </div>
-                          </div>
+                                <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-4">
+                                  <span className="inline-flex rounded-full border border-white/20 bg-white/90 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-700 shadow-sm">
+                                    {item.status_label}
+                                  </span>
+                                  <span className="rounded-full border border-white/20 bg-slate-950/70 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-white backdrop-blur-sm">
+                                    Item #{item.id}
+                                  </span>
+                                </div>
+
+                                {previewUrl ? (
+                                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/75 via-slate-950/30 to-transparent px-4 py-4">
+                                    <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/14 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-white backdrop-blur-sm">
+                                      <ZoomIn className="h-3.5 w-3.5" />
+                                      Preview Image
+                                    </span>
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+
+                            if (!previewUrl) {
+                              return imageBlock;
+                            }
+
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewItem(item)}
+                                className="block w-full cursor-zoom-in text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-sky-200"
+                                aria-label={`Preview image for ${item.title}`}
+                              >
+                                {imageBlock}
+                              </button>
+                            );
+                          })()}
 
                           <div className="flex flex-1 flex-col gap-4 p-5">
                             <div className="space-y-2">
@@ -495,6 +532,33 @@ export function FoundItemsPage() {
             </div>
           </AuthCardFrame>
         </div>
+
+        <Dialog open={previewItem !== null} onOpenChange={(open) => !open && setPreviewItem(null)}>
+          {previewItem ? (
+            <DialogContent className="max-h-[calc(100vh-2rem)] max-w-4xl gap-0 overflow-hidden rounded-[1.75rem] border-sky-100 p-0 shadow-2xl">
+              <div className="border-b border-sky-100 bg-gradient-to-r from-sky-600 via-cyan-500 to-teal-400 px-6 py-5 text-white">
+                <DialogTitle className="text-xl font-bold tracking-tight" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                  {previewItem.title}
+                </DialogTitle>
+                <DialogDescription className="mt-2 text-sm text-sky-50/90">
+                  Full image preview for Item #{previewItem.id}. Tap outside the popup or press escape to close.
+                </DialogDescription>
+              </div>
+
+              <div className="bg-slate-950 p-3 sm:p-4">
+                <LazyImage
+                  src={previewItem.image_url || previewItem.thumbnail_url || undefined}
+                  alt={previewItem.title}
+                  wrapperClassName="flex max-h-[calc(100vh-12rem)] items-center justify-center overflow-hidden rounded-[1.4rem] bg-slate-950"
+                  className="max-h-[calc(100vh-12rem)] w-auto max-w-full object-contain"
+                  skeletonClassName="rounded-[1.4rem]"
+                  fetchPriority="high"
+                  loading="eager"
+                />
+              </div>
+            </DialogContent>
+          ) : null}
+        </Dialog>
       </motion.main>
     </AuthPageShell>
   );
