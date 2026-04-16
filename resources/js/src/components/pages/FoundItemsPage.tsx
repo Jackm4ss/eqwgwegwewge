@@ -386,7 +386,7 @@ export function FoundItemsPage() {
                       <AuthSectionHeading
                         eyebrow="Available Catalogue"
                         title="Review every card carefully before contacting the team"
-                        description="Each card mirrors the same calm service-first style as the forgot QR flow, but optimized for browsing instead of form entry."
+                        description="Browse the available items below, open the photo preview if needed, and contact the help desk only when you find a possible match."
                       />
 
                       <div className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
