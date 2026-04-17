@@ -1915,6 +1915,8 @@ class AdminPanelServiceTest extends TestCase
 
     public function test_reports_use_filtered_scan_log_query_without_loading_users_or_tickets(): void
     {
+        config(['admin.reporting.scan_log_enabled' => true]);
+
         $filters = [
             'from' => '2026-03-29',
             'to' => '2026-03-29',
@@ -1956,6 +1958,30 @@ class AdminPanelServiceTest extends TestCase
 
         $this->assertSame(2, data_get($reports, 'daily.total_scans'));
         $this->assertSame(1, data_get($reports, 'overall.visitor_statistics.0.unique_visitors'));
+    }
+
+    public function test_reports_return_empty_payload_when_scan_log_reporting_is_disabled(): void
+    {
+        config(['admin.reporting.scan_log_enabled' => false]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldNotReceive('queryScanLogs');
+        $repository->shouldNotReceive('allScanLogs');
+        $repository->shouldNotReceive('allUsers');
+        $repository->shouldNotReceive('allTickets');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications);
+        $reports = $service->reports([
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ]);
+
+        $this->assertSame(0, data_get($reports, 'daily.total_scans'));
+        $this->assertSame([], data_get($reports, 'daily.attendance_statistics'));
+        $this->assertSame([], data_get($reports, 'overall.visitor_statistics'));
     }
 
     public function test_export_users_uses_cached_directory_snapshot(): void
@@ -2005,6 +2031,8 @@ class AdminPanelServiceTest extends TestCase
 
     public function test_export_attendance_uses_filtered_scan_log_query(): void
     {
+        config(['admin.reporting.scan_log_enabled' => true]);
+
         $filters = [
             'scanner_post' => 'Gate A',
             'from' => '2026-03-29',
@@ -2040,6 +2068,8 @@ class AdminPanelServiceTest extends TestCase
 
     public function test_export_daily_report_uses_filtered_scan_log_query_without_loading_users_or_tickets(): void
     {
+        config(['admin.reporting.scan_log_enabled' => true]);
+
         $filters = [
             'from' => '2026-03-29',
             'to' => '2026-03-29',
@@ -2073,6 +2103,33 @@ class AdminPanelServiceTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertSame('2026-03-29', $rows[0]['scan_date']);
         $this->assertSame(1, $rows[0]['successful_attendance']);
+    }
+
+    public function test_export_scan_log_rows_return_empty_when_scan_log_reporting_is_disabled(): void
+    {
+        config(['admin.reporting.scan_log_enabled' => false]);
+
+        $repository = Mockery::mock(AdminFirestoreRepository::class);
+        $repository->shouldNotReceive('queryScanLogs');
+        $repository->shouldNotReceive('allScanLogs');
+
+        $notifications = Mockery::mock(AdminParticipantNotificationService::class);
+        $notifications->shouldIgnoreMissing();
+
+        $service = $this->makeService($repository, $notifications);
+
+        $this->assertSame([], $service->exportRows('attendance', [
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ]));
+        $this->assertSame([], $service->exportRows('daily-report', [
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ]));
+        $this->assertSame([], $service->exportRows('overall-report', [
+            'from' => '2026-03-29',
+            'to' => '2026-03-29',
+        ]));
     }
 
     public function test_update_user_by_admin_sends_profile_notification_with_hydrated_ticket(): void

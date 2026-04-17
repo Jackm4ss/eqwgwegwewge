@@ -12,6 +12,12 @@ use RuntimeException;
 
 class AdminPanelService
 {
+    private const SCAN_LOG_REPORT_EXPORT_TYPES = [
+        'attendance',
+        'daily-report',
+        'overall-report',
+    ];
+
     public const DASHBOARD_CACHE_VERSION_KEY = 'admin:dashboard:version';
     public const USER_MANAGEMENT_META_CACHE_KEY = 'admin:user-management:meta:v6';
     public const USER_MANAGEMENT_META_STALE_KEY = 'admin:user-management:meta:stale:v1';
@@ -45,6 +51,17 @@ class AdminPanelService
     public function firestoreAvailable(): bool
     {
         return $this->repository->available();
+    }
+
+    public function scanLogReportingEnabled(): bool
+    {
+        return (bool) config('admin.reporting.scan_log_enabled', false);
+    }
+
+    public function scanLogExportDisabled(string $type): bool
+    {
+        return ! $this->scanLogReportingEnabled()
+            && in_array($type, self::SCAN_LOG_REPORT_EXPORT_TYPES, true);
     }
 
     public function dashboardData(array $filters = []): array
@@ -443,6 +460,10 @@ class AdminPanelService
 
     public function reports(array $filters = []): array
     {
+        if (! $this->scanLogReportingEnabled()) {
+            return $this->emptyReports();
+        }
+
         return $this->analytics->buildReports(
             [],
             [],
@@ -458,28 +479,22 @@ class AdminPanelService
                 $this->cachedUserManagementDirectory(),
                 $filters,
             ),
-            'attendance' => $this->analytics->buildExportDataset(
-                $type,
-                [],
-                [],
-                $this->repository->queryScanLogs($filters),
-                [],
-                $filters,
-            ),
+            'attendance', 'daily-report', 'overall-report' => $this->scanLogExportDisabled($type)
+                ? []
+                : $this->analytics->buildExportDataset(
+                    $type,
+                    [],
+                    [],
+                    $this->repository->queryScanLogs($filters),
+                    [],
+                    $filters,
+                ),
             'admin-logs' => $this->analytics->buildExportDataset(
                 $type,
                 [],
                 [],
                 [],
                 $this->repository->queryAdminActivityLogs($filters),
-                $filters,
-            ),
-            'daily-report', 'overall-report' => $this->analytics->buildExportDataset(
-                $type,
-                [],
-                [],
-                $this->repository->queryScanLogs($filters),
-                [],
                 $filters,
             ),
             default => [],
@@ -517,6 +532,22 @@ class AdminPanelService
                 $overview['history'],
                 [$filters['scanner_post'] ?? null],
             ),
+        ];
+    }
+
+    private function emptyReports(): array
+    {
+        return [
+            'daily' => [
+                'total_scans' => 0,
+                'total_visitors' => 0,
+                'attendance_statistics' => [],
+            ],
+            'overall' => [
+                'total_participants' => 0,
+                'total_attendance' => 0,
+                'visitor_statistics' => [],
+            ],
         ];
     }
 

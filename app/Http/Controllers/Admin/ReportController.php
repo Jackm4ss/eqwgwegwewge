@@ -18,6 +18,7 @@ class ReportController extends Controller
             'reports' => $adminPanel->reports($filters),
             'filters' => $filters,
             'firestoreAvailable' => $adminPanel->firestoreAvailable(),
+            'scanLogReportingEnabled' => $adminPanel->scanLogReportingEnabled(),
             'publicReports' => $publicReportService->paginateForAdmin($filters),
             'publicReportSummary' => $publicReportService->summary($filters),
             'publicReportTypeOptions' => $publicReportService->reportTypeOptions(),

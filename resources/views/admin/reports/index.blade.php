@@ -11,6 +11,12 @@
     'publicReportPanelDescription' => 'Review submitted cases here so the team does not rely on email only.',
   ])
 
+  @unless ($scanLogReportingEnabled ?? false)
+    <div class="alert alert-warning mt-4" role="alert">
+      Scan-based reports and exports are temporarily disabled to protect production stability and Firebase usage.
+    </div>
+  @endunless
+
   <div class="row g-6">
     <div class="col-12 col-xl-6">
       <div class="card">

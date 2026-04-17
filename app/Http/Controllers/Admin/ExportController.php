@@ -22,6 +22,13 @@ class ExportController extends Controller
         AdminAuditLogger $auditLogger,
     ): Response {
         $filters = $this->resolveFilters($request, $type);
+
+        if ($type !== 'public-reports' && $adminPanel->scanLogExportDisabled($type)) {
+            return redirect()
+                ->route('admin.reports.index')
+                ->with('status', 'Scan-based exports are temporarily disabled to protect production stability.');
+        }
+
         $rows = $type === 'public-reports'
             ? $publicReportService->exportRows($filters)
             : $adminPanel->exportRows($type, $filters);

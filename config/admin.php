@@ -16,6 +16,9 @@ return [
     'warm_cache' => [
         'optimized_enabled' => env('ADMIN_WARM_CACHE_OPTIMIZED_ENABLED', true),
     ],
+    'reporting' => [
+        'scan_log_enabled' => env('ADMIN_SCAN_LOG_REPORTING_ENABLED', false),
+    ],
     'per_page' => (int) env('ADMIN_PER_PAGE', 10),
     'report_default_days' => (int) env('ADMIN_REPORT_DEFAULT_DAYS', 7),
     'presence' => [
