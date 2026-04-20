@@ -6,6 +6,7 @@ use App\Jobs\RefreshAttendanceReadModelMetaJob;
 use App\Jobs\RebuildAttendanceReadModelJob;
 use App\Jobs\SyncAttendanceReadModelScanJob;
 use App\Jobs\SyncAttendanceReadModelUserJob;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
 class AdminAttendanceReadModelDispatcher
@@ -54,7 +55,7 @@ class AdminAttendanceReadModelDispatcher
 
     public function requestRebuild(string $trigger = 'reconcile'): void
     {
-        if (! $this->readModel->enabled()) {
+        if (! $this->readModel->enabled() || ! $this->lowPriorityMaintenanceEnabled()) {
             return;
         }
 
@@ -76,7 +77,7 @@ class AdminAttendanceReadModelDispatcher
 
     public function requestMetaRefresh(string $trigger = 'meta_refresh'): void
     {
-        if (! $this->readModel->enabled()) {
+        if (! $this->readModel->enabled() || ! $this->lowPriorityMaintenanceEnabled()) {
             return;
         }
 
@@ -89,6 +90,24 @@ class AdminAttendanceReadModelDispatcher
                 'trigger' => $trigger,
                 'message' => $exception->getMessage(),
             ]);
+        }
+    }
+
+    private function lowPriorityMaintenanceEnabled(): bool
+    {
+        $eventEndDate = trim((string) config('admin.event.end_date', ''));
+
+        if ($eventEndDate === '') {
+            return true;
+        }
+
+        $eventTimezone = (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
+
+        try {
+            return CarbonImmutable::now($eventTimezone)->toDateString()
+                <= CarbonImmutable::parse($eventEndDate, $eventTimezone)->toDateString();
+        } catch (\Throwable) {
+            return false;
         }
     }
 }

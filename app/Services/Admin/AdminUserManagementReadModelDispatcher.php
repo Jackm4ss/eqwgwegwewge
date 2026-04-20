@@ -5,6 +5,7 @@ namespace App\Services\Admin;
 use App\Jobs\RefreshUserManagementReadModelMetaJob;
 use App\Jobs\RebuildUserManagementReadModelJob;
 use App\Jobs\SyncUserManagementReadModelJob;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 
 class AdminUserManagementReadModelDispatcher
@@ -53,7 +54,7 @@ class AdminUserManagementReadModelDispatcher
 
     public function requestRebuild(string $trigger = 'reconcile'): void
     {
-        if (! $this->readModel->enabled()) {
+        if (! $this->readModel->enabled() || ! $this->lowPriorityMaintenanceEnabled()) {
             return;
         }
 
@@ -75,7 +76,7 @@ class AdminUserManagementReadModelDispatcher
 
     public function requestMetaRefresh(string $trigger = 'meta_refresh'): void
     {
-        if (! $this->readModel->enabled()) {
+        if (! $this->readModel->enabled() || ! $this->lowPriorityMaintenanceEnabled()) {
             return;
         }
 
@@ -88,6 +89,24 @@ class AdminUserManagementReadModelDispatcher
                 'trigger' => $trigger,
                 'message' => $exception->getMessage(),
             ]);
+        }
+    }
+
+    private function lowPriorityMaintenanceEnabled(): bool
+    {
+        $eventEndDate = trim((string) config('admin.event.end_date', ''));
+
+        if ($eventEndDate === '') {
+            return true;
+        }
+
+        $eventTimezone = (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
+
+        try {
+            return CarbonImmutable::now($eventTimezone)->toDateString()
+                <= CarbonImmutable::parse($eventEndDate, $eventTimezone)->toDateString();
+        } catch (\Throwable) {
+            return false;
         }
     }
 }

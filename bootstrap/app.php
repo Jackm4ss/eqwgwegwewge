@@ -7,6 +7,7 @@ use App\Jobs\RefreshUserManagementReadModelMetaJob;
 use App\Jobs\RebuildAttendanceReadModelJob;
 use App\Jobs\RebuildUserManagementReadModelJob;
 use App\Support\AppRouting;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -22,8 +23,27 @@ $app = Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule) {
-        $schedule->command('admin:backup-data')->everySixHours();
         $schedule->command('admin:warm-dashboard-snapshot')->everyMinute()->withoutOverlapping();
+
+        $eventTimezone = (string) config('admin.event.timezone', config('app.timezone', 'UTC'));
+        $eventEndDate = trim((string) config('admin.event.end_date', ''));
+        $postEventMaintenanceWindowOpen = true;
+
+        if ($eventEndDate !== '') {
+            try {
+                $postEventMaintenanceWindowOpen = CarbonImmutable::now($eventTimezone)->toDateString()
+                    <= CarbonImmutable::parse($eventEndDate, $eventTimezone)->toDateString();
+            } catch (\Throwable) {
+                $postEventMaintenanceWindowOpen = false;
+            }
+        }
+
+        // Avoid expensive Firestore maintenance after the event has ended.
+        if (! $postEventMaintenanceWindowOpen) {
+            return;
+        }
+
+        $schedule->command('admin:backup-data')->everySixHours();
         $schedule->command('admin:warm-cache')->everyFifteenMinutes()->withoutOverlapping();
 
         if ((bool) config('admin.user_management.read_model.enabled', false)) {
