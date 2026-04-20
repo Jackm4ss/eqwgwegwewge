@@ -15,6 +15,9 @@ use Illuminate\Validation\ValidationException;
 
 class RegistrationService
 {
+    private const REGISTRATION_IS_CLOSED = true;
+    private const REGISTRATION_CLOSED_MESSAGE = 'Registration is now closed because Songkran Festival 2026 has ended. Thank you for your interest and participation.';
+
     public function __construct(
         private readonly UserRepositoryInterface $users,
         private readonly TicketDeliveryService $ticketDelivery,
@@ -24,6 +27,8 @@ class RegistrationService
 
     public function register(array $data, string $ip): array
     {
+        $this->ensureRegistrationIsOpen();
+
         try {
             $country = $this->normalizeCountry((string) $data['country']);
             $identityType = $this->normalizeIdentityType((string) $data['identity_type']);
@@ -254,6 +259,17 @@ class RegistrationService
                 'phone_number' => ['Phone number already registered.'],
             ]);
         }
+    }
+
+    private function ensureRegistrationIsOpen(): void
+    {
+        if (! self::REGISTRATION_IS_CLOSED) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'registration' => [self::REGISTRATION_CLOSED_MESSAGE],
+        ]);
     }
 
     private function userManagementReadModelDispatcher(): AdminUserManagementReadModelDispatcher

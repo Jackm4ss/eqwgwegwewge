@@ -133,6 +133,17 @@ const PUBLIC_HOME_URL = getSpaUrl('publicHome', '/');
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GMAIL_DOMAIN = 'gmail.com';
 const REGISTER_EXCLUDED_COUNTRY_CODES = new Set(['IL']);
+const REGISTRATION_IS_CLOSED = true;
+const REGISTRATION_CLOSED_TITLE = 'Registration Closed';
+const REGISTRATION_CLOSED_DESCRIPTION = 'Songkran Festival 2026 has officially ended.';
+const REGISTRATION_CLOSED_MESSAGE = 'Online registration is now closed because the event has ended.';
+const REGISTRATION_CLOSED_APPRECIATION = 'Thank you for your interest and participation. We truly appreciate your support.';
+const REGISTRATION_CLOSED_POPUP_BODY = [
+  'Thank you for your interest in Songkran Festival 2026.',
+  'Online registration is now closed because the event has ended.',
+  'We sincerely appreciate your support and participation, and we hope to welcome you again at a future event.',
+] as const;
+const REGISTRATION_CLOSED_TOAST_MESSAGE = `${REGISTRATION_CLOSED_TITLE}. ${REGISTRATION_CLOSED_MESSAGE}`;
 
 const NATIONALITY_OPTIONS = [
   ...PRIORITY_SORTED_COUNTRIES.filter((country) => !REGISTER_EXCLUDED_COUNTRY_CODES.has(country.code)).map((country) => ({
@@ -893,6 +904,7 @@ export function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isRecaptchaReady, setIsRecaptchaReady] = useState(!recaptchaEnabled);
+  const [isRegistrationClosedNoticeOpen, setIsRegistrationClosedNoticeOpen] = useState(REGISTRATION_IS_CLOSED);
   // const [isMyanmarNoticeOpen, setIsMyanmarNoticeOpen] = useState(true);
   const [legalDialog, setLegalDialog] = useState<LegalDialogType | null>(null);
   const [registeredEmail, setRegisteredEmail] = useState('');
@@ -1149,6 +1161,13 @@ export function RegisterPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
+      if (REGISTRATION_IS_CLOSED) {
+        setIsRegistrationClosedNoticeOpen(true);
+        toast.error(REGISTRATION_CLOSED_TOAST_MESSAGE);
+
+        return;
+      }
+
       const emailSuggestion = getEmailTypoSuggestion(data.email);
 
       if (emailSuggestion) {
@@ -1573,10 +1592,17 @@ export function RegisterPage() {
               ← Home
             </a>
             <AuthCardHeader
-              eyebrow="Free Registration"
-              title="Register Now"
-              description="Join thousands of attendees at Songkran Festival 2026."
-              note={(
+              eyebrow={REGISTRATION_IS_CLOSED ? REGISTRATION_CLOSED_TITLE : 'Free Registration'}
+              title={REGISTRATION_IS_CLOSED ? 'Event Ended' : 'Register Now'}
+              description={REGISTRATION_IS_CLOSED ? 'Thank you for your interest in Songkran Festival 2026.' : 'Join thousands of attendees at Songkran Festival 2026.'}
+              note={REGISTRATION_IS_CLOSED ? (
+                <>
+                  <span>{REGISTRATION_CLOSED_MESSAGE}</span>
+                  <span className="mt-2 block">
+                    {REGISTRATION_CLOSED_APPRECIATION}
+                  </span>
+                </>
+              ) : (
                 <>
                   <span>Complete all details, accept the terms, and submit your registration.</span>
                   <span className="mt-2 block">
@@ -1594,13 +1620,30 @@ export function RegisterPage() {
                 noValidate
                 aria-label="Songkran Festival Music Free Registration Form"
               >
-                <div className="px-7 py-6 relative overflow-hidden" style={{ minHeight: 360 }}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className="space-y-5"
-                  >
+                {REGISTRATION_IS_CLOSED ? (
+                  <div className="border-b border-amber-100 bg-amber-50 px-7 py-4">
+                    <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-white px-4 py-3 shadow-sm">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                        <Lock className="h-5 w-5" aria-hidden="true" />
+                      </div>
+                      <div className="space-y-1 text-left">
+                        <p className="text-sm font-semibold text-slate-900">{REGISTRATION_CLOSED_TITLE}</p>
+                        <p className="text-sm leading-6 text-slate-600">
+                          {REGISTRATION_CLOSED_MESSAGE} {REGISTRATION_CLOSED_APPRECIATION}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                <fieldset disabled={REGISTRATION_IS_CLOSED || isSubmitting} className="m-0 min-w-0 border-0 p-0">
+                  <div className="px-7 py-6 relative overflow-hidden" style={{ minHeight: 360 }}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="space-y-5"
+                    >
                     <div>
                       <label htmlFor="full_name" className="block text-slate-700 text-sm font-semibold mb-1.5">
                         Full Name <span className="text-red-500" aria-hidden="true">*</span>
@@ -1858,34 +1901,40 @@ export function RegisterPage() {
                     <AnimatePresence>
                       <AuthInlineError id="err-recaptcha" message={errors.recaptcha_token?.message} />
                     </AnimatePresence>
-                  </motion.div>
-                </div>
+                    </motion.div>
+                  </div>
 
-                {/* Navigation footer */}
-                <div className="px-7 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
-                  <motion.button
-                    type="submit"
-                    disabled={isSubmitting}
-                    whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
-                    whileTap={{ scale: isSubmitting ? 1 : 0.97 }}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-                    style={{ background: 'linear-gradient(135deg, #0284C7, #0EA5E9)', boxShadow: '0 4px 14px rgba(2,132,199,0.35)' }}
-                    aria-busy={isSubmitting}
-                    aria-disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                        <span>Registering...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Submit</span>
+                  {/* Navigation footer */}
+                  <div className="px-7 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                    <motion.button
+                      type="submit"
+                      disabled={isSubmitting || REGISTRATION_IS_CLOSED}
+                      whileHover={{ scale: isSubmitting || REGISTRATION_IS_CLOSED ? 1 : 1.02 }}
+                      whileTap={{ scale: isSubmitting || REGISTRATION_IS_CLOSED ? 1 : 0.97 }}
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-white text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                      style={{ background: REGISTRATION_IS_CLOSED ? '#94a3b8' : 'linear-gradient(135deg, #0284C7, #0EA5E9)', boxShadow: REGISTRATION_IS_CLOSED ? 'none' : '0 4px 14px rgba(2,132,199,0.35)' }}
+                      aria-busy={isSubmitting}
+                      aria-disabled={isSubmitting || REGISTRATION_IS_CLOSED}
+                    >
+                      {REGISTRATION_IS_CLOSED ? (
+                        <>
+                          <Lock className="w-4 h-4" aria-hidden="true" />
+                          <span>{REGISTRATION_CLOSED_TITLE}</span>
+                        </>
+                      ) : isSubmitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+                          <span>Registering...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Submit</span>
 
-                      </>
-                    )}
-                  </motion.button>
-                </div>
+                        </>
+                      )}
+                    </motion.button>
+                  </div>
+                </fieldset>
               </form>
             </div>
           </AuthCardFrame>
@@ -1904,6 +1953,43 @@ export function RegisterPage() {
 
         </motion.main>
       </div>
+
+      <Dialog open={REGISTRATION_IS_CLOSED && isRegistrationClosedNoticeOpen} onOpenChange={setIsRegistrationClosedNoticeOpen}>
+        <DialogContent showCloseButton={false} className="max-w-lg gap-0 overflow-hidden rounded-[1.75rem] border-amber-100 p-0 shadow-2xl">
+          <div className="bg-gradient-to-r from-amber-100 via-white to-sky-50 px-6 py-5">
+            <DialogHeader className="text-left">
+              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 text-amber-700 shadow-sm">
+                <Lock className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <DialogTitle className="text-xl font-bold tracking-tight text-slate-900" style={{ fontFamily: '"Kanit", sans-serif' }}>
+                {REGISTRATION_CLOSED_TITLE}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-slate-600">
+                {REGISTRATION_CLOSED_DESCRIPTION}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="px-6 py-5">
+            <div className="flex flex-col gap-3 text-sm leading-7 text-slate-600">
+              {REGISTRATION_CLOSED_POPUP_BODY.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter className="border-t border-slate-100 px-6 py-4 sm:justify-between">
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Close
+              </Button>
+            </DialogClose>
+            <Button asChild>
+              <a href={PUBLIC_HOME_URL}>Return to Home</a>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Myanmar registration hold popup kept as comment for future reuse.
       <Dialog open={isMyanmarNoticeOpen} onOpenChange={setIsMyanmarNoticeOpen}>
